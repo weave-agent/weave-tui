@@ -370,7 +370,7 @@ func TestModel_ModelChangedToNonReasoningForcesThinkingOff(t *testing.T) {
 
 func TestModel_ModelChangedPublishesEvent(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicModelChange)
 

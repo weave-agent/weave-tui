@@ -333,7 +333,7 @@ func TestBridge_IntegrationWithRealBus(t *testing.T) {
 
 func TestPublishPrompt(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicPrompt)
 
@@ -348,7 +348,7 @@ func TestPublishPrompt(t *testing.T) {
 
 func TestPublishFollowup(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicFollowup)
 
@@ -363,7 +363,7 @@ func TestPublishFollowup(t *testing.T) {
 
 func TestPublishSteer(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicSteer)
 
@@ -488,7 +488,7 @@ func TestBridge_DeltaBatchingMixedEvents(t *testing.T) {
 
 func TestPublishInterrupt(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicInterrupt)
 

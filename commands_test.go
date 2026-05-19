@@ -18,7 +18,7 @@ import (
 
 func TestCommandRegistry_BuiltinCommands(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -35,7 +35,7 @@ func TestCommandRegistry_BuiltinCommands(t *testing.T) {
 
 func TestCommandRegistry_DispatchNonCommand(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -46,7 +46,7 @@ func TestCommandRegistry_DispatchNonCommand(t *testing.T) {
 
 func TestCommandRegistry_DispatchQuit(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -58,7 +58,7 @@ func TestCommandRegistry_DispatchQuit(t *testing.T) {
 
 func TestCommandRegistry_DispatchNew(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -71,7 +71,7 @@ func TestCommandRegistry_DispatchNew(t *testing.T) {
 
 func TestCommandRegistry_DispatchClearAliasForNew(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -88,7 +88,7 @@ func TestCommandRegistry_DispatchClearAliasForNew(t *testing.T) {
 
 func TestCommandRegistry_DispatchHelp(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -101,7 +101,7 @@ func TestCommandRegistry_DispatchHelp(t *testing.T) {
 
 func TestCommandRegistry_DispatchCompact(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicSteer)
 
@@ -125,7 +125,7 @@ func TestCommandRegistry_DispatchCompact(t *testing.T) {
 
 func TestCommandRegistry_DispatchCompactWithArgs(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicSteer)
 
@@ -148,7 +148,7 @@ func TestCommandRegistry_DispatchCompactWithArgs(t *testing.T) {
 
 func TestCommandRegistry_DispatchNameWithArgs(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicSteer)
 
@@ -167,7 +167,7 @@ func TestCommandRegistry_DispatchNameWithArgs(t *testing.T) {
 
 func TestCommandRegistry_DispatchUnknownCommand(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -178,7 +178,7 @@ func TestCommandRegistry_DispatchUnknownCommand(t *testing.T) {
 
 func TestCommandRegistry_DispatchCommandWithArgs(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -195,7 +195,7 @@ func TestCommandRegistry_DispatchCommandWithArgs(t *testing.T) {
 
 func TestCommandRegistry_NamesSorted(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -207,7 +207,7 @@ func TestCommandRegistry_NamesSorted(t *testing.T) {
 
 func TestCommandRegistry_Lookup(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -222,7 +222,7 @@ func TestCommandRegistry_Lookup(t *testing.T) {
 
 func TestCommandRegistry_Register(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -246,7 +246,7 @@ func TestCommandRegistry_Register(t *testing.T) {
 
 func TestCommandRegistry_AcceptsFilesDefaultsToFalse(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -293,7 +293,7 @@ func TestParseCommand(t *testing.T) {
 
 func TestCommandRegistry_HelpListsAll(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -379,7 +379,7 @@ func TestModel_SlashCommandHelpShowsMessage(t *testing.T) {
 
 func TestModel_RegularSubmitPublishesPrompt(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicPrompt)
 
@@ -404,7 +404,7 @@ func TestModel_RegularSubmitPublishesPrompt(t *testing.T) {
 
 func TestModel_RegularSubmitFollowup(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicFollowup)
 
@@ -473,7 +473,7 @@ func TestModel_ThinkingCommandInHelp(t *testing.T) {
 
 func TestCommandRegistry_ReloadRegistered(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -616,7 +616,7 @@ func TestIsSHA256Hex(t *testing.T) {
 
 func TestCommandRegistry_DispatchLogin(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -632,7 +632,7 @@ func TestCommandRegistry_DispatchLogin(t *testing.T) {
 
 func TestCommandRegistry_DispatchLogout(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -648,7 +648,7 @@ func TestCommandRegistry_DispatchLogout(t *testing.T) {
 
 func TestCommandRegistry_LoginLogoutInHelp(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 

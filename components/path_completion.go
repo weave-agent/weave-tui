@@ -14,11 +14,35 @@ const (
 	recursivePathCompletionMinQueryLength = 2
 	recursivePathCompletionMaxDepth       = 4
 	recursivePathCompletionMaxItems       = 2000
+	pathCompletionMaxDirEntries           = 500
 )
+
+// readDirCapped reads at most pathCompletionMaxDirEntries from a directory.
+// It returns (entries, true) on success, (nil, false) on error or if the
+// directory contains more entries than the cap.
+func readDirCapped(dir string) ([]os.DirEntry, bool) {
+	f, err := os.Open(dir)
+	if err != nil {
+		return nil, false
+	}
+	defer func() { _ = f.Close() }()
+
+	entries, err := f.ReadDir(pathCompletionMaxDirEntries + 1)
+	if err != nil {
+		return nil, false
+	}
+	if len(entries) > pathCompletionMaxDirEntries {
+		return nil, false
+	}
+	return entries, true
+}
 
 // PathCompletions returns completion items for file paths relative to baseDir.
 func PathCompletions(baseDir, prefix string) []CompletionItem {
 	dirPart, filter := splitPrefix(prefix)
+	if hasHiddenSegment(dirPart) {
+		return nil
+	}
 	if len([]rune(filter)) < recursivePathCompletionMinQueryLength {
 		return currentDirectoryPathCompletions(baseDir, dirPart, filter)
 	}
@@ -43,8 +67,8 @@ func currentDirectoryPathCompletions(baseDir, dirPart, filter string) []Completi
 		}
 	}
 
-	entries, err := os.ReadDir(searchDir)
-	if err != nil {
+	entries, ok := readDirCapped(searchDir)
+	if !ok {
 		return nil
 	}
 
@@ -125,8 +149,8 @@ func walkRecursivePathCompletions(baseDir, valuePrefix, relDir string, depth int
 		searchDir = filepath.Join(baseDir, filepath.FromSlash(relDir))
 	}
 
-	entries, err := os.ReadDir(searchDir)
-	if err != nil {
+	entries, ok := readDirCapped(searchDir)
+	if !ok {
 		return
 	}
 
@@ -213,6 +237,16 @@ func splitPrefix(prefix string) (dirPart, filter string) {
 	}
 
 	return prefix[:idx+1], prefix[idx+1:]
+}
+
+func hasHiddenSegment(dirPart string) bool {
+	dirPart = strings.TrimSuffix(dirPart, "/")
+	for seg := range strings.SplitSeq(dirPart, "/") {
+		if seg != "" && seg != "." && strings.HasPrefix(seg, ".") {
+			return true
+		}
+	}
+	return false
 }
 
 func sortCompletionItems(items []CompletionItem) {

@@ -153,7 +153,7 @@ func readSessionHeader(path string) (*sessionHeader, error) {
 		return nil, fmt.Errorf("open session header: %w", err)
 	}
 
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	dec := json.NewDecoder(f)
 

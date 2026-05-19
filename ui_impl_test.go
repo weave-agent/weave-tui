@@ -85,7 +85,7 @@ func TestTUIImpl_Notify_NoProgram(t *testing.T) {
 
 func TestTUIImpl_RegisterCommand_SendsSlashCommandsUpdated(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	commands := NewCommandRegistry(b, "")
 	sender := &mockSender{}
@@ -110,7 +110,7 @@ func TestTUIImpl_RegisterCommand_SendsSlashCommandsUpdated(t *testing.T) {
 
 func TestTUIImpl_RegisterCommand_NoSendWithoutProgram(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	commands := NewCommandRegistry(b, "")
 	ui := NewTUIImpl(commands, nil)
@@ -123,7 +123,7 @@ func TestTUIImpl_RegisterCommand_NoSendWithoutProgram(t *testing.T) {
 
 func TestModel_SlashCommandsUpdatedMsg_RefreshesEditor(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	m := newModel(b, nil, nil, nil)
 	m.width = 80
@@ -150,7 +150,7 @@ func TestModel_SlashCommandsUpdatedMsg_RefreshesEditor(t *testing.T) {
 
 func TestTUIImpl_RegisterCommand(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	commands := NewCommandRegistry(b, "")
 	ui := NewTUIImpl(commands, nil)
@@ -172,7 +172,7 @@ func TestTUIImpl_RegisterCommand(t *testing.T) {
 
 func TestTUIImpl_RegisterCommand_Error(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	commands := NewCommandRegistry(b, "")
 	ui := NewTUIImpl(commands, nil)

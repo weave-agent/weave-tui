@@ -165,6 +165,79 @@ func TestPathCompletionsSkipsHiddenFiles(t *testing.T) {
 	assert.Equal(t, "visible.go", items[0].Label)
 }
 
+func TestPathCompletionsRejectsHiddenDirSegment(t *testing.T) {
+	tmp := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(tmp, ".git", "objects"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, ".git", "objects", "abc.go"), []byte(""), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmp, "src", ".cache"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "src", ".cache", "foo.go"), []byte(""), 0o644))
+
+	// Hidden segment at top level: short query (current-directory mode)
+	items := PathCompletions(tmp, ".git/")
+	assert.Empty(t, items)
+
+	// Hidden segment at top level: recursive query
+	items = PathCompletions(tmp, ".git/ab")
+	assert.Empty(t, items)
+
+	// Hidden segment nested: short query
+	items = PathCompletions(tmp, "src/.cache/")
+	assert.Empty(t, items)
+
+	// Hidden segment nested: recursive query
+	items = PathCompletions(tmp, "src/.cache/fo")
+	assert.Empty(t, items)
+}
+
+func TestPathCompletionsAllowsCurrentDirSegment(t *testing.T) {
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "alpha.go"), []byte(""), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmp, "src", "internal"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "src", "internal", "beta.go"), []byte(""), 0o644))
+
+	// Current-directory prefix in short query mode
+	items := PathCompletions(tmp, "./")
+	require.Len(t, items, 2)
+	labels := []string{items[0].Label, items[1].Label}
+	assert.Contains(t, labels, "alpha.go")
+	assert.Contains(t, labels, "src/")
+
+	// Current-directory prefix in recursive query mode
+	items = PathCompletions(tmp, "./be")
+	require.Len(t, items, 1)
+	assert.Equal(t, "./src/internal/beta.go", items[0].Value)
+
+	// Current-directory segment nested in path
+	items = PathCompletions(tmp, "src/./internal/")
+	require.Len(t, items, 1)
+	assert.Equal(t, "beta.go", items[0].Label)
+	assert.Equal(t, "src/./internal/beta.go", items[0].Value)
+}
+
+func TestPathCompletionsSkipsHugeDirectories(t *testing.T) {
+	tmp := t.TempDir()
+	hugeDir := filepath.Join(tmp, "huge")
+	smallDir := filepath.Join(tmp, "small")
+	require.NoError(t, os.MkdirAll(hugeDir, 0o755))
+	require.NoError(t, os.MkdirAll(smallDir, 0o755))
+
+	// Fill huge directory past the limit
+	for i := range pathCompletionMaxDirEntries + 1 {
+		require.NoError(t, os.WriteFile(filepath.Join(hugeDir, fmt.Sprintf("file-%04d.go", i)), []byte(""), 0o644))
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(smallDir, "found.go"), []byte(""), 0o644))
+
+	// Recursive mode should skip the huge directory entirely
+	items := PathCompletions(tmp, "fou")
+	require.Len(t, items, 1)
+	assert.Equal(t, "small/found.go", items[0].Value)
+
+	// Current-directory mode should also skip the huge directory
+	items = PathCompletions(tmp, "small/")
+	require.Len(t, items, 1)
+	assert.Equal(t, "found.go", items[0].Label)
+}
+
 func TestPathCompletionsDirectoryTrailingSlash(t *testing.T) {
 	tmp := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(tmp, "src", "internal"), 0o755))
@@ -177,8 +250,12 @@ func TestPathCompletionsDirectoryTrailingSlash(t *testing.T) {
 
 func TestPathCompletionsCapBehavior(t *testing.T) {
 	tmp := t.TempDir()
+	// Spread files across subdirectories so no single directory exceeds the per-directory limit.
+	filesPerDir := 400
 	for i := range recursivePathCompletionMaxItems + 10 {
-		require.NoError(t, os.WriteFile(filepath.Join(tmp, fmt.Sprintf("file-%04d.go", i)), []byte(""), 0o644))
+		subDir := filepath.Join(tmp, fmt.Sprintf("batch-%d", i/filesPerDir))
+		require.NoError(t, os.MkdirAll(subDir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(subDir, fmt.Sprintf("file-%04d.go", i)), []byte(""), 0o644))
 	}
 
 	items := collectRecursivePathCompletions(tmp, "")

@@ -28,7 +28,7 @@ import (
 // tool results -> turn end with scroll indicator -> overlay dismissal.
 func TestIntegration_FullStreamingFlow(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	m := newModel(b, nil, nil, nil)
 	m.width = 120
@@ -238,7 +238,7 @@ func TestIntegration_TokenRateDisplayAndAutoScroll(t *testing.T) {
 // work correctly through the overlay stack: Select, Confirm, Input, SetStatus, Notify.
 func TestIntegration_SDKUIThroughOverlayStack(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	commands := NewCommandRegistry(b, "")
 	bindings := NewBindingRegistry()
@@ -397,7 +397,7 @@ func TestIntegration_SessionResumeFlow(t *testing.T) {
 	t.Setenv("WEAVE_JSONL_DIR", dir)
 
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicSessionResume)
 
@@ -480,7 +480,7 @@ func TestIntegration_ModelSelectionFlow(t *testing.T) {
 
 	b := bus.New()
 
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicModelChange)
 
@@ -655,7 +655,7 @@ func TestIntegration_ThinkingLevelCycleWithModelChange(t *testing.T) {
 // escape interrupts streaming, second escape clears editor.
 func TestIntegration_InterruptDuringStreaming(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicInterrupt)
 

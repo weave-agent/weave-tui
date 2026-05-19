@@ -628,7 +628,7 @@ func TestModel_ThinkingBlockWithToolCalls(t *testing.T) {
 
 func TestModel_ResumeCommandDispatches(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	r := NewCommandRegistry(b, "")
 
@@ -757,7 +757,7 @@ func TestModel_SessionSelectorSelect(t *testing.T) {
 	t.Setenv("WEAVE_JSONL_DIR", dir)
 
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicSessionResume)
 
@@ -1193,7 +1193,7 @@ func TestModel_ResumeSlashCommandIntegration(t *testing.T) {
 	t.Setenv("WEAVE_JSONL_DIR", dir)
 
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	m := newModel(b, nil, nil, nil)
 	m.width = 80
@@ -1223,7 +1223,7 @@ func TestModel_ResumeSlashCommandIntegration(t *testing.T) {
 
 func TestModel_InterruptStreaming(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicInterrupt)
 
@@ -1279,7 +1279,7 @@ func TestModel_InterruptNoStreamingMessage(t *testing.T) {
 
 func TestModel_EscapeInterruptsAwaitAgent(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicInterrupt)
 
@@ -1309,7 +1309,7 @@ func TestModel_EscapeInterruptsAwaitAgent(t *testing.T) {
 
 func TestModel_EscapeInterruptsActiveSubagent(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicInterrupt)
 
@@ -1342,7 +1342,7 @@ func TestModel_EscapeInterruptsActiveSubagent(t *testing.T) {
 
 func TestModel_EscapeInterruptsAwaitAgentAfterSubagentCompletes(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicInterrupt)
 
@@ -1577,7 +1577,7 @@ func TestModel_CycleThinkingLevelAllLevels(t *testing.T) {
 
 func TestModel_CycleThinkingPublishesEvent(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicThinkingChange)
 
@@ -1636,7 +1636,7 @@ func TestModel_ThinkingCommand(t *testing.T) {
 	defer sdkmodel.ResetModelRegistry()
 
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicThinkingChange)
 
@@ -1810,7 +1810,7 @@ func TestModel_StartupHintsHiddenAfterPrompt(t *testing.T) {
 	m.height = 24
 
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	m.bus = b
 
@@ -4798,7 +4798,7 @@ func TestModel_OnKeyInputDialogDone_SavesKeyAndUpdatesAuth(t *testing.T) {
 
 func TestModel_OnKeyInputDialogDone_PublishesLoginSuccess(t *testing.T) {
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicAuthLoginSuccess)
 
@@ -4900,7 +4900,7 @@ func TestModel_OnLoginFlowResult_Success(t *testing.T) {
 	t.Setenv("HOME", dir)
 
 	b := bus.New()
-	defer b.Close()
+	defer func() { _ = b.Close() }()
 
 	ch := subscribeToChan(b, topicAuthLoginSuccess)
 
