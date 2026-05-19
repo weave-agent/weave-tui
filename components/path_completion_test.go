@@ -131,6 +131,28 @@ func TestPathCompletionsNonexistentDir(t *testing.T) {
 	assert.Empty(t, items)
 }
 
+func TestPathCompletionsRejectsTraversal(t *testing.T) {
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "safe.go"), []byte(""), 0o644))
+
+	// Create a file outside tmp to verify it isn't reachable
+	outsideDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(outsideDir, "secret.go"), []byte(""), 0o644))
+
+	// Short query (current-directory) with traversal
+	items := PathCompletions(tmp, "../")
+	assert.Empty(t, items)
+
+	// Recursive query with traversal
+	items = PathCompletions(tmp, "../../secret")
+	assert.Empty(t, items)
+
+	// Nested traversal through existing directory
+	require.NoError(t, os.MkdirAll(filepath.Join(tmp, "nested"), 0o755))
+	items = PathCompletions(tmp, "nested/../../../secret")
+	assert.Empty(t, items)
+}
+
 func TestPathCompletionsSkipsHiddenFiles(t *testing.T) {
 	tmp := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmp, "visible.go"), []byte(""), 0o644))

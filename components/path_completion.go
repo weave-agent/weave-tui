@@ -25,7 +25,10 @@ func PathCompletions(baseDir, prefix string) []CompletionItem {
 
 	searchDir := baseDir
 	if dirPart != "" {
-		searchDir = filepath.Join(baseDir, dirPart)
+		searchDir = filepath.Join(baseDir, filepath.FromSlash(dirPart))
+		if !isSubPath(baseDir, searchDir) {
+			return nil
+		}
 	}
 
 	return recursivePathCompletions(searchDir, dirPart, filter)
@@ -34,7 +37,10 @@ func PathCompletions(baseDir, prefix string) []CompletionItem {
 func currentDirectoryPathCompletions(baseDir, dirPart, filter string) []CompletionItem {
 	searchDir := baseDir
 	if dirPart != "" {
-		searchDir = filepath.Join(baseDir, dirPart)
+		searchDir = filepath.Join(baseDir, filepath.FromSlash(dirPart))
+		if !isSubPath(baseDir, searchDir) {
+			return nil
+		}
 	}
 
 	entries, err := os.ReadDir(searchDir)
@@ -213,4 +219,13 @@ func sortCompletionItems(items []CompletionItem) {
 	slices.SortFunc(items, func(a, b CompletionItem) int {
 		return cmp.Compare(a.Label, b.Label)
 	})
+}
+
+// isSubPath reports whether child is within or equal to parent.
+func isSubPath(parent, child string) bool {
+	rel, err := filepath.Rel(parent, child)
+	if err != nil {
+		return false
+	}
+	return !strings.HasPrefix(rel, "..")
 }

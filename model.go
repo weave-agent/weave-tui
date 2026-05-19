@@ -2896,9 +2896,8 @@ func (m Model) slashCommandCompletion(line string, lineStart int) Model {
 	if info, ok := m.commands.Lookup(cmdName); ok && info.AcceptsFiles {
 		items := components.PathCompletions(".", afterSpace)
 		triggerOffset := lineStart + len(cmdName) + 1
-		// PathCompletions already filters by prefix, pass empty filter to avoid
-		// double-filtering: SetFilter checks HasPrefix(Label, filter) but Label
-		// is just the filename (e.g. "main.go"), not the full path.
+		// PathCompletions already handles filtering (prefix for short queries,
+		// fuzzy for long queries), so pass empty filter to display all returned items.
 		comp := m.editor.ShowCompletion(components.CompletionFile, items, "", triggerOffset)
 		if comp.Completion().FilteredCount() == 0 {
 			m.editor = m.editor.HideCompletion()
@@ -2950,9 +2949,8 @@ func (m Model) atFileCompletion(line string, lineStart int) Model {
 
 	items := components.PathCompletions(".", filter)
 	triggerOffset := lineStart + atIdx
-	// PathCompletions already filters by prefix, pass empty filter to avoid
-	// double-filtering: SetFilter checks HasPrefix(Label, filter) but Label
-	// is just the filename (e.g. "main.go"), not the full path.
+	// PathCompletions already handles filtering (prefix for short queries,
+	// fuzzy for long queries), so pass empty filter to display all returned items.
 	comp := m.editor.ShowCompletion(components.CompletionFile, items, "", triggerOffset)
 	if comp.Completion().FilteredCount() == 0 {
 		m.editor = m.editor.HideCompletion()
