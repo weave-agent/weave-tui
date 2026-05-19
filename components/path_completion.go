@@ -3,6 +3,7 @@ package components
 import (
 	"cmp"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -115,6 +116,7 @@ func recursivePathCompletions(searchDir, valuePrefix, filter string) []Completio
 		scored = append(scored, scoredPathCompletion{
 			item:       item,
 			matchIndex: match.Index,
+			score:      match.Score,
 			tier:       pathCompletionRankTier(item.Value, filterLower),
 		})
 	}
@@ -122,6 +124,9 @@ func recursivePathCompletions(searchDir, valuePrefix, filter string) []Completio
 	slices.SortStableFunc(scored, func(a, b scoredPathCompletion) int {
 		if tierCompare := cmp.Compare(a.tier, b.tier); tierCompare != 0 {
 			return tierCompare
+		}
+		if scoreCompare := cmp.Compare(b.score, a.score); scoreCompare != 0 {
+			return scoreCompare
 		}
 		return cmp.Compare(a.matchIndex, b.matchIndex)
 	})
@@ -163,6 +168,10 @@ func walkRecursivePathCompletions(baseDir, valuePrefix, relDir string, depth int
 			return
 		}
 
+		if entry.Type()&os.ModeSymlink != 0 {
+			continue
+		}
+
 		name := entry.Name()
 		if strings.HasPrefix(name, ".") {
 			continue
@@ -192,6 +201,7 @@ func walkRecursivePathCompletions(baseDir, valuePrefix, relDir string, depth int
 type scoredPathCompletion struct {
 	item       CompletionItem
 	matchIndex int
+	score      int
 	tier       int
 }
 
@@ -207,8 +217,8 @@ func (items pathCompletionItems) Len() int {
 
 func pathCompletionRankTier(value, filterLower string) int {
 	trimmed := strings.TrimSuffix(value, "/")
-	basename := strings.ToLower(filepath.Base(trimmed))
-	stem := strings.TrimSuffix(basename, strings.ToLower(filepath.Ext(basename)))
+	basename := strings.ToLower(path.Base(trimmed))
+	stem := strings.TrimSuffix(basename, strings.ToLower(path.Ext(basename)))
 
 	switch {
 	case basename == filterLower || stem == filterLower:
