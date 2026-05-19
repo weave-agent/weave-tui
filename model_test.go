@@ -2319,11 +2319,14 @@ func TestModel_RefreshEditorCompletion_PlainText(t *testing.T) {
 
 func TestModel_RefreshEditorCompletion_SlashCommand(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
-	m.editor = m.editor.SetValue("/he")
+	m.editor = m.editor.SetValue("/hp")
 	m = m.refreshEditorCompletion()
 	assert.True(t, m.editor.CompletionActive())
 	assert.Equal(t, components.CompletionSlash, m.editor.Completion().Kind())
-	assert.Equal(t, 1, m.editor.Completion().FilteredCount()) // only /help matches
+	assert.Equal(t, 1, m.editor.Completion().FilteredCount())
+	item, ok := m.editor.Completion().SelectedItem()
+	require.True(t, ok)
+	assert.Equal(t, "/help ", item.Value)
 }
 
 func TestModel_RefreshEditorCompletion_SlashCommandNoFilter(t *testing.T) {
@@ -2347,10 +2350,13 @@ func TestModel_RefreshEditorCompletion_SlashCommandWithSpaceAcceptsFiles(t *test
 	m.commands.Register("/upload", "Upload files", true, func(_ string) CommandResult {
 		return CommandResult{}
 	})
-	m.editor = m.editor.SetValue("/upload ")
+	m.editor = m.editor.SetValue("/upload go.mod")
 	m = m.refreshEditorCompletion()
 	assert.True(t, m.editor.CompletionActive())
 	assert.Equal(t, components.CompletionFile, m.editor.Completion().Kind())
+	item, ok := m.editor.Completion().SelectedItem()
+	require.True(t, ok)
+	assert.Equal(t, "go.mod", item.Value)
 }
 
 func TestModel_RefreshEditorCompletion_AtTrigger(t *testing.T) {
@@ -2359,6 +2365,9 @@ func TestModel_RefreshEditorCompletion_AtTrigger(t *testing.T) {
 	m = m.refreshEditorCompletion()
 	assert.True(t, m.editor.CompletionActive())
 	assert.Equal(t, components.CompletionFile, m.editor.Completion().Kind())
+	item, ok := m.editor.Completion().SelectedItem()
+	require.True(t, ok)
+	assert.NotEmpty(t, item.Value)
 }
 
 func TestModel_RefreshEditorCompletion_AtTriggerWithFilter(t *testing.T) {
@@ -2464,20 +2473,23 @@ func TestModel_HandleCompletionKey_RegularKey(t *testing.T) {
 	assert.False(t, handled)
 }
 
-func TestModel_CompletionKeyFlow_TabCycles(t *testing.T) {
+func TestModel_CompletionKeyFlow_TabAppliesCompletion(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
 
-	// Type "/" to trigger completion
 	model, _ := m.Update(tea.KeyPressMsg{Text: "/", Code: '/'})
+	m = model.(Model)
+	model, _ = m.Update(tea.KeyPressMsg{Text: "h", Code: 'h'})
+	m = model.(Model)
+	model, _ = m.Update(tea.KeyPressMsg{Text: "p", Code: 'p'})
 	m = model.(Model)
 	require.True(t, m.editor.CompletionActive())
 
-	// Tab should move cursor down
 	model, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	m = model.(Model)
-	assert.Equal(t, 1, m.editor.Completion().Cursor())
+	assert.Equal(t, "/help ", m.editor.Value())
+	assert.False(t, m.editor.CompletionActive())
 }
 
 func TestModel_CompletionKeyFlow_EscapeDismisses(t *testing.T) {
@@ -2499,15 +2511,20 @@ func TestModel_CompletionKeyFlow_TypingUpdatesFilter(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	// Type "/h"
+	// Type "/hp"
 	model, _ := m.Update(tea.KeyPressMsg{Text: "/", Code: '/'})
 	m = model.(Model)
 	model, _ = m.Update(tea.KeyPressMsg{Text: "h", Code: 'h'})
 	m = model.(Model)
+	model, _ = m.Update(tea.KeyPressMsg{Text: "p", Code: 'p'})
+	m = model.(Model)
 
 	require.True(t, m.editor.CompletionActive())
 	assert.Equal(t, components.CompletionSlash, m.editor.Completion().Kind())
-	assert.Equal(t, 1, m.editor.Completion().FilteredCount()) // "/help" matches "h"
+	assert.Equal(t, 1, m.editor.Completion().FilteredCount())
+	item, ok := m.editor.Completion().SelectedItem()
+	require.True(t, ok)
+	assert.Equal(t, "/help ", item.Value)
 }
 
 func TestModel_CompletionKeyFlow_AtTrigger(t *testing.T) {

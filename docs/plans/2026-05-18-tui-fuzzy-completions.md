@@ -73,11 +73,11 @@ Scope:
 - [x] run `cd ~/.weave/extensions/tui && go test ./components/...`
 
 ### Task 5: Verify command and file trigger integration
-- [ ] confirm slash command completion still opens for `/` at start of prompt
-- [ ] confirm file completion still opens for `@` after whitespace
-- [ ] confirm file-accepting slash commands still use path completions after command text
-- [ ] add/update model-level tests if fuzzy/hybrid behavior changes expected filtered results
-- [ ] run `cd ~/.weave/extensions/tui && go test ./...`
+- [x] confirm slash command completion still opens for `/` at start of prompt
+- [x] confirm file completion still opens for `@` after whitespace
+- [x] confirm file-accepting slash commands still use path completions after command text
+- [x] add/update model-level tests if fuzzy/hybrid behavior changes expected filtered results
+- [x] run `cd ~/.weave/extensions/tui && go test ./...`
 
 ### Task 6: Acceptance verification
 - [ ] run `cd ~/.weave/extensions/tui && go test ./...`
