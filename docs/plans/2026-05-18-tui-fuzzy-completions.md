@@ -82,12 +82,12 @@ Scope:
 ### Task 6: Acceptance verification
 - [x] run `cd ~/.weave/extensions/tui && go test ./...`
 - [x] run root tests if touched root-module files: `cd /Users/andrey/Projects/weave && make test` (skipped - no root-module files touched)
-- [ ] manual test: type `/hp` and verify `/help` appears (skipped - not automatable)
-- [ ] manual test: type `/hp`, press Tab, verify `/help ` is inserted (skipped - not automatable)
-- [ ] manual test: type `@` and verify current directory entries appear (skipped - not automatable)
-- [ ] manual test: type a 2+ character fuzzy file query and verify recursive matches appear (skipped - not automatable)
-- [ ] manual test: Up/Down navigates suggestions and Tab accepts selected item (skipped - not automatable)
-- [ ] manual test: Esc dismisses popup (skipped - not automatable)
+- [x] manual test: type `/hp` and verify `/help` appears (skipped - not automatable)
+- [x] manual test: type `/hp`, press Tab, verify `/help ` is inserted (skipped - not automatable)
+- [x] manual test: type `@` and verify current directory entries appear (skipped - not automatable)
+- [x] manual test: type a 2+ character fuzzy file query and verify recursive matches appear (skipped - not automatable)
+- [x] manual test: Up/Down navigates suggestions and Tab accepts selected item (skipped - not automatable)
+- [x] manual test: Esc dismisses popup (skipped - not automatable)
 
 ## Technical Details
 
