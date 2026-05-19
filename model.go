@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	sandbox "github.com/weave-agent/weave-sandbox"
 	"github.com/weave-agent/weave-tui/components"
 	"github.com/weave-agent/weave-tui/components/attachments"
 	"github.com/weave-agent/weave-tui/components/messages"
@@ -2753,28 +2752,13 @@ func (m *Model) showStatus(msg string) {
 	})
 }
 
-// cycleSandboxMode advances the sandbox to the next mode in the cycle order,
-// updates the footer status pill.
+// cycleSandboxMode requests the sandbox extension to advance to the next mode.
 func (m Model) cycleSandboxMode() (tea.Model, tea.Cmd) {
-	sb := getSandboxer()
-	if sb == nil {
-		m.showStatus("Sandbox: not available")
-		return m, m.statusTimer
-	}
-
-	current := sb.Mode()
-	next := sandbox.NextSandboxMode(current)
-	sb.SetMode(next)
-
 	if m.bus != nil {
-		m.bus.Publish(sdk.NewEvent("sandbox.mode.change", next))
+		m.bus.Publish(sdk.NewEvent(string(ActionSandboxCycle), nil))
 	}
 
-	m.footer = m.footer.SetExtStatus("sandbox", "SB:"+next)
-
-	m.showStatus("Sandbox mode: " + next)
-
-	return m, m.statusTimer
+	return m, nil
 }
 
 // handleCompletionKey processes keys when the completion popup is active.

@@ -12,10 +12,10 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/mattn/go-runewidth v0.0.23
 	github.com/stretchr/testify v1.11.1
-	github.com/weave-agent/weave v0.0.0
-	github.com/weave-agent/weave-sandbox v0.0.0-00010101000000-000000000000
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+require github.com/weave-agent/weave v0.0.3
 
 require (
 	github.com/atotto/clipboard v0.1.4
@@ -50,5 +50,3 @@ require (
 	golang.org/x/term v0.36.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 )
-
-

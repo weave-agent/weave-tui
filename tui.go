@@ -11,38 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-var (
-	sandboxerMu sync.RWMutex
-	sandboxer   sdk.Sandboxer
-)
-
-func setSandboxer(s sdk.Sandboxer) {
-	sandboxerMu.Lock()
-	sandboxer = s
-	sandboxerMu.Unlock()
-}
-
-func getSandboxer() sdk.Sandboxer {
-	sandboxerMu.RLock()
-
-	s := sandboxer
-
-	sandboxerMu.RUnlock()
-
-	return s
-}
-
 func init() {
-	sdk.OnBusReady(func(bus sdk.Bus) {
-		bus.On("sandbox.registered", func(ev sdk.Event) error {
-			if s, ok := ev.Payload.(sdk.Sandboxer); ok {
-				setSandboxer(s)
-			}
-
-			return nil
-		})
-	})
-
 	sdk.RegisterExtensionWithScopeAndWriter("tui", "ui", func(cfg sdk.Config, ps sdk.PreferenceWriter, tuiCfg TUIConfig) (sdk.Extension, error) {
 		t, err := NewTUI(cfg, ps, tuiCfg)
 		if err != nil {

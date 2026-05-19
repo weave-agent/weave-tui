@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	sandbox "github.com/weave-agent/weave-sandbox"
 	"github.com/weave-agent/weave-tui/components"
 	"github.com/weave-agent/weave-tui/components/attachments"
 	"github.com/weave-agent/weave-tui/components/messages"
@@ -2743,79 +2742,49 @@ func TestModel_ThemeUsedInBackdropDimming(t *testing.T) {
 }
 
 func TestModel_CycleSandboxMode(t *testing.T) {
-	defer func() { setSandboxer(nil) }()
-
-	sb := &mockSandboxer{mode: sandbox.SandboxAuto}
-	setSandboxer(sb)
-
-	m := newModel(nil, nil, nil, nil)
-	m.width = 80
-	m.height = 24
-
-	model, _ := m.dispatchBinding(ActionSandboxCycle)
-	m = model.(Model)
-
-	assert.Equal(t, sandbox.SandboxOff, sb.mode, "auto -> off")
-	assert.Contains(t, m.statusMsg, "Sandbox mode: off")
-
-	model, _ = m.dispatchBinding(ActionSandboxCycle)
-	m = model.(Model)
-
-	assert.Equal(t, sandbox.SandboxReadonly, sb.mode, "off -> readonly")
-	assert.Contains(t, m.statusMsg, "Sandbox mode: readonly")
-}
-
-func TestModel_CycleSandboxMode_NoSandboxer(t *testing.T) {
-	defer func() { setSandboxer(nil) }()
-
-	setSandboxer(nil)
-
-	m := newModel(nil, nil, nil, nil)
-	m.width = 80
-	m.height = 24
-
-	model, _ := m.dispatchBinding(ActionSandboxCycle)
-	m = model.(Model)
-
-	assert.Contains(t, m.statusMsg, "not available")
-}
-
-func TestModel_CycleSandboxMode_UpdatesMode(t *testing.T) {
-	defer func() { setSandboxer(nil) }()
-
-	b := bus.New()
-	defer b.Close()
-
-	sb := &mockSandboxer{mode: sandbox.SandboxAuto}
-	setSandboxer(sb)
-
+	b := &recordingBus{}
 	m := newModel(b, nil, nil, nil)
 	m.width = 80
 	m.height = 24
 
-	model, _ := m.dispatchBinding(ActionSandboxCycle)
-	_ = model.(Model)
+	statusMsg := m.statusMsg
 
-	assert.Equal(t, sandbox.SandboxOff, sb.mode)
+	model, cmd := m.dispatchBinding(ActionSandboxCycle)
+	m = model.(Model)
+
+	assert.Nil(t, cmd)
+	require.Len(t, b.events, 1)
+	assert.Equal(t, string(ActionSandboxCycle), b.events[0].Topic)
+	assert.Nil(t, b.events[0].Payload)
+	assert.Equal(t, statusMsg, m.statusMsg)
 }
 
-func TestNextSandboxMode(t *testing.T) {
-	assert.Equal(t, sandbox.SandboxReadonly, sandbox.NextSandboxMode(sandbox.SandboxOff))
-	assert.Equal(t, sandbox.SandboxAsk, sandbox.NextSandboxMode(sandbox.SandboxReadonly))
-	assert.Equal(t, sandbox.SandboxAuto, sandbox.NextSandboxMode(sandbox.SandboxAsk))
-	assert.Equal(t, sandbox.SandboxOff, sandbox.NextSandboxMode(sandbox.SandboxAuto))
-	assert.Equal(t, sandbox.SandboxOff, sandbox.NextSandboxMode("unknown"))
+func TestModel_CycleSandboxMode_NoBus(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+
+	statusMsg := m.statusMsg
+
+	model, cmd := m.dispatchBinding(ActionSandboxCycle)
+	m = model.(Model)
+
+	assert.Nil(t, cmd)
+	assert.Equal(t, statusMsg, m.statusMsg)
 }
 
-type mockSandboxer struct {
-	mode string
+type recordingBus struct {
+	events []sdk.Event
 }
 
-func (m *mockSandboxer) WrapCommand(cmd, dir string) (string, error) { return cmd, nil }
-func (m *mockSandboxer) AllowWrite(path string) bool                 { return true }
-func (m *mockSandboxer) AllowRead(path string) bool                  { return true }
-func (m *mockSandboxer) Mode() string                                { return m.mode }
-func (m *mockSandboxer) SetMode(mode string)                         { m.mode = mode }
+func (b *recordingBus) Publish(ev sdk.Event) {
+	b.events = append(b.events, ev)
+}
+
+func (b *recordingBus) On(string, sdk.Handler) {}
+func (b *recordingBus) OnAll(sdk.Handler)       {}
+func (b *recordingBus) Off(sdk.Handler)         {}
+func (b *recordingBus) Close() error            { return nil }
 
 // --- Task 6: Status message entrance animation tests ---
 
