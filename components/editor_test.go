@@ -521,10 +521,12 @@ func TestEditorCompletionKeysPassThroughWhenNotVisible(t *testing.T) {
 	// Tab should NOT be intercepted when completion is not visible
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	assert.Equal(t, "hello", m.Value())
+	assert.False(t, m.CompletionActive(), "Tab should not activate completion")
 
 	// Up/Down should work as history navigation
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, "hello", m.Value())
+	assert.False(t, m.CompletionActive(), "Up should not activate completion")
 }
 
 func TestEditorCompletionHidesOnHistoryUp(t *testing.T) {

@@ -2348,12 +2348,7 @@ func TestModel_RefreshEditorCompletion_SlashCommandWithSpaceNoAcceptsFiles(t *te
 func TestModel_RefreshEditorCompletion_SlashCommandWithSpaceAcceptsFiles(t *testing.T) {
 	tmp := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmp, "upload-target.txt"), []byte(""), 0o644))
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(tmp))
-	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(cwd))
-	})
+	t.Chdir(tmp)
 
 	m := newModel(nil, nil, nil, nil)
 	m.commands.Register("/upload", "Upload files", true, func(_ string) CommandResult {

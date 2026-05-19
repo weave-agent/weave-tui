@@ -83,7 +83,7 @@ func TestCompletionSetFilter(t *testing.T) {
 	assert.Equal(t, 0, m.FilteredCount())
 }
 
-func TestCompletionSetFilterMatchesLabelsOnly(t *testing.T) {
+func TestCompletionSetFilterDoesNotMatchValues(t *testing.T) {
 	m := NewCompletionModel()
 	m = m.Show(CompletionSlash, []CompletionItem{
 		{Label: "help", Value: "/hidden-path "},
@@ -364,8 +364,8 @@ func TestCompletionView_SelectedItemContrast(t *testing.T) {
 
 	view := m.View()
 	assert.Contains(t, view, "/help")
-	// First item is selected by default — should be bold
-	assert.Contains(t, view, "/help")
+	// First item is selected by default — should be bold (ANSI \x1b[1;...)
+	assert.Contains(t, view, "\x1b[1;")
 }
 
 func TestCompletionRenderLineWithDescription(t *testing.T) {
