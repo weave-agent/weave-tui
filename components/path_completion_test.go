@@ -153,6 +153,24 @@ func TestPathCompletionsRejectsTraversal(t *testing.T) {
 	assert.Empty(t, items)
 }
 
+func TestPathCompletionsRejectsSymlinkTraversal(t *testing.T) {
+	tmp := t.TempDir()
+	outsideDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(outsideDir, "secret.go"), []byte(""), 0o644))
+
+	// Create a symlink inside tmp that points outside tmp
+	require.NoError(t, os.Symlink(outsideDir, filepath.Join(tmp, "escape")))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "safe.go"), []byte(""), 0o644))
+
+	// Short query through symlink escape
+	items := PathCompletions(tmp, "escape/")
+	assert.Empty(t, items)
+
+	// Recursive query through symlink escape
+	items = PathCompletions(tmp, "escape/sec")
+	assert.Empty(t, items)
+}
+
 func TestPathCompletionsSkipsHiddenFiles(t *testing.T) {
 	tmp := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmp, "visible.go"), []byte(""), 0o644))

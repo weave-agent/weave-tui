@@ -44,30 +44,20 @@ func PathCompletions(baseDir, prefix string) []CompletionItem {
 	if hasHiddenSegment(dirPart) {
 		return nil
 	}
-	if len([]rune(filter)) < recursivePathCompletionMinQueryLength {
-		return currentDirectoryPathCompletions(baseDir, dirPart, filter)
+
+	searchDir, ok := resolveAndCheckSubPath(baseDir, dirPart)
+	if !ok {
+		return nil
 	}
 
-	searchDir := baseDir
-	if dirPart != "" {
-		searchDir = filepath.Join(baseDir, filepath.FromSlash(dirPart))
-		if !isSubPath(baseDir, searchDir) {
-			return nil
-		}
+	if len([]rune(filter)) < recursivePathCompletionMinQueryLength {
+		return currentDirectoryPathCompletions(searchDir, dirPart, filter)
 	}
 
 	return recursivePathCompletions(searchDir, dirPart, filter)
 }
 
-func currentDirectoryPathCompletions(baseDir, dirPart, filter string) []CompletionItem {
-	searchDir := baseDir
-	if dirPart != "" {
-		searchDir = filepath.Join(baseDir, filepath.FromSlash(dirPart))
-		if !isSubPath(baseDir, searchDir) {
-			return nil
-		}
-	}
-
+func currentDirectoryPathCompletions(searchDir, dirPart, filter string) []CompletionItem {
 	entries, ok := readDirCapped(searchDir)
 	if !ok {
 		return nil
@@ -263,6 +253,43 @@ func sortCompletionItems(items []CompletionItem) {
 	slices.SortFunc(items, func(a, b CompletionItem) int {
 		return cmp.Compare(a.Label, b.Label)
 	})
+}
+
+// resolveAndCheckSubPath resolves baseDir and the constructed searchDir to
+// absolute paths, evaluates symlinks, and checks that the resolved searchDir
+// is within the resolved baseDir. It returns the resolved searchDir and true
+// on success, or an empty string and false on failure or if the path escapes.
+func resolveAndCheckSubPath(baseDir, dirPart string) (string, bool) {
+	searchDir := baseDir
+	if dirPart != "" {
+		searchDir = filepath.Join(baseDir, filepath.FromSlash(dirPart))
+	}
+
+	absSearch, err := filepath.Abs(searchDir)
+	if err != nil {
+		return "", false
+	}
+
+	resolvedSearch, err := filepath.EvalSymlinks(absSearch)
+	if err != nil {
+		return "", false
+	}
+
+	absBase, err := filepath.Abs(baseDir)
+	if err != nil {
+		return "", false
+	}
+
+	resolvedBase, err := filepath.EvalSymlinks(absBase)
+	if err != nil {
+		return "", false
+	}
+
+	if !isSubPath(resolvedBase, resolvedSearch) {
+		return "", false
+	}
+
+	return resolvedSearch, true
 }
 
 // isSubPath reports whether child is within or equal to parent.
