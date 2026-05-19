@@ -85,9 +85,12 @@ func TestPathCompletionsCaseInsensitive(t *testing.T) {
 func TestPathCompletionsNestedPaths(t *testing.T) {
 	tmp := t.TempDir()
 	srcDir := filepath.Join(tmp, "src")
+	releaseDir := filepath.Join(tmp, "release")
 	require.NoError(t, os.MkdirAll(srcDir, 0o755))
+	require.NoError(t, os.MkdirAll(releaseDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "main.go"), []byte(""), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "util.go"), []byte(""), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(releaseDir, "main.go"), []byte(""), 0o644))
 	require.NoError(t, os.Mkdir(filepath.Join(srcDir, "internal"), 0o755))
 
 	items := PathCompletions(tmp, "src/")
@@ -105,6 +108,11 @@ func TestPathCompletionsNestedPaths(t *testing.T) {
 	items = PathCompletions(tmp, "src/m")
 	require.Len(t, items, 1)
 	assert.Equal(t, "main.go", items[0].Label)
+	assert.Equal(t, "src/main.go", items[0].Value)
+
+	items = PathCompletions(tmp, "src/ma")
+	require.Len(t, items, 1)
+	assert.Equal(t, "src/main.go", items[0].Label)
 	assert.Equal(t, "src/main.go", items[0].Value)
 
 	items = PathCompletions(tmp, "src/i")
@@ -151,7 +159,7 @@ func TestPathCompletionsCapBehavior(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(tmp, fmt.Sprintf("file-%04d.go", i)), []byte(""), 0o644))
 	}
 
-	items := collectRecursivePathCompletions(tmp)
+	items := collectRecursivePathCompletions(tmp, "")
 	assert.Len(t, items, recursivePathCompletionMaxItems)
 
 	matches := PathCompletions(tmp, "file")

@@ -23,7 +23,12 @@ func PathCompletions(baseDir, prefix string) []CompletionItem {
 		return currentDirectoryPathCompletions(baseDir, dirPart, filter)
 	}
 
-	return recursivePathCompletions(baseDir, filter)
+	searchDir := baseDir
+	if dirPart != "" {
+		searchDir = filepath.Join(baseDir, dirPart)
+	}
+
+	return recursivePathCompletions(searchDir, dirPart, filter)
 }
 
 func currentDirectoryPathCompletions(baseDir, dirPart, filter string) []CompletionItem {
@@ -69,8 +74,8 @@ func currentDirectoryPathCompletions(baseDir, dirPart, filter string) []Completi
 	return items
 }
 
-func recursivePathCompletions(baseDir, filter string) []CompletionItem {
-	items := collectRecursivePathCompletions(baseDir)
+func recursivePathCompletions(searchDir, valuePrefix, filter string) []CompletionItem {
+	items := collectRecursivePathCompletions(searchDir, valuePrefix)
 	matches := fuzzy.FindFrom(filter, pathCompletionItems(items))
 
 	scored := make([]scoredPathCompletion, 0, len(matches))
@@ -98,13 +103,13 @@ func recursivePathCompletions(baseDir, filter string) []CompletionItem {
 	return result
 }
 
-func collectRecursivePathCompletions(baseDir string) []CompletionItem {
+func collectRecursivePathCompletions(baseDir, valuePrefix string) []CompletionItem {
 	items := make([]CompletionItem, 0)
-	walkRecursivePathCompletions(baseDir, "", 0, &items)
+	walkRecursivePathCompletions(baseDir, valuePrefix, "", 0, &items)
 	return items
 }
 
-func walkRecursivePathCompletions(baseDir, relDir string, depth int, items *[]CompletionItem) {
+func walkRecursivePathCompletions(baseDir, valuePrefix, relDir string, depth int, items *[]CompletionItem) {
 	if depth > recursivePathCompletionMaxDepth || len(*items) >= recursivePathCompletionMaxItems {
 		return
 	}
@@ -144,12 +149,12 @@ func walkRecursivePathCompletions(baseDir, relDir string, depth int, items *[]Co
 		}
 
 		*items = append(*items, CompletionItem{
-			Label: value,
-			Value: value,
+			Label: valuePrefix + value,
+			Value: valuePrefix + value,
 		})
 
 		if entry.IsDir() {
-			walkRecursivePathCompletions(baseDir, relPath+"/", depth+1, items)
+			walkRecursivePathCompletions(baseDir, valuePrefix, relPath+"/", depth+1, items)
 		}
 	}
 }

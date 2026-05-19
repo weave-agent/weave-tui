@@ -16,6 +16,16 @@ The `--name tui` ensures your fork shadows the official extension.
 weave install github.com/weave-agent/weave-tui --name tui
 ```
 
+## Completion behavior
+
+The editor supports completion popups for slash commands and file references:
+
+- Slash command completions use fuzzy matching, so queries like `/hp` can match `/help`.
+- File completions triggered with `@` show current-directory entries for empty or one-character queries.
+- File queries with two or more characters use bounded recursive fuzzy search from the current working directory or typed directory.
+- Hidden files and directories are skipped.
+- Use Up/Down to move through suggestions, Escape to dismiss, and Tab to accept the selected completion.
+
 ## Development
 
 ```bash

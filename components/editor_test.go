@@ -383,6 +383,68 @@ func TestEditorCompletionTabAppliesSelectedCompletion(t *testing.T) {
 	assert.Nil(t, cmd)
 }
 
+func TestEditorCompletionTabAppliesFileCompletionAtTrigger(t *testing.T) {
+	m := NewEditorModel()
+	m = m.SetValue("text @sr")
+	m = m.ShowCompletion(CompletionFile, []CompletionItem{
+		{Label: "src/", Value: "src/"},
+	}, "sr", 5)
+
+	m, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+
+	assert.False(t, m.CompletionActive())
+	assert.Equal(t, "text src/", m.Value())
+	assert.Nil(t, cmd)
+}
+
+func TestEditorCompletionTabAppliesSpaceTriggeredFileCompletion(t *testing.T) {
+	m := NewEditorModel()
+	m = m.SetValue("/help arg")
+	m = m.ShowCompletion(CompletionFile, []CompletionItem{
+		{Label: "argfile", Value: "argfile"},
+	}, "arg", 6)
+
+	m, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+
+	assert.False(t, m.CompletionActive())
+	assert.Equal(t, "/help argfile", m.Value())
+	assert.Nil(t, cmd)
+}
+
+func TestEditorCompletionTabPreservesTrailingText(t *testing.T) {
+	m := NewEditorModel()
+	for _, ch := range "text @sr more" {
+		m, _ = m.Update(tea.KeyPressMsg{Text: string(ch), Code: ch})
+	}
+	for range 5 {
+		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	}
+
+	m = m.ShowCompletion(CompletionFile, []CompletionItem{
+		{Label: "src/", Value: "src/"},
+	}, "sr", 5)
+
+	m, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+
+	assert.False(t, m.CompletionActive())
+	assert.Equal(t, "text src/ more", m.Value())
+	assert.Nil(t, cmd)
+}
+
+func TestEditorCompletionTabUsesTriggerOffset(t *testing.T) {
+	m := NewEditorModel()
+	m = m.SetValue("prefix @sr")
+	m = m.ShowCompletion(CompletionFile, []CompletionItem{
+		{Label: "src/", Value: "src/"},
+	}, "sr", 7)
+
+	m, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+
+	assert.False(t, m.CompletionActive())
+	assert.Equal(t, "prefix src/", m.Value())
+	assert.Nil(t, cmd)
+}
+
 func TestEditorCompletionUpNavigates(t *testing.T) {
 	m := NewEditorModel()
 	m = m.ShowCompletion(CompletionSlash, []CompletionItem{

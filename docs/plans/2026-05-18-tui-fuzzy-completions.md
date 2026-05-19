@@ -82,12 +82,12 @@ Scope:
 ### Task 6: Acceptance verification
 - [x] run `cd ~/.weave/extensions/tui && go test ./...`
 - [x] run root tests if touched root-module files: `cd /Users/andrey/Projects/weave && make test` (skipped - no root-module files touched)
-- [x] manual test: type `/hp` and verify `/help` appears (skipped - not automatable)
-- [x] manual test: type `/hp`, press Tab, verify `/help ` is inserted (skipped - not automatable)
-- [x] manual test: type `@` and verify current directory entries appear (skipped - not automatable)
-- [x] manual test: type a 2+ character fuzzy file query and verify recursive matches appear (skipped - not automatable)
-- [x] manual test: Up/Down navigates suggestions and Tab accepts selected item (skipped - not automatable)
-- [x] manual test: Esc dismisses popup (skipped - not automatable)
+- [ ] manual test: type `/hp` and verify `/help` appears (skipped - not automatable)
+- [ ] manual test: type `/hp`, press Tab, verify `/help ` is inserted (skipped - not automatable)
+- [ ] manual test: type `@` and verify current directory entries appear (skipped - not automatable)
+- [ ] manual test: type a 2+ character fuzzy file query and verify recursive matches appear (skipped - not automatable)
+- [ ] manual test: Up/Down navigates suggestions and Tab accepts selected item (skipped - not automatable)
+- [ ] manual test: Esc dismisses popup (skipped - not automatable)
 
 ## Technical Details
 
@@ -98,8 +98,12 @@ Scope:
 
 **Path completion hybrid behavior:**
 - Query length 0-1: read only the relevant current/nested parent directory, preserving existing shell-like path completion.
-- Query length 2+: recursively walk from the base directory, bounded by fixed depth and item caps.
+- Query length 2+: recursively walk from the current working directory or typed directory, bounded by fixed depth and item caps.
 - Recursive values should be relative to base directory and use `/` separators.
+
+**Sandbox mode cycling:**
+- The sandbox keybinding publishes `ActionSandboxCycle` on the event bus.
+- Sandbox mode state, footer updates, and user-facing status are handled by the sandbox extension.
 
 **Tab behavior:**
 - When completion is visible, Tab applies the selected item.

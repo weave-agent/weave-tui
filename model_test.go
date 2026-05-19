@@ -2346,17 +2346,26 @@ func TestModel_RefreshEditorCompletion_SlashCommandWithSpaceNoAcceptsFiles(t *te
 }
 
 func TestModel_RefreshEditorCompletion_SlashCommandWithSpaceAcceptsFiles(t *testing.T) {
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "upload-target.txt"), []byte(""), 0o644))
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tmp))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(cwd))
+	})
+
 	m := newModel(nil, nil, nil, nil)
 	m.commands.Register("/upload", "Upload files", true, func(_ string) CommandResult {
 		return CommandResult{}
 	})
-	m.editor = m.editor.SetValue("/upload go.mod")
+	m.editor = m.editor.SetValue("/upload upt")
 	m = m.refreshEditorCompletion()
 	assert.True(t, m.editor.CompletionActive())
 	assert.Equal(t, components.CompletionFile, m.editor.Completion().Kind())
 	item, ok := m.editor.Completion().SelectedItem()
 	require.True(t, ok)
-	assert.Equal(t, "go.mod", item.Value)
+	assert.Equal(t, "upload-target.txt", item.Value)
 }
 
 func TestModel_RefreshEditorCompletion_AtTrigger(t *testing.T) {
@@ -2799,9 +2808,9 @@ func (b *recordingBus) Publish(ev sdk.Event) {
 }
 
 func (b *recordingBus) On(string, sdk.Handler) {}
-func (b *recordingBus) OnAll(sdk.Handler)       {}
-func (b *recordingBus) Off(sdk.Handler)         {}
-func (b *recordingBus) Close() error            { return nil }
+func (b *recordingBus) OnAll(sdk.Handler)      {}
+func (b *recordingBus) Off(sdk.Handler)        {}
+func (b *recordingBus) Close() error           { return nil }
 
 // --- Task 6: Status message entrance animation tests ---
 
