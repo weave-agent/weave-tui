@@ -1,6 +1,7 @@
 package components
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,17 +29,46 @@ func TestPathCompletionsNoPrefix(t *testing.T) {
 	assert.Equal(t, "gamma/", items[2].Value)
 }
 
-func TestPathCompletionsPartialMatch(t *testing.T) {
+func TestPathCompletionsShortQueryUsesCurrentDirectory(t *testing.T) {
 	tmp := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmp, "apple.go"), []byte(""), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(tmp, "application.txt"), []byte(""), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(tmp, "banana.go"), []byte(""), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmp, "nested", "apricot"), 0o755))
 
-	items := PathCompletions(tmp, "app")
+	items := PathCompletions(tmp, "a")
 	require.Len(t, items, 2)
 
 	assert.Equal(t, "apple.go", items[0].Label)
 	assert.Equal(t, "application.txt", items[1].Label)
+}
+
+func TestPathCompletionsRecursiveFuzzyMatch(t *testing.T) {
+	tmp := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(tmp, "src", "components"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "src", "components", "path_completion.go"), []byte(""), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "unrelated.txt"), []byte(""), 0o644))
+
+	items := PathCompletions(tmp, "pcg")
+	require.Len(t, items, 1)
+
+	assert.Equal(t, "src/components/path_completion.go", items[0].Label)
+	assert.Equal(t, "src/components/path_completion.go", items[0].Value)
+}
+
+func TestPathCompletionsRankingPreference(t *testing.T) {
+	tmp := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(tmp, "foo"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmp, "target", "folder"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "foo", "mytarget.go"), []byte(""), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "target", "folder", "thing.go"), []byte(""), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "target.go"), []byte(""), 0o644))
+
+	items := PathCompletions(tmp, "target")
+	require.GreaterOrEqual(t, len(items), 3)
+
+	firstTwo := []string{items[0].Value, items[1].Value}
+	assert.ElementsMatch(t, []string{"target.go", "target/"}, firstTwo)
+	assert.Equal(t, "target/folder/", items[2].Value)
 }
 
 func TestPathCompletionsCaseInsensitive(t *testing.T) {
@@ -46,7 +76,7 @@ func TestPathCompletionsCaseInsensitive(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(tmp, "Apple.go"), []byte(""), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(tmp, "apricot.txt"), []byte(""), 0o644))
 
-	items := PathCompletions(tmp, "AP")
+	items := PathCompletions(tmp, "A")
 	require.Len(t, items, 2)
 	assert.Equal(t, "Apple.go", items[0].Label)
 	assert.Equal(t, "apricot.txt", items[1].Label)
@@ -72,14 +102,12 @@ func TestPathCompletionsNestedPaths(t *testing.T) {
 	assert.Contains(t, labels, "main.go")
 	assert.Contains(t, labels, "util.go")
 
-	// Filter within nested path
-	items = PathCompletions(tmp, "src/ma")
+	items = PathCompletions(tmp, "src/m")
 	require.Len(t, items, 1)
 	assert.Equal(t, "main.go", items[0].Label)
 	assert.Equal(t, "src/main.go", items[0].Value)
 
-	// Directory gets trailing slash in value
-	items = PathCompletions(tmp, "src/in")
+	items = PathCompletions(tmp, "src/i")
 	require.Len(t, items, 1)
 	assert.Equal(t, "internal/", items[0].Label)
 	assert.Equal(t, "src/internal/", items[0].Value)
@@ -99,10 +127,35 @@ func TestPathCompletionsSkipsHiddenFiles(t *testing.T) {
 	tmp := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmp, "visible.go"), []byte(""), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(tmp, ".hidden.go"), []byte(""), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmp, ".git", "objects"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, ".git", "objects", "visible.go"), []byte(""), 0o644))
 
-	items := PathCompletions(tmp, "")
+	items := PathCompletions(tmp, "visible")
 	require.Len(t, items, 1)
 	assert.Equal(t, "visible.go", items[0].Label)
+}
+
+func TestPathCompletionsDirectoryTrailingSlash(t *testing.T) {
+	tmp := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(tmp, "src", "internal"), 0o755))
+
+	items := PathCompletions(tmp, "internal")
+	require.Len(t, items, 1)
+	assert.Equal(t, "src/internal/", items[0].Label)
+	assert.Equal(t, "src/internal/", items[0].Value)
+}
+
+func TestPathCompletionsCapBehavior(t *testing.T) {
+	tmp := t.TempDir()
+	for i := range recursivePathCompletionMaxItems + 10 {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, fmt.Sprintf("file-%04d.go", i)), []byte(""), 0o644))
+	}
+
+	items := collectRecursivePathCompletions(tmp)
+	assert.Len(t, items, recursivePathCompletionMaxItems)
+
+	matches := PathCompletions(tmp, "file")
+	assert.LessOrEqual(t, len(matches), recursivePathCompletionMaxItems)
 }
 
 func TestPathCompletionsEmptyDir(t *testing.T) {

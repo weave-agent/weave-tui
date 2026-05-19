@@ -52,16 +52,16 @@ Scope:
 - [x] run `cd ~/.weave/extensions/tui && go test ./components/...`
 
 ### Task 3: Implement hybrid path completion
-- [ ] update `components/path_completion.go` so empty/1-character queries use current directory completion
-- [ ] add recursive file collection for 2+ character queries
-- [ ] skip hidden files/directories to match current behavior
-- [ ] keep directory values with trailing `/`
-- [ ] use relative slash-separated paths in `CompletionItem.Value`
-- [ ] apply hard caps for recursive search depth and item count
-- [ ] ignore unreadable directories without surfacing UI errors
-- [ ] rank recursive fuzzy results with tiers: exact basename/stem, basename prefix, exact path segment, fallback fuzzy
-- [ ] add tests for current-directory short query, recursive fuzzy match, ranking preference, directory trailing slash, hidden path skip, and cap behavior
-- [ ] run `cd ~/.weave/extensions/tui && go test ./components/...`
+- [x] update `components/path_completion.go` so empty/1-character queries use current directory completion
+- [x] add recursive file collection for 2+ character queries
+- [x] skip hidden files/directories to match current behavior
+- [x] keep directory values with trailing `/`
+- [x] use relative slash-separated paths in `CompletionItem.Value`
+- [x] apply hard caps for recursive search depth and item count
+- [x] ignore unreadable directories without surfacing UI errors
+- [x] rank recursive fuzzy results with tiers: exact basename/stem, basename prefix, exact path segment, fallback fuzzy
+- [x] add tests for current-directory short query, recursive fuzzy match, ranking preference, directory trailing slash, hidden path skip, and cap behavior
+- [x] run `cd ~/.weave/extensions/tui && go test ./components/...`
 
 ### Task 4: Change Tab completion behavior
 - [ ] update `components/editor.go` so Tab applies the selected completion when completion is visible
