@@ -367,19 +367,20 @@ func TestEditorCompletionActive(t *testing.T) {
 	assert.True(t, m.CompletionActive())
 }
 
-func TestEditorCompletionTabCyclesDown(t *testing.T) {
+func TestEditorCompletionTabAppliesSelectedCompletion(t *testing.T) {
 	m := NewEditorModel()
+	m = m.SetValue("/")
 	m = m.ShowCompletion(CompletionSlash, []CompletionItem{
-		{Label: "a", Value: "a"},
-		{Label: "b", Value: "b"},
-		{Label: "c", Value: "c"},
+		{Label: "alpha", Value: "/alpha "},
+		{Label: "beta", Value: "/beta "},
 	}, "", 0)
 
-	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-	assert.Equal(t, 1, m.Completion().Cursor())
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	m, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 
-	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-	assert.Equal(t, 2, m.Completion().Cursor())
+	assert.False(t, m.CompletionActive())
+	assert.Equal(t, "/beta ", m.Value())
+	assert.Nil(t, cmd)
 }
 
 func TestEditorCompletionUpNavigates(t *testing.T) {
@@ -389,7 +390,7 @@ func TestEditorCompletionUpNavigates(t *testing.T) {
 		{Label: "b", Value: "b"},
 		{Label: "c", Value: "c"},
 	}, "", 0)
-	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab}) // cursor at 1
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown}) // cursor at 1
 
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, m.Completion().Cursor())

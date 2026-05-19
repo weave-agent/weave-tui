@@ -64,13 +64,13 @@ Scope:
 - [x] run `cd ~/.weave/extensions/tui && go test ./components/...`
 
 ### Task 4: Change Tab completion behavior
-- [ ] update `components/editor.go` so Tab applies the selected completion when completion is visible
-- [ ] keep Up/Down navigation behavior unchanged
-- [ ] keep Escape dismiss behavior unchanged
-- [ ] keep Enter behavior unchanged unless tests expose an existing inconsistency
-- [ ] update tests that expected Tab to move selection
-- [ ] add test verifying Tab fills selected completion and hides popup
-- [ ] run `cd ~/.weave/extensions/tui && go test ./components/...`
+- [x] update `components/editor.go` so Tab applies the selected completion when completion is visible
+- [x] keep Up/Down navigation behavior unchanged
+- [x] keep Escape dismiss behavior unchanged
+- [x] keep Enter behavior unchanged unless tests expose an existing inconsistency
+- [x] update tests that expected Tab to move selection
+- [x] add test verifying Tab fills selected completion and hides popup
+- [x] run `cd ~/.weave/extensions/tui && go test ./components/...`
 
 ### Task 5: Verify command and file trigger integration
 - [ ] confirm slash command completion still opens for `/` at start of prompt

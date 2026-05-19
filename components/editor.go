@@ -258,9 +258,7 @@ func (m EditorModel) Update(msg tea.Msg) (EditorModel, tea.Cmd) {
 func (m EditorModel) handleCompletionKey(msg tea.KeyPressMsg) (bool, EditorModel, tea.Cmd) {
 	switch msg.Code {
 	case tea.KeyTab:
-		m.completion = m.completion.CursorDown()
-
-		return true, m, nil
+		return true, m.applyCompletion(), nil
 	case tea.KeyUp:
 		// If actively navigating history, hide completion and continue history nav
 		if m.navigating {
