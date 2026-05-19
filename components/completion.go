@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
+	"github.com/sahilm/fuzzy"
 )
 
 // CompletionKind indicates the type of completion being shown.
@@ -78,20 +79,22 @@ func (m CompletionModel) Kind() CompletionKind {
 	return m.kind
 }
 
-// SetFilter filters items by case-insensitive prefix match on Label.
+// SetFilter filters items by fuzzy match on Label.
 func (m CompletionModel) SetFilter(filter string) CompletionModel {
 	m.filter = filter
-	filterLower := strings.ToLower(filter)
 
-	m.filtered = m.filtered[:0]
-	for _, item := range m.items {
-		labelLower := strings.ToLower(item.Label)
-		if strings.HasPrefix(labelLower, filterLower) {
-			m.filtered = append(m.filtered, item)
+	if filter == "" {
+		m.filtered = append(m.filtered[:0], m.items...)
+	} else {
+		matches := fuzzy.FindFrom(filter, completionItems(m.items))
+		m.filtered = m.filtered[:0]
+		for _, match := range matches {
+			m.filtered = append(m.filtered, m.items[match.Index])
 		}
 	}
 
 	m.cursor = 0
+	m.scrollOffset = 0
 
 	return m
 }
@@ -135,6 +138,16 @@ func (m *CompletionModel) adjustScroll() {
 	} else if m.cursor < m.scrollOffset {
 		m.scrollOffset = m.cursor
 	}
+}
+
+type completionItems []CompletionItem
+
+func (items completionItems) String(i int) string {
+	return items[i].Label
+}
+
+func (items completionItems) Len() int {
+	return len(items)
 }
 
 // SelectedItem returns the currently selected item, if any.

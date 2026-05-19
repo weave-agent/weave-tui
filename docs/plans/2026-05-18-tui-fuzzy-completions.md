@@ -43,13 +43,13 @@ Scope:
 - [x] verify no unrelated module changes
 
 ### Task 2: Fuzzy-filter completion items
-- [ ] update `components/completion.go` so `CompletionModel.SetFilter()` uses fuzzy matching when filter is non-empty
-- [ ] preserve current behavior for empty filters: show all items in original order
-- [ ] match against completion labels
-- [ ] reset cursor to first filtered item after filter changes
-- [ ] keep popup rendering unchanged; no match highlighting in this pass
-- [ ] add/update tests for fuzzy command matching, empty filter behavior, no-match behavior, and cursor reset
-- [ ] run `cd ~/.weave/extensions/tui && go test ./components/...`
+- [x] update `components/completion.go` so `CompletionModel.SetFilter()` uses fuzzy matching when filter is non-empty
+- [x] preserve current behavior for empty filters: show all items in original order
+- [x] match against completion labels
+- [x] reset cursor to first filtered item after filter changes
+- [x] keep popup rendering unchanged; no match highlighting in this pass
+- [x] add/update tests for fuzzy command matching, empty filter behavior, no-match behavior, and cursor reset
+- [x] run `cd ~/.weave/extensions/tui && go test ./components/...`
 
 ### Task 3: Implement hybrid path completion
 - [ ] update `components/path_completion.go` so empty/1-character queries use current directory completion

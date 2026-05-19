@@ -73,11 +73,13 @@ func TestFooterView_RendersTwoLines(t *testing.T) {
 }
 
 func TestFooterView_Line1ContainsCWD(t *testing.T) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
 	f := NewFooterModel().SetSize(200)
 	view := f.View()
 	lines := strings.Split(view, "\n")
-	// Line 1 should contain ~-substituted path
-	assert.Contains(t, lines[0], "~/Projects/weave")
+	assert.Contains(t, lines[0], shortenPath(cwd, 100))
 }
 
 func TestFooterView_Line1ContainsGitBranch(t *testing.T) {

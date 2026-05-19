@@ -65,26 +65,36 @@ func TestCompletionSetFilter(t *testing.T) {
 		{Label: "clear", Value: "/clear "},
 	})
 
-	// Filter matching prefix
-	m = m.SetFilter("he")
+	m = m.SetFilter("hp")
 	assert.Equal(t, 1, m.FilteredCount())
 	assert.Equal(t, "help", m.filtered[0].Label)
 
-	// Filter reset
 	m = m.SetFilter("")
 	assert.Equal(t, 3, m.FilteredCount())
+	assert.Equal(t, "help", m.filtered[0].Label)
+	assert.Equal(t, "quit", m.filtered[1].Label)
+	assert.Equal(t, "clear", m.filtered[2].Label)
 
-	// Case-insensitive filter
 	m = m.SetFilter("HE")
 	assert.Equal(t, 1, m.FilteredCount())
 	assert.Equal(t, "help", m.filtered[0].Label)
 
-	// No match
 	m = m.SetFilter("xyz")
 	assert.Equal(t, 0, m.FilteredCount())
 }
 
-func TestCompletionSetFilterResetsCursor(t *testing.T) {
+func TestCompletionSetFilterMatchesLabelsOnly(t *testing.T) {
+	m := NewCompletionModel()
+	m = m.Show(CompletionSlash, []CompletionItem{
+		{Label: "help", Value: "/hidden-path "},
+		{Label: "quit", Value: "/quit "},
+	})
+
+	m = m.SetFilter("hidden")
+	assert.Equal(t, 0, m.FilteredCount())
+}
+
+func TestCompletionSetFilterResetsCursorAndScroll(t *testing.T) {
 	m := NewCompletionModel()
 	m = m.Show(CompletionSlash, []CompletionItem{
 		{Label: "help", Value: "/help "},
@@ -93,9 +103,11 @@ func TestCompletionSetFilterResetsCursor(t *testing.T) {
 	})
 	m = m.CursorDown().CursorDown() // cursor at 2
 	assert.Equal(t, 2, m.Cursor())
+	m.scrollOffset = 1
 
-	m = m.SetFilter("he")
+	m = m.SetFilter("hp")
 	assert.Equal(t, 0, m.Cursor())
+	assert.Equal(t, 0, m.scrollOffset)
 }
 
 func TestCompletionCursorDown(t *testing.T) {
