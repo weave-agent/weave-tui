@@ -11,6 +11,7 @@ require (
 	github.com/charmbracelet/ultraviolet v0.0.0-20260422141423-a0f1f21775f7
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/mattn/go-runewidth v0.0.23
+	github.com/sahilm/fuzzy v0.1.2
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
 )
