@@ -2327,6 +2327,24 @@ func TestModel_SubmitNoAttachments(t *testing.T) {
 	require.NotNil(t, cmd)
 }
 
+func TestModel_SubmitSkillCommandShowsTrailingArgs(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.commands.Register("/skill:test-skill", "", false, func(_ string) CommandResult {
+		return CommandResult{}
+	})
+
+	model, _ := m.onSubmit("/skill:test-skill use this text")
+	m = model.(Model)
+
+	items := m.chat.Items()
+	require.Len(t, items, 1)
+
+	um, ok := items[0].(*messages.UserMessage)
+	require.True(t, ok)
+	assert.Equal(t, "<skill name=\"test-skill\">\n</skill>\n\nuse this text", um.Content())
+	assert.Contains(t, um.View(80), "use this text")
+}
+
 func TestModel_NewSessionClearsAttachments(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
@@ -3689,10 +3707,28 @@ func TestModel_SpinnerWithTrayResizesChatViewport(t *testing.T) {
 	assert.Greater(t, m.chat.ScrollOffset(), trayScroll)
 	assert.Equal(t, m.chatHeight(m.height), m.chat.Height())
 
-	headerRows, pillRows := m.countLayoutRows()
-	trayRows, aboveRows, belowRows := m.panelRows()
+	headerRows, pillRows, trayRows, aboveRows, belowRows := m.layoutRows()
 	lt := m.layout.ComputeWithPanels(m.width, m.height, m.editor.Height()+m.attach.Height(), headerRows, pillRows, m.dockedRows(), trayRows, aboveRows, belowRows)
 	assert.Equal(t, lt.Pills.Max.Y, lt.PanelTray.Min.Y)
+	assert.Equal(t, 2, lt.PanelTray.Dy())
+}
+
+func TestModel_LayoutRows_AddsBlankLineBelowThinkingTrayStack(t *testing.T) {
+	m := newModelNoLanding()
+	m.width = 80
+	m.height = 24
+	m.statusMsg = ""
+	m.spinner = m.spinner.Show()
+	m.panelManager.Register(PanelConfig{ID: "p1", Title: "Files", Placement: TrayOnly}, &mockPanelDrawer{})
+	m.panelManager.Show("p1")
+
+	headerRows, pillRows, trayRows, aboveRows, belowRows := m.layoutRows()
+	lt := m.layout.ComputeWithPanels(m.width, m.height, m.editor.Height()+m.attach.Height(), headerRows, pillRows, m.dockedRows(), trayRows, aboveRows, belowRows)
+
+	assert.Equal(t, 1, pillRows)
+	assert.Equal(t, 2, trayRows)
+	assert.Equal(t, lt.Pills.Max.Y, lt.PanelTray.Min.Y)
+	assert.Equal(t, lt.PanelTray.Max.Y, lt.Editor.Min.Y)
 }
 
 // --- Task 9: TUIExtAPI model-level integration tests ---

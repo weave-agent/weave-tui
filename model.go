@@ -1111,9 +1111,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // chatArea computes the screen rectangle for the chat viewport.
 func (m Model) chatArea() uv.Rectangle {
-	headerRows, pillRows := m.countLayoutRows()
+	headerRows, pillRows, trayRows, abovePanelRows, belowPanelRows := m.layoutRows()
 	editorH := m.editor.Height() + m.attach.Height()
-	trayRows, abovePanelRows, belowPanelRows := m.panelRows()
 	lt := m.layout.ComputeWithPanels(
 		m.width, m.height,
 		editorH, headerRows, pillRows, m.dockedRows(),
@@ -1140,9 +1139,8 @@ func pointInArea(x, y int, area uv.Rectangle) bool {
 // editorArea computes the screen rectangle for the editor text area,
 // accounting for attachments that push the editor down within its layout region.
 func (m Model) editorArea() uv.Rectangle {
-	headerRows, pillRows := m.countLayoutRows()
+	headerRows, pillRows, trayRows, abovePanelRows, belowPanelRows := m.layoutRows()
 	editorH := m.editor.Height() + m.attach.Height()
-	trayRows, abovePanelRows, belowPanelRows := m.panelRows()
 	lt := m.layout.ComputeWithPanels(
 		m.width, m.height,
 		editorH, headerRows, pillRows, m.dockedRows(),
@@ -1772,7 +1770,10 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 	if handled, result := m.commands.Dispatch(text); handled { //nolint:nestif // command dispatch has multiple optional outcomes
 		cmdName, cmdArgs := parseCommand(text)
 		if skillName, ok := strings.CutPrefix(cmdName, "/skill:"); ok {
-			xmlContent := fmt.Sprintf("<skill name=%q>\n%s\n</skill>", skillName, cmdArgs)
+			xmlContent := fmt.Sprintf("<skill name=%q>\n</skill>", skillName)
+			if cmdArgs != "" {
+				xmlContent += "\n\n" + cmdArgs
+			}
 
 			m.chat = m.chat.AddItem(messages.NewUserMessage(xmlContent))
 			m.prompted = true
@@ -3013,10 +3014,9 @@ func isWhitespace(c byte) bool {
 
 // chatHeight returns the height allocated to the chat area.
 func (m Model) chatHeight(totalHeight int) int {
-	headerRows, pillRows := m.countLayoutRows()
+	headerRows, pillRows, trayRows, abovePanelRows, belowPanelRows := m.layoutRows()
 
 	editorH := m.editor.Height() + m.attach.Height()
-	trayRows, abovePanelRows, belowPanelRows := m.panelRows()
 	lt := m.layout.ComputeWithPanels(m.width, totalHeight, editorH, headerRows, pillRows, m.dockedRows(), trayRows, abovePanelRows, belowPanelRows)
 
 	return max(lt.Main.Dy(), 1)
@@ -3115,10 +3115,9 @@ func (m Model) Draw(scr uv.Screen, area uv.Rectangle) {
 // When dockedRows > 0, allocates space for a docked overlay dialog.
 // Returns the computed layout for caller use (e.g., dialog placement).
 func (m Model) drawNormalUI(scr uv.Screen, area uv.Rectangle, dockedRows int) Layout {
-	headerRows, pillRows := m.countLayoutRows()
+	headerRows, pillRows, trayRows, abovePanelRows, belowPanelRows := m.layoutRows()
 
 	editorH := m.editor.Height() + m.attach.Height()
-	trayRows, abovePanelRows, belowPanelRows := m.panelRows()
 	lt := m.layout.ComputeWithPanels(
 		area.Dx(), area.Dy(),
 		editorH, headerRows, pillRows, dockedRows,
@@ -3156,11 +3155,20 @@ func (m Model) countLayoutRows() (headerRows, pillRows int) {
 		pillRows++
 	}
 
-	if pillRows > 0 {
+	return headerRows, pillRows
+}
+
+func (m Model) layoutRows() (headerRows, pillRows, trayRows, abovePanelRows, belowPanelRows int) {
+	headerRows, pillRows = m.countLayoutRows()
+	trayRows, abovePanelRows, belowPanelRows = m.panelRows()
+
+	if pillRows > 0 && trayRows > 0 {
+		trayRows++
+	} else if pillRows > 0 {
 		pillRows++
 	}
 
-	return headerRows, pillRows
+	return headerRows, pillRows, trayRows, abovePanelRows, belowPanelRows
 }
 
 func (m Model) drawHeader(scr uv.Screen, area uv.Rectangle) {
