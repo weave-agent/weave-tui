@@ -38,8 +38,8 @@ Fix ESC so it always interrupts running tools (not just streaming assistants). A
 - [x] Run extension tests — must pass
 
 ### Task 4: Verify integration
-- [ ] Run `go test ./...` in TUI extension dir
-- [ ] Run `make lint` if available
+- [x] Run `go test ./...` in TUI extension dir — all tests pass
+- [x] Run `make lint` if available — no lint target in Makefile
 
 ## Technical Details
 
