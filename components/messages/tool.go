@@ -22,8 +22,10 @@ type ToolState int
 
 const (
 	ToolPending ToolState = iota
+	ToolRunning
 	ToolSuccess
 	ToolError
+	ToolInterrupted
 )
 
 // ToolPanel renders a tool call with its output in a panel.
@@ -32,12 +34,14 @@ type ToolPanel struct {
 	toolName             string
 	args                 string
 	output               string
+	progress             string
 	state                ToolState
 	expanded             bool
 	diffRenderer         *DiffRenderer
 	customRenderer       sdk.ToolRenderer
 	flashUntil           time.Time
 	needsPostFlashRender bool
+	spinnerFrame         int
 }
 
 // NewToolPanel creates a new tool panel in pending state.
@@ -84,9 +88,34 @@ func (p *ToolPanel) SetResult(output string, isError bool) {
 	p.needsPostFlashRender = true
 }
 
+// SetRunning marks the tool as actively executing.
+func (p *ToolPanel) SetRunning() {
+	p.state = ToolRunning
+}
+
+// SetProgress updates the panel with partial output from a running tool.
+func (p *ToolPanel) SetProgress(content string) {
+	p.progress = content
+}
+
+// SetInterrupted marks the tool as interrupted by the user.
+func (p *ToolPanel) SetInterrupted() {
+	p.state = ToolInterrupted
+}
+
+// AdvanceSpinner cycles the spinner animation frame for running tools.
+func (p *ToolPanel) AdvanceSpinner() {
+	p.spinnerFrame++
+}
+
 // NeedsRender returns true while the flash animation is active, and for one
 // additional render after it expires so the cache captures the settled color.
+// Also returns true for running tools so spinner frames advance.
 func (p *ToolPanel) NeedsRender() bool {
+	if p.state == ToolRunning {
+		return true
+	}
+
 	if time.Now().Before(p.flashUntil) {
 		return true
 	}
@@ -149,7 +178,7 @@ func (p *ToolPanel) Draw(scr uv.Screen, area uv.Rectangle) {
 }
 
 func (p *ToolPanel) renderHeader() string {
-	stateLabel := stateLabelForState(p.state)
+	stateLabel := stateLabelForState(p.state, p.spinnerFrame)
 	if p.args != "" {
 		formatted := truncateArgs(formatArgs(p.args), 100)
 		if formatted != "" {
@@ -163,13 +192,36 @@ func (p *ToolPanel) renderHeader() string {
 func (p *ToolPanel) renderBody(width int) string {
 	theme := palette.DefaultTheme()
 
+	// Show live progress content for running tools
+	if p.state == ToolRunning && p.progress != "" {
+		lines := strings.Split(p.progress, "\n")
+		if !p.expanded && len(lines) > maxCollapsedLines {
+			visible := lines[:maxCollapsedLines]
+			hidden := len(lines) - maxCollapsedLines
+			body := strings.Join(visible, "\n")
+			dim := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Muted))
+
+			return dim.Render(body) + fmt.Sprintf("\n... %d more lines (collapsed)", hidden)
+		}
+		dim := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Muted))
+
+		return dim.Render(p.progress)
+	}
+
 	if p.output == "" {
 		dim := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Muted))
-		if p.state == ToolPending {
+		switch p.state {
+		case ToolPending, ToolRunning:
 			return dim.Render("running...")
-		}
+		case ToolInterrupted:
+			if p.progress != "" {
+				return dim.Render(p.progress + "\n(interrupted)")
+			}
 
-		return dim.Render("(no output)")
+			return dim.Render("(interrupted)")
+		default:
+			return dim.Render("(no output)")
+		}
 	}
 
 	// Use custom renderer if registered.
@@ -207,35 +259,45 @@ func (p *ToolPanel) renderBody(width int) string {
 func borderColorForState(state ToolState, flashUntil time.Time, theme *palette.Theme) string {
 	if time.Now().Before(flashUntil) {
 		switch state {
-		case ToolPending:
+		case ToolPending, ToolRunning:
 			return theme.AccentDim
 		case ToolSuccess:
 			return theme.Success
 		case ToolError:
 			return theme.Error
+		case ToolInterrupted:
+			return theme.Muted
 		}
 	}
 
 	switch state {
-	case ToolPending:
+	case ToolPending, ToolRunning:
 		return theme.AccentDim
 	case ToolSuccess:
 		return theme.Border
 	case ToolError:
 		return theme.Error
+	case ToolInterrupted:
+		return theme.Muted
 	default:
 		return theme.Border
 	}
 }
 
-func stateLabelForState(state ToolState) string {
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+func stateLabelForState(state ToolState, spinnerFrame int) string {
 	switch state {
 	case ToolPending:
 		return "⏳"
+	case ToolRunning:
+		return spinnerFrames[spinnerFrame%len(spinnerFrames)]
 	case ToolSuccess:
 		return "✓"
 	case ToolError:
 		return "✗"
+	case ToolInterrupted:
+		return "⏹"
 	default:
 		return "?"
 	}

@@ -717,6 +717,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return toolFlashExpireMsg{}
 		})
 
+	case ToolStartMsg:
+		m = m.onToolStart(msg)
+		m.syncChatViewport()
+
+		return m, nil
+
+	case ToolProgressMsg:
+		m = m.onToolProgress(msg)
+
+		return m, nil
+
+	case ToolCompleteMsg:
+		m = m.onToolComplete(msg)
+		m.contextTokens += estimateContextTokens(msg.Content)
+		m.updateFooterContextUsage()
+
+		return m, tea.Tick(800*time.Millisecond, func(time.Time) tea.Msg {
+			return toolFlashExpireMsg{}
+		})
+
+	case ToolErrorMsg:
+		m = m.onToolError(msg)
+		m.contextTokens += estimateContextTokens(msg.Error)
+		m.updateFooterContextUsage()
+
+		return m, tea.Tick(800*time.Millisecond, func(time.Time) tea.Msg {
+			return toolFlashExpireMsg{}
+		})
+
+	case ToolInterruptedMsg:
+		m = m.onToolInterrupted(msg)
+
+		return m, nil
+
 	case toolFlashExpireMsg:
 		return m, nil
 
@@ -1098,12 +1132,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Forward spinner ticks to advance animation.
-	if _, ok := msg.(spinner.TickMsg); ok && m.spinner.Visible() {
-		var cmd tea.Cmd
+	if _, ok := msg.(spinner.TickMsg); ok {
+		m = m.advanceToolSpinners()
 
-		m.spinner, cmd = m.spinner.Update(msg)
+		if m.spinner.Visible() {
+			var cmd tea.Cmd
 
-		return m, cmd
+			m.spinner, cmd = m.spinner.Update(msg)
+
+			return m, cmd
+		}
+
+		return m, nil
 	}
 
 	return m, nil
@@ -1658,6 +1698,98 @@ func (m *Model) onToolResult(msg ToolResultMsg) {
 
 	panel.SetResult(msg.Result.Content, msg.Result.IsError)
 	m.chat = m.chat.UpdateItemByID(panel)
+}
+
+// onToolStart marks a tool panel as actively running.
+func (m Model) onToolStart(msg ToolStartMsg) Model {
+	panel, ok := m.toolPanels[msg.ToolID]
+	if !ok {
+		panel = messages.NewToolPanel(msg.ToolID, msg.Tool, msg.Input)
+		m.toolPanels[msg.ToolID] = panel
+		m.chat = m.chat.AddItem(panel)
+	}
+
+	panel.SetRunning()
+	m.chat = m.chat.UpdateItemByID(panel)
+
+	return m
+}
+
+// onToolProgress updates a running tool panel with partial output.
+func (m Model) onToolProgress(msg ToolProgressMsg) Model {
+	panel, ok := m.toolPanels[msg.ToolID]
+	if !ok {
+		panel = messages.NewToolPanel(msg.ToolID, msg.Tool, "")
+		m.toolPanels[msg.ToolID] = panel
+		m.chat = m.chat.AddItem(panel)
+	}
+
+	panel.SetProgress(msg.Content)
+	m.chat = m.chat.UpdateItemByID(panel)
+
+	return m
+}
+
+// onToolComplete finalizes a tool panel with successful output.
+func (m Model) onToolComplete(msg ToolCompleteMsg) Model {
+	m.clearPendingToolCall(msg.ToolID)
+
+	panel, ok := m.toolPanels[msg.ToolID]
+	if !ok {
+		panel = messages.NewToolPanel(msg.ToolID, msg.Tool, "")
+		m.toolPanels[msg.ToolID] = panel
+		m.chat = m.chat.AddItem(panel)
+	}
+
+	panel.SetResult(msg.Content, false)
+	m.chat = m.chat.UpdateItemByID(panel)
+
+	return m
+}
+
+// onToolError finalizes a tool panel with an error.
+func (m Model) onToolError(msg ToolErrorMsg) Model {
+	m.clearPendingToolCall(msg.ToolID)
+
+	panel, ok := m.toolPanels[msg.ToolID]
+	if !ok {
+		panel = messages.NewToolPanel(msg.ToolID, msg.Tool, "")
+		m.toolPanels[msg.ToolID] = panel
+		m.chat = m.chat.AddItem(panel)
+	}
+
+	panel.SetResult(msg.Error, true)
+	m.chat = m.chat.UpdateItemByID(panel)
+
+	return m
+}
+
+// onToolInterrupted marks a tool panel as interrupted.
+func (m Model) onToolInterrupted(msg ToolInterruptedMsg) Model {
+	m.clearPendingToolCall(msg.ToolID)
+
+	panel, ok := m.toolPanels[msg.ToolID]
+	if !ok {
+		panel = messages.NewToolPanel(msg.ToolID, msg.Tool, "")
+		m.toolPanels[msg.ToolID] = panel
+		m.chat = m.chat.AddItem(panel)
+	}
+
+	panel.SetInterrupted()
+	m.chat = m.chat.UpdateItemByID(panel)
+
+	return m
+}
+
+// advanceToolSpinners cycles the spinner frame on all running tool panels.
+func (m Model) advanceToolSpinners() Model {
+	for _, panel := range m.toolPanels {
+		if panel.State() == messages.ToolRunning {
+			panel.AdvanceSpinner()
+		}
+	}
+
+	return m
 }
 
 func (m *Model) trackPendingToolCall(tc sdk.ToolCall) {

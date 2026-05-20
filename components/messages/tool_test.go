@@ -203,12 +203,14 @@ func TestToolPanel_StateEmojis(t *testing.T) {
 		wantEmoji string
 	}{
 		{"pending", ToolPending, "⏳"},
+		{"running", ToolRunning, "⠋"},
 		{"success", ToolSuccess, "✓"},
 		{"error", ToolError, "✗"},
+		{"interrupted", ToolInterrupted, "⏹"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Contains(t, stateLabelForState(tt.state), tt.wantEmoji)
+			assert.Contains(t, stateLabelForState(tt.state, 0), tt.wantEmoji)
 		})
 	}
 }
@@ -268,4 +270,159 @@ func TestToolPanel_BorderedCard_SuccessHasBorder(t *testing.T) {
 	p.flashUntil = time.Time{}
 	view := p.View(80)
 	assert.Contains(t, view, "╭", "should have rounded border in success state")
+}
+
+func TestToolPanel_SetRunning(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	require.Equal(t, ToolPending, p.State())
+
+	p.SetRunning()
+	assert.Equal(t, ToolRunning, p.State())
+}
+
+func TestToolPanel_SetProgress(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetRunning()
+	p.SetProgress("partial output")
+
+	view := p.View(80)
+	assert.Contains(t, view, "partial output")
+	assert.Contains(t, view, "bash")
+}
+
+func TestToolPanel_SetInterrupted(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetInterrupted()
+	assert.Equal(t, ToolInterrupted, p.State())
+
+	view := p.View(80)
+	assert.Contains(t, view, "(interrupted)")
+	assert.Contains(t, view, "bash")
+}
+
+func TestToolPanel_InterruptedWithProgress(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetRunning()
+	p.SetProgress("some partial output")
+	p.SetInterrupted()
+
+	view := p.View(80)
+	assert.Contains(t, view, "some partial output")
+	assert.Contains(t, view, "(interrupted)")
+}
+
+func TestToolPanel_AdvanceSpinner(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetRunning()
+
+	frame0 := stateLabelForState(p.State(), p.spinnerFrame)
+	p.AdvanceSpinner()
+	frame1 := stateLabelForState(p.State(), p.spinnerFrame)
+
+	assert.NotEqual(t, frame0, frame1, "spinner frame should advance")
+}
+
+func TestToolPanel_NeedsRender_WhenRunning(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	assert.False(t, p.NeedsRender(), "pending panel should not need render after initial creation")
+
+	p.SetRunning()
+	assert.True(t, p.NeedsRender(), "running panel should need render")
+}
+
+func TestToolPanel_NeedsRender_WhenFlashActive(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetResult("done", false)
+	assert.True(t, p.NeedsRender(), "panel with active flash should need render")
+}
+
+func TestToolPanel_View_RunningShowsSpinner(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetRunning()
+
+	view := p.View(80)
+	// Should contain one of the spinner frames
+	assert.Contains(t, view, "bash")
+	// Running tool with no progress still shows "running..."
+	assert.Contains(t, view, "running...")
+}
+
+func TestToolPanel_View_RunningWithProgress(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetRunning()
+	p.SetProgress("line1\nline2")
+
+	view := p.View(80)
+	assert.Contains(t, view, "line1")
+	assert.Contains(t, view, "line2")
+}
+
+func TestToolPanel_View_RunningProgressCollapsed(t *testing.T) {
+	lines := make([]string, 30)
+	for i := range lines {
+		lines[i] = "progress line"
+	}
+
+	p := NewToolPanel("tc1", "bash", "cat")
+	p.SetRunning()
+	p.SetProgress(strings.Join(lines, "\n"))
+
+	view := p.View(80)
+	assert.Contains(t, view, "more lines (collapsed)")
+}
+
+func TestToolPanel_View_Interrupted(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetInterrupted()
+
+	view := p.View(80)
+	assert.Contains(t, view, "⏹")
+	assert.Contains(t, view, "(interrupted)")
+}
+
+func TestToolPanel_CompleteLifecycle(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	require.Equal(t, ToolPending, p.State())
+
+	p.SetRunning()
+	assert.Equal(t, ToolRunning, p.State())
+
+	p.SetProgress("partial")
+	assert.Equal(t, "partial", p.progress)
+
+	p.SetResult("final output", false)
+	assert.Equal(t, ToolSuccess, p.State())
+	assert.Equal(t, "final output", p.output)
+}
+
+func TestToolPanel_ErrorLifecycle(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetRunning()
+	p.SetProgress("working...")
+	p.SetResult("command failed", true)
+
+	assert.Equal(t, ToolError, p.State())
+	assert.Equal(t, "command failed", p.output)
+}
+
+func TestToolPanel_Draw_Running(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls -la")
+	p.SetRunning()
+	p.SetProgress("live output")
+
+	canvas := uv.NewScreenBuffer(80, 10)
+	p.Draw(canvas, canvas.Bounds())
+	output := uv.TrimSpace(canvas.Render())
+	assert.Contains(t, output, "bash")
+	assert.Contains(t, output, "live output")
+}
+
+func TestToolPanel_Draw_Interrupted(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetInterrupted()
+
+	canvas := uv.NewScreenBuffer(80, 10)
+	p.Draw(canvas, canvas.Bounds())
+	output := uv.TrimSpace(canvas.Render())
+	assert.Contains(t, output, "(interrupted)")
 }

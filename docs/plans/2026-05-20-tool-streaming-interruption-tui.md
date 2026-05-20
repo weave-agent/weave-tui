@@ -28,14 +28,14 @@ Fix ESC so it always interrupts running tools (not just streaming assistants). A
 - [x] Run extension tests — must pass
 
 ### Task 3: Render tool lifecycle in chat
-- [ ] Track in-flight tools in model state (map[string]ToolProgress)
-- [ ] On `ToolStartMsg`: show tool name + spinner
-- [ ] On `ToolProgressMsg`: update display with partial content
-- [ ] On `ToolCompleteMsg`: show final result, stop spinner
-- [ ] On `ToolErrorMsg`: show error state
-- [ ] On `ToolInterruptedMsg`: show "(interrupted)", fade out
-- [ ] Write tests for each state transition
-- [ ] Run extension tests — must pass
+- [x] Track in-flight tools in model state (map[string]ToolProgress)
+- [x] On `ToolStartMsg`: show tool name + spinner
+- [x] On `ToolProgressMsg`: update display with partial content
+- [x] On `ToolCompleteMsg`: show final result, stop spinner
+- [x] On `ToolErrorMsg`: show error state
+- [x] On `ToolInterruptedMsg`: show "(interrupted)", fade out
+- [x] Write tests for each state transition
+- [x] Run extension tests — must pass
 
 ### Task 4: Verify integration
 - [ ] Run `go test ./...` in TUI extension dir

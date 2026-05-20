@@ -527,6 +527,371 @@ func TestModel_ToolPanelInlineInChat(t *testing.T) {
 	assert.Contains(t, view.Content, "file1.txt")
 }
 
+func TestModel_ToolStartMsg_UpdatesPanel(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	// Start assistant message
+	model, _ := m.Update(MessageStartMsg{})
+	m = model.(Model)
+
+	// End with tool call
+	model, _ = m.Update(MessageEndMsg{
+		Content:   "running bash",
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
+	})
+	m = model.(Model)
+
+	// Tool starts executing
+	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "{\"command\": \"ls\"}"})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	require.Len(t, items, 2)
+
+	tp, ok := items[1].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, messages.ToolRunning, tp.State())
+}
+
+func TestModel_ToolProgressMsg_UpdatesPanel(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(MessageStartMsg{})
+	m = model.(Model)
+
+	model, _ = m.Update(MessageEndMsg{
+		Content:   "running bash",
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
+	})
+	m = model.(Model)
+
+	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash"})
+	m = model.(Model)
+
+	model, _ = m.Update(ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "partial output"})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	tp, ok := items[1].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, messages.ToolRunning, tp.State())
+	assert.Contains(t, tp.View(80), "partial output")
+}
+
+func TestModel_ToolCompleteMsg_FinalizesPanel(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(MessageStartMsg{})
+	m = model.(Model)
+
+	model, _ = m.Update(MessageEndMsg{
+		Content:   "running bash",
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
+	})
+	m = model.(Model)
+
+	model, _ = m.Update(ToolCompleteMsg{ToolID: "tc1", Tool: "bash", Content: "final output"})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	tp, ok := items[1].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, messages.ToolSuccess, tp.State())
+	assert.Contains(t, tp.View(80), "final output")
+}
+
+func TestModel_ToolErrorMsg_FinalizesPanel(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(MessageStartMsg{})
+	m = model.(Model)
+
+	model, _ = m.Update(MessageEndMsg{
+		Content:   "running bash",
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
+	})
+	m = model.(Model)
+
+	model, _ = m.Update(ToolErrorMsg{ToolID: "tc1", Tool: "bash", Error: "command not found"})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	tp, ok := items[1].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, messages.ToolError, tp.State())
+	assert.Contains(t, tp.View(80), "command not found")
+}
+
+func TestModel_ToolInterruptedMsg_MarksPanel(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(MessageStartMsg{})
+	m = model.(Model)
+
+	model, _ = m.Update(MessageEndMsg{
+		Content:   "running bash",
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
+	})
+	m = model.(Model)
+
+	model, _ = m.Update(ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	tp, ok := items[1].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, messages.ToolInterrupted, tp.State())
+	assert.Contains(t, tp.View(80), "(interrupted)")
+}
+
+func TestModel_ToolStartMsg_CreatesPanelIfMissing(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	// Tool start without prior MessageEnd tool call
+	model, _ := m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "ls"})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	require.Len(t, items, 1)
+
+	tp, ok := items[0].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, "tc1", tp.ToolID())
+	assert.Equal(t, messages.ToolRunning, tp.State())
+}
+
+func TestModel_ToolCompleteMsg_CreatesPanelIfMissing(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(ToolCompleteMsg{ToolID: "tc1", Tool: "bash", Content: "output"})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	require.Len(t, items, 1)
+
+	tp, ok := items[0].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, messages.ToolSuccess, tp.State())
+}
+
+func TestModel_ToolLifecycle_FullFlow(t *testing.T) {
+	m := newModelNoLanding()
+	m.width = 80
+	m.height = 30
+	m.chat = m.chat.SetSize(80, 30)
+
+	m.AddUserMessage("run command")
+
+	model, _ := m.Update(MessageStartMsg{})
+	m = model.(Model)
+
+	model, _ = m.Update(MessageEndMsg{
+		Content:   "I'll run it",
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: map[string]any{"command": "ls"}}},
+	})
+	m = model.(Model)
+
+	// Tool starts
+	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "{\"command\": \"ls\"}"})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	require.Len(t, items, 3) // user + assistant + tool panel
+	tp, _ := items[2].(*messages.ToolPanel)
+	assert.Equal(t, messages.ToolRunning, tp.State())
+
+	// Progress updates
+	model, _ = m.Update(ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "file1.txt"})
+	m = model.(Model)
+
+	model, _ = m.Update(ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "file1.txt\nfile2.txt"})
+	m = model.(Model)
+
+	// Complete
+	model, _ = m.Update(ToolCompleteMsg{ToolID: "tc1", Tool: "bash", Content: "file1.txt\nfile2.txt"})
+	m = model.(Model)
+
+	items = m.chat.Items()
+	tp, _ = items[2].(*messages.ToolPanel)
+	assert.Equal(t, messages.ToolSuccess, tp.State())
+
+	// Final assistant response
+	model, _ = m.Update(MessageStartMsg{})
+	m = model.(Model)
+
+	model, _ = m.Update(MessageEndMsg{Content: "Here are the files"})
+	m = model.(Model)
+
+	items = m.chat.Items()
+	require.Len(t, items, 4) // user + assistant + tool + final assistant
+}
+
+func TestModel_ToolInterrupted_ClearsPending(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(MessageEndMsg{
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
+	})
+	m = model.(Model)
+
+	require.Equal(t, "bash", m.activeToolName())
+
+	model, _ = m.Update(ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
+	m = model.(Model)
+
+	assert.Empty(t, m.activeToolName())
+}
+
+func TestModel_ToolComplete_ClearsPending(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(MessageEndMsg{
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
+	})
+	m = model.(Model)
+
+	require.Equal(t, "bash", m.activeToolName())
+
+	model, _ = m.Update(ToolCompleteMsg{ToolID: "tc1", Tool: "bash", Content: "done"})
+	m = model.(Model)
+
+	assert.Empty(t, m.activeToolName())
+}
+
+func TestModel_ToolError_ClearsPending(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(MessageEndMsg{
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
+	})
+	m = model.(Model)
+
+	require.Equal(t, "bash", m.activeToolName())
+
+	model, _ = m.Update(ToolErrorMsg{ToolID: "tc1", Tool: "bash", Error: "failed"})
+	m = model.(Model)
+
+	assert.Empty(t, m.activeToolName())
+}
+
+func TestModel_ToolInterrupted_WithProgress(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(MessageStartMsg{})
+	m = model.(Model)
+
+	model, _ = m.Update(MessageEndMsg{
+		Content:   "running bash",
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
+	})
+	m = model.(Model)
+
+	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash"})
+	m = model.(Model)
+
+	model, _ = m.Update(ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "partial result"})
+	m = model.(Model)
+
+	model, _ = m.Update(ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	tp, ok := items[1].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, messages.ToolInterrupted, tp.State())
+	view := tp.View(80)
+	assert.Contains(t, view, "partial result")
+	assert.Contains(t, view, "(interrupted)")
+}
+
+func TestModel_AdvanceToolSpinners(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+
+	// Create a running panel directly
+	panel := messages.NewToolPanel("tc1", "bash", "ls")
+	panel.SetRunning()
+	m.toolPanels["tc1"] = panel
+
+	frameBefore := panel.State()
+	require.Equal(t, messages.ToolRunning, frameBefore)
+
+	m = m.advanceToolSpinners()
+
+	// Spinner frame should have advanced (visible in view)
+	view1 := panel.View(80)
+	m = m.advanceToolSpinners()
+	view2 := panel.View(80)
+
+	// After advancing twice, the header should contain a different spinner frame
+	// We can't easily assert the exact frame, but we can verify the panel is running
+	assert.Equal(t, messages.ToolRunning, panel.State())
+	assert.Contains(t, view1, "bash")
+	assert.Contains(t, view2, "bash")
+}
+
+func TestModel_ToolStartMsg_UpdatesExistingPanel(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	// Create panel via MessageEnd
+	model, _ := m.Update(MessageStartMsg{})
+	m = model.(Model)
+
+	model, _ = m.Update(MessageEndMsg{
+		Content:   "running bash",
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: map[string]any{"command": "ls"}}},
+	})
+	m = model.(Model)
+
+	// Panel starts as pending
+	items := m.chat.Items()
+	tp, _ := items[1].(*messages.ToolPanel)
+	assert.Equal(t, messages.ToolPending, tp.State())
+
+	// ToolStart transitions it to running
+	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "{\"command\": \"ls\"}"})
+	m = model.(Model)
+
+	items = m.chat.Items()
+	tp, _ = items[1].(*messages.ToolPanel)
+	assert.Equal(t, messages.ToolRunning, tp.State())
+}
+
 func TestModel_MessageEndWithThinking(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
