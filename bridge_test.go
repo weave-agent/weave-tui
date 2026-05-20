@@ -159,6 +159,14 @@ func TestTranslateEvent_ToolProgress_NilPayload(t *testing.T) {
 	assert.Empty(t, tp.Content)
 }
 
+func TestTranslateEvent_ToolProgress_NonMapPayload(t *testing.T) {
+	msg := translateEvent(sdk.NewEvent(topicToolProgress, "not a map"))
+	tp, ok := msg.(ToolProgressMsg)
+	require.True(t, ok)
+	assert.Empty(t, tp.ToolID)
+	assert.Empty(t, tp.Content)
+}
+
 func TestTranslateEvent_ToolComplete(t *testing.T) {
 	payload := map[string]any{
 		"id":      "tc1",

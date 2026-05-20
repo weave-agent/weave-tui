@@ -30,8 +30,8 @@ Do not commit that temporary replacement unless intentionally updating module wi
 ### Runtime flow
 
 - `tui.go` is the extension entry point. It registers the extension with the weave SDK, owns the `tea.Program`, and wires SDK UI extensions before the program starts accepting messages.
-- `bridge.go` translates weave bus events into Bubble Tea messages. It also batches streaming `agent.message_update` deltas and tracks coarse agent state so the UI can update spinner/accent/pulse state.
-- `model.go` contains the root Bubble Tea `Model`. It coordinates chat, editor, footer, overlays, provider/model state, command dispatch, keybindings, attachments, panels, and extension callbacks.
+- `bridge.go` translates weave bus events into Bubble Tea messages. It also batches streaming `agent.message_update` deltas and tracks coarse agent state so the UI can update spinner/accent/pulse state. The `agentStateTracker` counts pending tool calls (`toolCount`) and transitions through `StateIdle`, `StateStreaming`, `StateToolRunning`, and `StateError`. It forwards `tool.start`, `tool.progress`, `tool.complete`, `tool.error`, and `tool.interrupted` events as Tea messages.
+- `model.go` contains the root Bubble Tea `Model`. It coordinates chat, editor, footer, overlays, provider/model state, command dispatch, keybindings, attachments, panels, and extension callbacks. It tracks in-flight tool panels (`toolPanels` map) and pending tool call order (`pendingToolCalls`, `pendingToolOrder`), and handles tool lifecycle messages (`ToolStartMsg`, `ToolProgressMsg`, `ToolCompleteMsg`, `ToolErrorMsg`, `ToolInterruptedMsg`).
 - `layout.go` computes the terminal regions for header/main/pills/panel tray/panels/docked overlays/editor/footer using Ultraviolet's layout solver.
 
 ### User input, commands, and keybindings
@@ -39,14 +39,16 @@ Do not commit that temporary replacement unless intentionally updating module wi
 - `components/editor.go` wraps `bubbles/v2/textarea` and emits `components.SubmitMsg` on Enter. The root model decides whether the submitted text is a slash command, initial prompt, or followup.
 - `commands.go` owns slash command registration and dispatch. Built-ins include `/new`, `/clear`, `/quit`, `/help`, `/compact`, `/name`, `/resume`, `/reload`, `/login`, and `/logout`; `/model`, `/providers`, and `/thinking` are registered during model construction.
 - `keybindings.go` maps terminal key strings to action names. Resolution priority is user config > extension registrations > built-in defaults. User keybindings are loaded from `keybindings.yaml` near the weave config or from `~/.weave/keybindings.yaml`.
+- Escape key behavior: first press always publishes an `agent.interrupt` event (interrupting both streaming assistants and running tools); second press within the double-press window clears the editor.
 - Completion logic is split between `components/completion.go` and `components/path_completion.go`. Slash command and file-reference completions are refreshed by the root model when editor content or cursor position changes.
 
 ### Rendering components
 
 - `components/chat.go`, `components/messages/`, `components/footer.go`, and `components/spinner.go` render the main transcript, message types, footer status, and working indicator.
+- `components/messages/tool.go` renders `ToolPanel` chat items with a lifecycle state machine: pending, running (with spinner and live progress), success, error, and interrupted. Panels flash on state transitions and support expand/collapse.
 - `components/overlays/` contains reusable modal/dialog models for selectors, confirmation, input, editor, multiselect, OAuth login, and dialog stacking.
 - `components/attachments/` manages prompt attachments created from large pasted content or explicit attachment actions.
-- `palette/` defines themes and agent activity colors. Agent state changes from the bridge can adjust accent colors and editor border pulse behavior.
+- `palette/` defines themes and agent activity colors. `palette.State` tracks `StateIdle`, `StateStreaming`, `StateToolRunning`, and `StateError`. Agent state changes from the bridge adjust accent colors and editor border pulse behavior; `StateToolRunning` uses amber tones.
 - `xchroma/` contains Chroma formatting support used by message/tool rendering.
 
 ### Extension APIs

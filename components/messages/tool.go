@@ -178,7 +178,11 @@ func (p *ToolPanel) Draw(scr uv.Screen, area uv.Rectangle) {
 }
 
 func (p *ToolPanel) renderHeader() string {
-	stateLabel := stateLabelForState(p.state, p.spinnerFrame)
+	stateLabel := stateLabelForState(p.state)
+	if p.state == ToolRunning {
+		stateLabel = spinnerFrameChar(p.spinnerFrame)
+	}
+
 	if p.args != "" {
 		formatted := truncateArgs(formatArgs(p.args), 100)
 		if formatted != "" {
@@ -286,12 +290,12 @@ func borderColorForState(state ToolState, flashUntil time.Time, theme *palette.T
 
 var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
-func stateLabelForState(state ToolState, spinnerFrame int) string {
+func stateLabelForState(state ToolState) string {
 	switch state {
 	case ToolPending:
 		return "⏳"
 	case ToolRunning:
-		return spinnerFrames[spinnerFrame%len(spinnerFrames)]
+		return "⠋" // default spinner frame; use spinnerFrameChar for animation
 	case ToolSuccess:
 		return "✓"
 	case ToolError:
@@ -301,6 +305,10 @@ func stateLabelForState(state ToolState, spinnerFrame int) string {
 	default:
 		return "?"
 	}
+}
+
+func spinnerFrameChar(frame int) string {
+	return spinnerFrames[frame%len(spinnerFrames)]
 }
 
 func truncateArgs(args string, maxLen int) string {

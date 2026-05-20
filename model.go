@@ -1323,9 +1323,7 @@ func (m Model) handleEscape() (tea.Model, tea.Cmd) {
 
 	activeTool := m.activeToolName()
 
-	if activeTool == "await_agent" || strings.HasPrefix(activeTool, "subagent_") {
-		// Subagent/await_agent handled by the always-published interrupt above
-	} else {
+	if activeTool != "await_agent" && !strings.HasPrefix(activeTool, "subagent_") {
 		// First press — interrupt streaming if active, start timeout.
 		var model tea.Model
 
@@ -1700,85 +1698,62 @@ func (m *Model) onToolResult(msg ToolResultMsg) {
 	m.chat = m.chat.UpdateItemByID(panel)
 }
 
-// onToolStart marks a tool panel as actively running.
-func (m Model) onToolStart(msg ToolStartMsg) Model {
-	panel, ok := m.toolPanels[msg.ToolID]
+// withToolPanel looks up or creates a tool panel by ID, applies an update, and
+// syncs the chat view. Used by all onTool* handlers.
+func (m Model) withToolPanel(id, tool, input string, update func(*messages.ToolPanel)) Model {
+	panel, ok := m.toolPanels[id]
 	if !ok {
-		panel = messages.NewToolPanel(msg.ToolID, msg.Tool, msg.Input)
-		m.toolPanels[msg.ToolID] = panel
+		panel = messages.NewToolPanel(id, tool, input)
+		m.toolPanels[id] = panel
 		m.chat = m.chat.AddItem(panel)
 	}
 
-	panel.SetRunning()
+	update(panel)
 	m.chat = m.chat.UpdateItemByID(panel)
 
 	return m
 }
 
+// onToolStart marks a tool panel as actively running.
+func (m Model) onToolStart(msg ToolStartMsg) Model {
+	return m.withToolPanel(msg.ToolID, msg.Tool, msg.Input, func(p *messages.ToolPanel) {
+		p.SetRunning()
+	})
+}
+
 // onToolProgress updates a running tool panel with partial output.
 func (m Model) onToolProgress(msg ToolProgressMsg) Model {
-	panel, ok := m.toolPanels[msg.ToolID]
-	if !ok {
-		panel = messages.NewToolPanel(msg.ToolID, msg.Tool, "")
-		m.toolPanels[msg.ToolID] = panel
-		m.chat = m.chat.AddItem(panel)
-	}
-
-	panel.SetProgress(msg.Content)
-	m.chat = m.chat.UpdateItemByID(panel)
-
-	return m
+	return m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
+		p.SetRunning()
+		p.SetProgress(msg.Content)
+	})
 }
 
 // onToolComplete finalizes a tool panel with successful output.
 func (m Model) onToolComplete(msg ToolCompleteMsg) Model {
 	m.clearPendingToolCall(msg.ToolID)
 
-	panel, ok := m.toolPanels[msg.ToolID]
-	if !ok {
-		panel = messages.NewToolPanel(msg.ToolID, msg.Tool, "")
-		m.toolPanels[msg.ToolID] = panel
-		m.chat = m.chat.AddItem(panel)
-	}
-
-	panel.SetResult(msg.Content, false)
-	m.chat = m.chat.UpdateItemByID(panel)
-
-	return m
+	return m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
+		p.SetResult(msg.Content, false)
+	})
 }
 
 // onToolError finalizes a tool panel with an error.
 func (m Model) onToolError(msg ToolErrorMsg) Model {
 	m.clearPendingToolCall(msg.ToolID)
 
-	panel, ok := m.toolPanels[msg.ToolID]
-	if !ok {
-		panel = messages.NewToolPanel(msg.ToolID, msg.Tool, "")
-		m.toolPanels[msg.ToolID] = panel
-		m.chat = m.chat.AddItem(panel)
-	}
-
-	panel.SetResult(msg.Error, true)
-	m.chat = m.chat.UpdateItemByID(panel)
-
-	return m
+	return m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
+		p.SetResult(msg.Error, true)
+	})
 }
 
 // onToolInterrupted marks a tool panel as interrupted.
 func (m Model) onToolInterrupted(msg ToolInterruptedMsg) Model {
 	m.clearPendingToolCall(msg.ToolID)
 
-	panel, ok := m.toolPanels[msg.ToolID]
-	if !ok {
-		panel = messages.NewToolPanel(msg.ToolID, msg.Tool, "")
-		m.toolPanels[msg.ToolID] = panel
-		m.chat = m.chat.AddItem(panel)
-	}
-
-	panel.SetInterrupted()
-	m.chat = m.chat.UpdateItemByID(panel)
-
-	return m
+	return m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
+		p.SetInterrupted()
+	})
 }
 
 // advanceToolSpinners cycles the spinner frame on all running tool panels.

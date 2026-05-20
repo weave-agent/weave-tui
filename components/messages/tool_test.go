@@ -210,7 +210,7 @@ func TestToolPanel_StateEmojis(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Contains(t, stateLabelForState(tt.state, 0), tt.wantEmoji)
+			assert.Contains(t, stateLabelForState(tt.state), tt.wantEmoji)
 		})
 	}
 }
@@ -315,9 +315,9 @@ func TestToolPanel_AdvanceSpinner(t *testing.T) {
 	p := NewToolPanel("tc1", "bash", "ls")
 	p.SetRunning()
 
-	frame0 := stateLabelForState(p.State(), p.spinnerFrame)
+	frame0 := spinnerFrameChar(p.spinnerFrame)
 	p.AdvanceSpinner()
-	frame1 := stateLabelForState(p.State(), p.spinnerFrame)
+	frame1 := spinnerFrameChar(p.spinnerFrame)
 
 	assert.NotEqual(t, frame0, frame1, "spinner frame should advance")
 }

@@ -158,6 +158,29 @@ func TestAgentStateTracker_ToolInterruptedDecrements(t *testing.T) {
 	assert.Equal(t, 0, tracker.toolCount)
 }
 
+func TestAgentStateTracker_ToolStartWhenAlreadyToolRunning(t *testing.T) {
+	tracker := newAgentStateTracker()
+	tracker.update(ToolStartMsg{ToolID: "t1", Tool: "bash"})
+	assert.Equal(t, 1, tracker.toolCount)
+	assert.Equal(t, palette.StateToolRunning, tracker.state)
+
+	// Second tool start while already running: count increments but no state change
+	state, changed := tracker.update(ToolStartMsg{ToolID: "t2", Tool: "read"})
+	assert.False(t, changed)
+	assert.Equal(t, palette.StateToolRunning, state)
+	assert.Equal(t, 2, tracker.toolCount)
+}
+
+func TestAgentStateTracker_ToolCompleteWhenToolCountZero(t *testing.T) {
+	tracker := newAgentStateTracker()
+
+	// Stray complete without prior start should not go negative
+	state, changed := tracker.update(ToolCompleteMsg{ToolID: "t1", Tool: "bash"})
+	assert.False(t, changed)
+	assert.Equal(t, palette.StateIdle, state)
+	assert.Equal(t, 0, tracker.toolCount)
+}
+
 func TestAgentStateTracker_ToolStartThenMultipleResults(t *testing.T) {
 	tracker := newAgentStateTracker()
 	tracker.update(ToolStartMsg{ToolID: "t1", Tool: "bash"})

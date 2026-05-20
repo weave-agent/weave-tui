@@ -695,6 +695,60 @@ func TestModel_ToolCompleteMsg_CreatesPanelIfMissing(t *testing.T) {
 	assert.Equal(t, messages.ToolSuccess, tp.State())
 }
 
+func TestModel_ToolErrorMsg_CreatesPanelIfMissing(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(ToolErrorMsg{ToolID: "tc1", Tool: "bash", Error: "command not found"})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	require.Len(t, items, 1)
+
+	tp, ok := items[0].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, messages.ToolError, tp.State())
+	assert.Contains(t, tp.View(80), "command not found")
+}
+
+func TestModel_ToolInterruptedMsg_CreatesPanelIfMissing(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	require.Len(t, items, 1)
+
+	tp, ok := items[0].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, messages.ToolInterrupted, tp.State())
+	assert.Contains(t, tp.View(80), "(interrupted)")
+}
+
+func TestModel_ToolProgressMsg_CreatesPanelIfMissing(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "partial output"})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	require.Len(t, items, 1)
+
+	tp, ok := items[0].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, messages.ToolRunning, tp.State())
+	assert.Contains(t, tp.View(80), "partial output")
+}
+
 func TestModel_ToolLifecycle_FullFlow(t *testing.T) {
 	m := newModelNoLanding()
 	m.width = 80
@@ -1773,6 +1827,69 @@ func TestModel_EscapeInterruptsGenericTool(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for interrupt event")
 	}
+}
+
+func TestModel_EscapeInterruptsGenericTool_WithNilBus(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(MessageEndMsg{
+		ToolCalls: []sdk.ToolCall{{ID: "tool-1", Name: "grep"}},
+	})
+	m = model.(Model)
+
+	require.Equal(t, "grep", m.activeToolName())
+
+	// Should not panic and should still clear pending tool state
+	model, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m = model.(Model)
+
+	require.NotNil(t, cmd)
+	// No bus means no interrupt event to verify; just ensure no panic and
+	// interruptStreaming was called (pending tool cleared via model mutation).
+}
+
+func TestModel_EscapeDuringToolRunning_PanelBecomesInterrupted(t *testing.T) {
+	b := bus.New()
+	defer func() { _ = b.Close() }()
+
+	m := newModel(b, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(MessageStartMsg{})
+	m = model.(Model)
+
+	model, _ = m.Update(MessageEndMsg{
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: map[string]any{"command": "sleep 10"}}},
+	})
+	m = model.(Model)
+
+	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "sleep 10"})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	tp, _ := items[1].(*messages.ToolPanel)
+	require.Equal(t, messages.ToolRunning, tp.State())
+
+	// Press ESC to interrupt
+	model, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m = model.(Model)
+
+	require.NotNil(t, cmd)
+	executeBatchCmd(t, cmd)
+
+	// After sending ToolInterrupted, panel should be interrupted
+	model, _ = m.Update(ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
+	m = model.(Model)
+
+	items = m.chat.Items()
+	tp, _ = items[1].(*messages.ToolPanel)
+	assert.Equal(t, messages.ToolInterrupted, tp.State())
+	assert.Contains(t, tp.View(80), "(interrupted)")
 }
 
 func TestModel_AgentEndMsg_WithError(t *testing.T) {
