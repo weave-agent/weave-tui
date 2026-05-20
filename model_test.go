@@ -624,7 +624,7 @@ func TestModel_ToolErrorMsg_FinalizesPanel(t *testing.T) {
 	})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolErrorMsg{ToolID: "tc1", Tool: "bash", Error: "command not found"})
+	model, _ = m.Update(ToolErrorMsg{ToolID: "tc1", Tool: "bash", Error: "command not found", IsError: true})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -730,7 +730,7 @@ func TestModel_ToolErrorMsg_CreatesPanelIfMissing(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(ToolErrorMsg{ToolID: "tc1", Tool: "bash", Error: "command not found"})
+	model, _ := m.Update(ToolErrorMsg{ToolID: "tc1", Tool: "bash", Error: "command not found", IsError: true})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -1749,6 +1749,50 @@ func TestModel_EscapeInterruptsAwaitAgent(t *testing.T) {
 	}
 }
 
+func TestModel_EscapeInterruptsStreamingDuringAwaitAgent(t *testing.T) {
+	b := bus.New()
+	defer func() { _ = b.Close() }()
+
+	ch := subscribeToChan(b, topicInterrupt)
+
+	m := newModel(b, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	// Start streaming assistant
+	model, _ := m.Update(MessageStartMsg{})
+	m = model.(Model)
+	model, _ = m.Update(MessageUpdateMsg{Content: "working on it"})
+	m = model.(Model)
+
+	// Simulate an await_agent tool becoming active while assistant is still streaming
+	// (edge case: normally MessageEndMsg finalizes the assistant, but we test the
+	// concurrent state where streaming hasn't been finalized yet)
+	m.trackPendingToolCall(sdk.ToolCall{ID: "tool-1", Name: "await_agent"})
+
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+
+	require.NotNil(t, cmd)
+	executeBatchCmd(t, cmd)
+
+	// Verify interrupt event was published
+	select {
+	case evt := <-ch:
+		assert.Equal(t, topicInterrupt, evt.Topic)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for interrupt event")
+	}
+
+	// Verify streaming assistant was finalized
+	items := m.chat.Items()
+	require.Len(t, items, 1)
+	am, ok := items[0].(*messages.AssistantMessage)
+	require.True(t, ok)
+	assert.True(t, am.Interrupted())
+	assert.Contains(t, am.Content(), "[interrupted]")
+}
+
 func TestModel_EscapeInterruptsActiveSubagent(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
@@ -1865,7 +1909,8 @@ func TestModel_EscapeInterruptsGenericTool_WithNilBus(t *testing.T) {
 
 	require.Equal(t, "grep", m.activeToolName())
 
-	// Should not panic and should still clear pending tool state
+	// Should not panic; pending tool state remains since no lifecycle
+	// message arrives without a real bus/agent loop.
 	model, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = model.(Model)
 
@@ -1978,18 +2023,19 @@ func TestModel_AgentEndMsg_InterruptsRunningTools(t *testing.T) {
 	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash"})
 	m = model.(Model)
 
-	// Agent ends while tool is still running
-	model, _ = m.Update(AgentEndMsg{Payload: nil})
+	// Agent ends with an error while tool is still running
+	model, _ = m.Update(AgentEndMsg{Payload: "agent crashed"})
 	m = model.(Model)
 
 	items := m.chat.Items()
-	require.Len(t, items, 1)
+	require.Len(t, items, 2)
 	tp, ok := items[0].(*messages.ToolPanel)
 	require.True(t, ok)
 	assert.Equal(t, messages.ToolInterrupted, tp.State())
 	assert.Contains(t, tp.View(80), "(interrupted)")
 	assert.Empty(t, m.pendingToolCalls)
 	assert.Empty(t, m.pendingToolOrder)
+	assert.Empty(t, m.toolPanels)
 }
 
 func TestModel_GracefulShutdown(t *testing.T) {

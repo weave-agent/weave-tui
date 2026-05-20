@@ -320,8 +320,11 @@ func spinnerFrameChar(frame int) string {
 }
 
 func truncateArgs(args string, maxLen int) string {
-	if maxLen <= 3 {
-		return "..."
+	if maxLen <= 0 {
+		return ""
+	}
+	if maxLen < 3 {
+		return strings.Repeat(".", maxLen)
 	}
 
 	args = strings.TrimSpace(args)

@@ -106,9 +106,10 @@ type ToolCompleteMsg struct {
 
 // ToolErrorMsg is sent when a tool fails.
 type ToolErrorMsg struct {
-	ToolID string
-	Tool   string
-	Error  string
+	ToolID  string
+	Tool    string
+	Error   string
+	IsError bool
 }
 
 // ToolInterruptedMsg is sent when a tool is interrupted (e.g., by ESC).
@@ -204,6 +205,9 @@ func (t *agentStateTracker) addTool(id string) {
 	if id == "" {
 		return
 	}
+	if t.activeTools == nil {
+		t.activeTools = make(map[string]struct{})
+	}
 	if _, exists := t.activeTools[id]; !exists {
 		t.activeTools[id] = struct{}{}
 		t.toolCount = len(t.activeTools)
@@ -223,7 +227,7 @@ func (t *agentStateTracker) removeTool(id string) {
 
 // clearTools removes all active tools and resets the count.
 func (t *agentStateTracker) clearTools() {
-	t.activeTools = make(map[string]struct{})
+	t.activeTools = nil
 	t.toolCount = 0
 }
 
@@ -445,7 +449,7 @@ func translateToolComplete(payload any) ToolCompleteMsg {
 
 func translateToolError(payload any) ToolErrorMsg {
 	if tp, ok := payload.(sdk.ToolProgress); ok {
-		return ToolErrorMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName, Error: tp.Content}
+		return ToolErrorMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName, Error: tp.Content, IsError: tp.IsError}
 	}
 
 	m, ok := payload.(map[string]any)
@@ -456,8 +460,9 @@ func translateToolError(payload any) ToolErrorMsg {
 	id, _ := m["id"].(string)
 	tool, _ := m["tool"].(string)
 	errStr, _ := m["error"].(string)
+	isErr, _ := m["is_error"].(bool)
 
-	return ToolErrorMsg{ToolID: id, Tool: tool, Error: errStr}
+	return ToolErrorMsg{ToolID: id, Tool: tool, Error: errStr, IsError: isErr}
 }
 
 func translateToolInterrupted(payload any) ToolInterruptedMsg {

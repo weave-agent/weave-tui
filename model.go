@@ -770,23 +770,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spinner = m.spinner.Hide()
 		m.syncChatViewport()
 		m.footer = m.footer.SetTokenRate(0)
+
+		// Only mark tools as interrupted on actual error; for clean ends let
+		// the normal lifecycle messages (ToolCompleteMsg, etc.) finalize state.
+		if errStr, ok := msg.Payload.(string); ok && errStr != "" {
+			for _, panel := range m.toolPanels {
+				if panel.State() == messages.ToolPending || panel.State() == messages.ToolRunning {
+					panel.SetInterrupted()
+					m.chat = m.chat.UpdateItemByID(panel)
+				}
+			}
+
+			am := messages.NewAssistantMessage()
+			am.Finalize("[error] " + errStr)
+			m.chat = m.chat.AddItem(am)
+		}
+
 		m.pendingToolCalls = make(map[string]string)
 		m.pendingToolOrder = nil
-
-		for _, panel := range m.toolPanels {
-			if panel.State() == messages.ToolPending || panel.State() == messages.ToolRunning {
-				panel.SetInterrupted()
-				m.chat = m.chat.UpdateItemByID(panel)
-			}
-		}
-
-		if msg.Payload != nil {
-			if errStr, ok := msg.Payload.(string); ok && errStr != "" {
-				am := messages.NewAssistantMessage()
-				am.Finalize("[error] " + errStr)
-				m.chat = m.chat.AddItem(am)
-			}
-		}
+		m.toolPanels = make(map[string]*messages.ToolPanel)
 
 		return m, nil
 
@@ -1330,18 +1332,11 @@ func (m Model) handleEscape() (tea.Model, tea.Cmd) {
 		cmds = append(cmds, PublishInterrupt(m.bus))
 	}
 
-	activeTool := m.activeToolName()
-
-	if activeTool != "await_agent" && !strings.HasPrefix(activeTool, "subagent_") {
-		// First press — interrupt streaming if active, start timeout.
-		var model tea.Model
-
-		var cmd tea.Cmd
-
-		model, cmd = m.interruptStreaming()
-		m = model.(Model)
-		cmds = append(cmds, cmd)
-	}
+	// First press — interrupt streaming if active, start timeout.
+	// interruptStreaming safely handles the no-streaming-assistant case.
+	model, cmd := m.interruptStreaming()
+	m = model.(Model)
+	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(append(cmds, tea.Tick(doublePressWindow, func(_ time.Time) tea.Msg {
 		return doublePressTimeoutMsg{kind: doublePressEscape, gen: m.doublePressGen}
@@ -1730,12 +1725,7 @@ func (m *Model) onToolStart(msg ToolStartMsg) {
 
 // onToolProgress updates a running tool panel with partial output.
 func (m *Model) onToolProgress(msg ToolProgressMsg) {
-	id := msg.ToolID
-	if id == "" && msg.Tool != "" {
-		id = m.pendingToolIDByName(msg.Tool)
-	}
-
-	m.withToolPanel(id, msg.Tool, "", func(p *messages.ToolPanel) {
+	m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
 		if p.State() == messages.ToolPending {
 			p.SetRunning()
 		}
@@ -1760,7 +1750,7 @@ func (m *Model) onToolError(msg ToolErrorMsg) {
 
 	m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
 		if p.State() != messages.ToolInterrupted {
-			p.SetResult(msg.Error, true)
+			p.SetResult(msg.Error, msg.IsError)
 		}
 	})
 }
@@ -1819,16 +1809,6 @@ func (m *Model) clearPendingToolCall(id string) {
 	}
 }
 
-func (m Model) pendingToolIDByName(tool string) string {
-	for _, id := range m.pendingToolOrder {
-		if name, ok := m.pendingToolCalls[id]; ok && name == tool {
-			return id
-		}
-	}
-
-	return ""
-}
-
 func (m Model) activeToolName() string {
 	for _, id := range m.pendingToolOrder {
 		if name, ok := m.pendingToolCalls[id]; ok {
@@ -1840,7 +1820,7 @@ func (m Model) activeToolName() string {
 }
 
 // interruptStreaming finalizes the current streaming assistant message with
-// an [interrupted] tag, hides the spinner, and publishes an interrupt event.
+// an [interrupted] tag, hides the spinner, and clears the token rate.
 func (m Model) interruptStreaming() (tea.Model, tea.Cmd) {
 	am, idx := m.findStreamingAssistant()
 	if am == nil {
@@ -1852,8 +1832,6 @@ func (m Model) interruptStreaming() (tea.Model, tea.Cmd) {
 	m.spinner = m.spinner.Hide()
 	m.syncChatViewport()
 	m.footer = m.footer.SetTokenRate(0)
-	m.pendingToolCalls = make(map[string]string)
-	m.pendingToolOrder = nil
 
 	return m, nil
 }
