@@ -633,6 +633,7 @@ func TestTranslateEvent_Usage(t *testing.T) {
 		"output_tokens":         500,
 		"cache_creation_tokens": 50,
 		"cache_read_tokens":     200,
+		"context_tokens":        93800,
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicUsage, payload))
@@ -642,6 +643,7 @@ func TestTranslateEvent_Usage(t *testing.T) {
 	assert.Equal(t, 500, u.OutputTokens)
 	assert.Equal(t, 50, u.CacheCreationTokens)
 	assert.Equal(t, 200, u.CacheReadTokens)
+	assert.Equal(t, 93800, u.ContextTokens)
 }
 
 func TestTranslateEvent_Usage_NilPayload(t *testing.T) {
@@ -676,8 +678,9 @@ func TestBridge_UsageEvent(t *testing.T) {
 	events <- sdk.NewEvent(topicMsgUpdate, "hello")
 
 	events <- sdk.NewEvent(topicUsage, map[string]any{
-		"input_tokens":  100,
-		"output_tokens": 50,
+		"input_tokens":   100,
+		"output_tokens":  50,
+		"context_tokens": 1000,
 	})
 
 	events <- sdk.NewEvent(topicTurnEnd, nil)
@@ -695,6 +698,7 @@ func TestBridge_UsageEvent(t *testing.T) {
 
 			assert.Equal(t, 100, u.InputTokens)
 			assert.Equal(t, 50, u.OutputTokens)
+			assert.Equal(t, 1000, u.ContextTokens)
 		}
 	}
 

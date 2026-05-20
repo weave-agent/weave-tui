@@ -25,10 +25,12 @@ type FooterModel struct {
 	gitBranch   string
 	branchDirty bool
 
-	// Line 2: tokens + cost + context % + model + provider + thinking
+	// Line 2: tokens + cost + context + model + provider + thinking
 	inputTokens   int
 	outputTokens  int
 	cost          float64
+	contextTokens int
+	contextLimit  int
 	contextPct    float64 // 0-100
 	modelName     string
 	providerName  string
@@ -105,6 +107,17 @@ func (m FooterModel) SetContextPct(pct float64) FooterModel {
 	return m
 }
 
+func (m FooterModel) SetContextUsage(tokens, limit int) FooterModel {
+	m.contextTokens = tokens
+	m.contextLimit = limit
+
+	if tokens > 0 && limit > 0 {
+		m.contextPct = float64(tokens) / float64(limit) * 100
+	}
+
+	return m
+}
+
 // SetModel updates the model and provider display.
 func (m FooterModel) SetModel(model, provider string) FooterModel {
 	m.modelName = model
@@ -159,6 +172,12 @@ func (m FooterModel) Cost() float64 { return m.cost }
 
 // ContextPct returns the context percentage.
 func (m FooterModel) ContextPct() float64 { return m.contextPct }
+
+// ContextTokens returns the context token count.
+func (m FooterModel) ContextTokens() int { return m.contextTokens }
+
+// ContextLimit returns the context token limit.
+func (m FooterModel) ContextLimit() int { return m.contextLimit }
 
 // ModelName returns the model name.
 func (m FooterModel) ModelName() string { return m.modelName }
@@ -253,24 +272,9 @@ func (m FooterModel) renderLine2(theme *palette.Theme) string {
 		leftParts = append(leftParts, mutedStyle.Render(fmt.Sprintf("$%.4f", m.cost)))
 	}
 
-	if m.contextPct > 0 {
-		pctStyle := lipgloss.NewStyle()
-
-		switch {
-		case m.contextPct > 90:
-			pctStyle = pctStyle.Foreground(lipgloss.Color(theme.Error))
-		case m.contextPct > 70:
-			pctStyle = pctStyle.Foreground(lipgloss.Color(theme.Warning))
-		default:
-			pctStyle = pctStyle.Foreground(lipgloss.Color(theme.Success))
-		}
-
-		leftParts = append(leftParts, pctStyle.Render(fmt.Sprintf("ctx:%.0f%%", m.contextPct)))
-	}
-
 	left := strings.Join(leftParts, " ")
 
-	// Right side: model info (model name, thinking level, token rate)
+	// Right side: model info (model name, context, thinking level, token rate)
 	rightParts := []string{}
 
 	if m.modelName != "" {
@@ -292,11 +296,23 @@ func (m FooterModel) renderLine2(theme *palette.Theme) string {
 		rightParts = append(rightParts, pillStyle.Render(m.thinkingLevel))
 	}
 
+	if m.contextTokens > 0 {
+		contextStyle := contextStyleForPct(m.contextPct, theme)
+		if m.contextLimit > 0 {
+			rightParts = append(rightParts, contextStyle.Render(fmt.Sprintf("Context: %s/%s", formatTokenCount(m.contextTokens), formatTokenCount(m.contextLimit))))
+		} else {
+			rightParts = append(rightParts, contextStyle.Render(fmt.Sprintf("Context: %s", formatTokenCount(m.contextTokens))))
+		}
+	} else if m.contextPct > 0 {
+		rightParts = append(rightParts, contextStyleForPct(m.contextPct, theme).Render(fmt.Sprintf("ctx:%.0f%%", m.contextPct)))
+	}
+
 	if m.tokenRate > 0 {
 		rightParts = append(rightParts, mutedStyle.Render(fmt.Sprintf("%.1f tok/s", m.tokenRate)))
 	}
 
 	right := strings.Join(rightParts, " ")
+	rightWidth := lipgloss.Width(right)
 
 	if left == "" && right == "" {
 		return mutedStyle.Render("weave")
@@ -312,10 +328,33 @@ func (m FooterModel) renderLine2(theme *palette.Theme) string {
 
 	// Pad with spaces to push right group to the right edge
 	leftWidth := lipgloss.Width(left)
-	rightWidth := lipgloss.Width(right)
 	padding := max(m.width-leftWidth-rightWidth, 1)
 
 	return left + strings.Repeat(" ", padding) + right
+}
+
+func contextStyleForPct(pct float64, theme *palette.Theme) lipgloss.Style {
+	style := lipgloss.NewStyle()
+	if pct > 90 {
+		return style.Foreground(lipgloss.Color(theme.Error))
+	}
+	if pct > 70 {
+		return style.Foreground(lipgloss.Color(theme.Warning))
+	}
+	return style.Foreground(lipgloss.Color(theme.Success))
+}
+
+func formatTokenCount(tokens int) string {
+	switch {
+	case tokens >= 1_000_000:
+		value := float64(tokens) / 1_000_000
+		return strings.TrimSuffix(strings.TrimSuffix(fmt.Sprintf("%.1f", value), "0"), ".") + "M"
+	case tokens >= 1_000:
+		value := float64(tokens) / 1_000
+		return strings.TrimSuffix(strings.TrimSuffix(fmt.Sprintf("%.1f", value), "0"), ".") + "k"
+	default:
+		return fmt.Sprintf("%d", tokens)
+	}
 }
 
 // shortenPath replaces the home directory prefix with ~.

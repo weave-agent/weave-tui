@@ -2038,6 +2038,43 @@ func TestModel_Draw_LayoutSyncsChatSize(t *testing.T) {
 	assert.Contains(t, rendered, "test")
 }
 
+func TestModel_TokenUsageSetsFooterContextUsage(t *testing.T) {
+	sdkmodel.ResetModelRegistry()
+	sdkmodel.RegisterModel(sdkmodel.ModelDef{ID: "gpt-5.5", Provider: "openai", ContextWindow: 1000000})
+	defer sdkmodel.ResetModelRegistry()
+
+	m := newModel(nil, nil, nil, nil)
+	m.currentModel = ModelEntry{Provider: "openai", Model: "gpt-5.5"}
+
+	updated, _ := m.Update(TokenUsageMsg{InputTokens: 1000, OutputTokens: 1200, ContextTokens: 93800})
+	m = updated.(Model)
+
+	assert.Equal(t, 93800, m.footer.ContextTokens())
+	assert.Equal(t, 1000000, m.footer.ContextLimit())
+}
+
+func TestModel_ContextUsageUpdatesOnSubmitAndMessageEnd(t *testing.T) {
+	sdkmodel.ResetModelRegistry()
+	sdkmodel.RegisterModel(sdkmodel.ModelDef{ID: "gpt-5.5", Provider: "openai", ContextWindow: 1000000})
+	defer sdkmodel.ResetModelRegistry()
+
+	m := newModel(nil, nil, nil, nil)
+	m.currentModel = ModelEntry{Provider: "openai", Model: "gpt-5.5"}
+
+	updated, _ := m.onSubmit(strings.Repeat("u", 4000))
+	m = updated.(Model)
+
+	assert.Equal(t, 1000, m.footer.ContextTokens())
+
+	updated, _ = m.Update(MessageStartMsg{})
+	m = updated.(Model)
+	updated, _ = m.Update(MessageEndMsg{Content: strings.Repeat("a", 2000)})
+	m = updated.(Model)
+
+	assert.Equal(t, 1500, m.footer.ContextTokens())
+	assert.Equal(t, 1000000, m.footer.ContextLimit())
+}
+
 func TestModel_TokenRatePassedToFooter(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80

@@ -140,6 +140,8 @@ type Model struct {
 	// theme is the active color theme for rendering.
 	theme *palette.Theme
 
+	contextTokens int
+
 	// agentState tracks current agent activity for accent color and pulse.
 	agentState palette.State
 
@@ -700,11 +702,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case MessageEndMsg:
 		m.onMessageEnd(msg)
+		m.updateFooterContextUsage()
 
 		return m, nil
 
 	case ToolResultMsg:
 		m.onToolResult(msg)
+		m.contextTokens += estimateContextTokens(msg.Result.Content)
+		m.updateFooterContextUsage()
 
 		// Schedule a tick to ensure the post-flash settled border is rendered
 		// even if the TUI goes idle before the 800ms flash expires.
@@ -743,8 +748,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case TokenUsageMsg:
+		if msg.ContextTokens > 0 {
+			m.contextTokens = msg.ContextTokens
+		}
+
 		m.footer = m.footer.SetTokenUsage(msg.InputTokens, msg.OutputTokens, 0).
 			SetCacheTokens(msg.CacheCreationTokens, msg.CacheReadTokens)
+		m.updateFooterContextUsage()
 
 		return m, nil
 
@@ -1578,6 +1588,7 @@ func (m *Model) onMessageUpdate(msg MessageUpdateMsg) {
 // onMessageEnd finalizes the current assistant message and creates pending tool panels.
 func (m *Model) onMessageEnd(msg MessageEndMsg) {
 	m.footer = m.footer.SetTokenRate(0)
+	m.contextTokens += estimateContextTokens(msg.Content)
 
 	for _, tc := range msg.ToolCalls {
 		m.trackPendingToolCall(tc)
@@ -1799,6 +1810,8 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 	m.attach = m.attach.Clear()
 
 	m.AddUserMessage(promptText)
+	m.contextTokens += estimateContextTokens(promptText)
+	m.updateFooterContextUsage()
 
 	if !m.prompted {
 		m.prompted = true
@@ -1952,6 +1965,23 @@ func (m Model) onModelChanged(msg ModelChangedMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, m.statusTimer
+}
+
+func estimateContextTokens(s string) int {
+	return len(s) / 4
+}
+
+func (m *Model) updateFooterContextUsage() {
+	m.footer = m.footer.SetContextUsage(m.contextTokens, m.contextLimit())
+}
+
+func (m Model) contextLimit() int {
+	def, ok := sdkmodel.GetModelForProvider(m.currentModel.Model, m.currentModel.Provider)
+	if !ok {
+		return 0
+	}
+
+	return def.ContextWindow
 }
 
 func (m Model) onModelChangeFailed(msg ModelChangeFailedMsg) (tea.Model, tea.Cmd) {

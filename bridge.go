@@ -135,6 +135,7 @@ type TokenUsageMsg struct {
 	OutputTokens        int
 	CacheCreationTokens int
 	CacheReadTokens     int
+	ContextTokens       int
 }
 
 // AgentStateChangeMsg is sent when the agent activity state changes.
@@ -337,12 +338,14 @@ func translateUsage(payload any) TokenUsageMsg {
 	outputTokens, _ := m["output_tokens"].(int)
 	cacheCreationTokens, _ := m["cache_creation_tokens"].(int)
 	cacheReadTokens, _ := m["cache_read_tokens"].(int)
+	contextTokens, _ := m["context_tokens"].(int)
 
 	return TokenUsageMsg{
 		InputTokens:         inputTokens,
 		OutputTokens:        outputTokens,
 		CacheCreationTokens: cacheCreationTokens,
 		CacheReadTokens:     cacheReadTokens,
+		ContextTokens:       contextTokens,
 	}
 }
 

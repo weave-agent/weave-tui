@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	uv "github.com/charmbracelet/ultraviolet"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,6 +48,90 @@ func TestFooterModel_RenderLine2_WithCacheTokens(t *testing.T) {
 	line2 := f.renderLine2(nil)
 	assert.Contains(t, line2, "in:1000 out:500")
 	assert.Contains(t, line2, "cache:+200 ~800")
+}
+
+func TestFooterModel_SetContextUsage(t *testing.T) {
+	f := NewFooterModel().SetContextUsage(93800, 1000000)
+	assert.Equal(t, 93800, f.ContextTokens())
+	assert.Equal(t, 1000000, f.ContextLimit())
+	assert.InDelta(t, 9.38, f.ContextPct(), 0.01)
+}
+
+func TestFooterView_ContextUsageDisplayed(t *testing.T) {
+	f := NewFooterModel().SetSize(120).SetContextUsage(93800, 1000000)
+	view := f.View()
+	assert.Contains(t, view, "Context: 93.8k/1M")
+}
+
+func TestFormatTokenCount(t *testing.T) {
+	tests := []struct {
+		name   string
+		tokens int
+		want   string
+	}{
+		{name: "plain", tokens: 999, want: "999"},
+		{name: "thousands", tokens: 93800, want: "93.8k"},
+		{name: "whole thousands", tokens: 100000, want: "100k"},
+		{name: "millions", tokens: 1050000, want: "1.1M"},
+		{name: "whole millions", tokens: 1000000, want: "1M"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, formatTokenCount(tt.tokens))
+		})
+	}
+}
+
+func TestFooterView_ThinkingLevelBeforeContextUsage(t *testing.T) {
+	f := NewFooterModel().
+		SetSize(120).
+		SetModel("claude-sonnet-4-6", "anthropic").
+		SetReasoning(true).
+		SetThinkingLevel("high").
+		SetContextUsage(93800, 1000000)
+
+	line := ansi.Strip(strings.Split(f.View(), "\n")[1])
+	modelIdx := strings.Index(line, "anthropic/claude-sonnet-4-6")
+	thinkingIdx := strings.Index(line, "high")
+	contextIdx := strings.Index(line, "Context: 93.8k/1M")
+
+	require.NotEqual(t, -1, modelIdx)
+	require.NotEqual(t, -1, thinkingIdx)
+	require.NotEqual(t, -1, contextIdx)
+	assert.Greater(t, thinkingIdx, modelIdx)
+	assert.Greater(t, contextIdx, thinkingIdx)
+}
+
+func TestFooterView_ContextUsageAfterModel(t *testing.T) {
+	f := NewFooterModel().
+		SetSize(120).
+		SetModel("claude-sonnet-4-6", "anthropic").
+		SetContextUsage(93800, 1000000)
+
+	line := ansi.Strip(strings.Split(f.View(), "\n")[1])
+	modelIdx := strings.Index(line, "anthropic/claude-sonnet-4-6")
+	contextIdx := strings.Index(line, "Context: 93.8k/1M")
+
+	require.NotEqual(t, -1, modelIdx)
+	require.NotEqual(t, -1, contextIdx)
+	assert.Greater(t, contextIdx, modelIdx)
+}
+
+func TestFooterView_PreservesRightSideWhenContextWouldOverflow(t *testing.T) {
+	f := NewFooterModel().
+		SetSize(56).
+		SetModel("claude-sonnet-4-6", "anthropic").
+		SetTokenRate(42.5).
+		SetContextUsage(93800, 1000000)
+
+	line := strings.Split(f.View(), "\n")[1]
+	plain := ansi.Strip(line)
+
+	assert.Contains(t, plain, "anthropic/claude-sonnet-4-6")
+	assert.Contains(t, plain, "Context: 93.8k/1M")
+	assert.Contains(t, plain, "42.5 tok/s")
+	assert.LessOrEqual(t, len([]rune(plain)), f.Width())
 }
 
 func TestFooterModel_SetContextPct(t *testing.T) {
