@@ -511,8 +511,8 @@ func TestBridge_ToolLifecycleEvents(t *testing.T) {
 
 	// Tool lifecycle: start → progress → complete
 	events <- sdk.NewEvent(topicToolStart, map[string]any{
-		"id":   "tc1",
-		"tool": "bash",
+		"id":    "tc1",
+		"tool":  "bash",
 		"input": "ls",
 	})
 

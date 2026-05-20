@@ -731,8 +731,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ToolCompleteMsg:
 		m.onToolComplete(msg)
-		m.contextTokens += estimateContextTokens(msg.Content)
-		m.updateFooterContextUsage()
 		m.syncChatViewport()
 
 		return m, tea.Tick(800*time.Millisecond, func(time.Time) tea.Msg {
@@ -741,8 +739,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ToolErrorMsg:
 		m.onToolError(msg)
-		m.contextTokens += estimateContextTokens(msg.Error)
-		m.updateFooterContextUsage()
 		m.syncChatViewport()
 
 		return m, tea.Tick(800*time.Millisecond, func(time.Time) tea.Msg {
@@ -751,10 +747,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ToolInterruptedMsg:
 		m.onToolInterrupted(msg)
-		if panel, ok := m.toolPanels[msg.ToolID]; ok {
-			m.contextTokens += estimateContextTokens(panel.Progress())
-			m.updateFooterContextUsage()
-		}
 		m.syncChatViewport()
 
 		return m, tea.Tick(800*time.Millisecond, func(time.Time) tea.Msg {
@@ -1709,8 +1701,10 @@ func (m *Model) onToolResult(msg ToolResultMsg) {
 		m.chat = m.chat.AddItem(panel)
 	}
 
-	panel.SetResult(msg.Result.Content, msg.Result.IsError)
-	m.chat = m.chat.UpdateItemByID(panel)
+	if panel.State() != messages.ToolInterrupted {
+		panel.SetResult(msg.Result.Content, msg.Result.IsError)
+		m.chat = m.chat.UpdateItemByID(panel)
+	}
 }
 
 // withToolPanel looks up or creates a tool panel by ID, applies an update, and
@@ -1736,7 +1730,12 @@ func (m *Model) onToolStart(msg ToolStartMsg) {
 
 // onToolProgress updates a running tool panel with partial output.
 func (m *Model) onToolProgress(msg ToolProgressMsg) {
-	m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
+	id := msg.ToolID
+	if id == "" && msg.Tool != "" {
+		id = m.pendingToolIDByName(msg.Tool)
+	}
+
+	m.withToolPanel(id, msg.Tool, "", func(p *messages.ToolPanel) {
 		if p.State() == messages.ToolPending {
 			p.SetRunning()
 		}
@@ -1818,6 +1817,16 @@ func (m *Model) clearPendingToolCall(id string) {
 
 		m.pendingToolOrder = m.pendingToolOrder[1:]
 	}
+}
+
+func (m Model) pendingToolIDByName(tool string) string {
+	for _, id := range m.pendingToolOrder {
+		if name, ok := m.pendingToolCalls[id]; ok && name == tool {
+			return id
+		}
+	}
+
+	return ""
 }
 
 func (m Model) activeToolName() string {

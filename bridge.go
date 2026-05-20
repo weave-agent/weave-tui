@@ -393,6 +393,10 @@ func translateToolResult(payload any) ToolResultMsg {
 }
 
 func translateToolStart(payload any) ToolStartMsg {
+	if tp, ok := payload.(sdk.ToolProgress); ok {
+		return ToolStartMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName}
+	}
+
 	m, ok := payload.(map[string]any)
 	if !ok {
 		return ToolStartMsg{}
@@ -406,6 +410,10 @@ func translateToolStart(payload any) ToolStartMsg {
 }
 
 func translateToolProgress(payload any) ToolProgressMsg {
+	if tp, ok := payload.(sdk.ToolProgress); ok {
+		return ToolProgressMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName, Content: tp.Content}
+	}
+
 	m, ok := payload.(map[string]any)
 	if !ok {
 		return ToolProgressMsg{}
@@ -419,6 +427,10 @@ func translateToolProgress(payload any) ToolProgressMsg {
 }
 
 func translateToolComplete(payload any) ToolCompleteMsg {
+	if tp, ok := payload.(sdk.ToolProgress); ok {
+		return ToolCompleteMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName, Content: tp.Content}
+	}
+
 	m, ok := payload.(map[string]any)
 	if !ok {
 		return ToolCompleteMsg{}
@@ -432,6 +444,10 @@ func translateToolComplete(payload any) ToolCompleteMsg {
 }
 
 func translateToolError(payload any) ToolErrorMsg {
+	if tp, ok := payload.(sdk.ToolProgress); ok {
+		return ToolErrorMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName, Error: tp.Content}
+	}
+
 	m, ok := payload.(map[string]any)
 	if !ok {
 		return ToolErrorMsg{}
@@ -445,6 +461,10 @@ func translateToolError(payload any) ToolErrorMsg {
 }
 
 func translateToolInterrupted(payload any) ToolInterruptedMsg {
+	if tp, ok := payload.(sdk.ToolProgress); ok {
+		return ToolInterruptedMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName}
+	}
+
 	m, ok := payload.(map[string]any)
 	if !ok {
 		return ToolInterruptedMsg{}

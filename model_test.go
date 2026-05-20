@@ -659,6 +659,35 @@ func TestModel_ToolInterruptedMsg_MarksPanel(t *testing.T) {
 	assert.Contains(t, tp.View(80), "(interrupted)")
 }
 
+func TestModel_ToolResultMsg_PreservesInterrupted(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(MessageStartMsg{})
+	m = model.(Model)
+
+	model, _ = m.Update(MessageEndMsg{
+		Content:   "running bash",
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
+	})
+	m = model.(Model)
+
+	model, _ = m.Update(ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
+	m = model.(Model)
+
+	// Legacy agent.tool_result with "interrupted" should not overwrite
+	model, _ = m.Update(ToolResultMsg{ToolID: "tc1", Tool: "bash", Result: sdk.ToolResult{Content: "interrupted", IsError: false}})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	tp, ok := items[1].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, messages.ToolInterrupted, tp.State())
+	assert.Contains(t, tp.View(80), "(interrupted)")
+}
+
 func TestModel_ToolStartMsg_CreatesPanelIfMissing(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
