@@ -222,27 +222,26 @@ func (r *BindingRegistry) AllBindings() []Binding {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	// Build merged key map: defaults < extension < user
 	merged := make(map[string]BindingAction)
 	maps.Copy(merged, r.defaults)
 	maps.Copy(merged, r.extension)
 	maps.Copy(merged, r.user)
 
-	// Collect unique actions
-	seen := make(map[BindingAction]bool)
+	keysByAction := make(map[BindingAction][]string)
+	for key, action := range merged {
+		keysByAction[action] = append(keysByAction[action], key)
+	}
 
-	var result []Binding
-
-	for _, a := range merged {
-		if seen[a] {
+	result := make([]Binding, 0, len(keysByAction))
+	for action, keys := range keysByAction {
+		binding, ok := r.actions[action]
+		if !ok {
 			continue
 		}
 
-		seen[a] = true
-
-		if b, ok := r.actions[a]; ok {
-			result = append(result, b)
-		}
+		sort.Strings(keys)
+		binding.Keys = keys
+		result = append(result, binding)
 	}
 
 	sort.Slice(result, func(i, j int) bool {

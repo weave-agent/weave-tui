@@ -1450,6 +1450,14 @@ func (m Model) dispatchBinding(action BindingAction) (tea.Model, tea.Cmd) {
 	}
 }
 
+func (m Model) showKeybindingsHelp() Model {
+	dialog := newKeybindingsHelpDialog(dialogKeybindingsHelp, m.bindings.AllBindings())
+	dialog.SetSize(m.width, m.height)
+	m.dialogStack = m.dialogStack.Push(dialog)
+
+	return m
+}
+
 // toggleLastToolOutput expands or collapses the last tool output panel or skill message.
 func (m *Model) toggleLastToolOutput() {
 	items := m.chat.Items()
@@ -1800,6 +1808,10 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 				am.Finalize(result.Notify)
 				m.chat = m.chat.UpdateItem(am)
 			}
+		}
+
+		if result.ShowKeybindings {
+			m = m.showKeybindingsHelp()
 		}
 
 		return m, result.Command

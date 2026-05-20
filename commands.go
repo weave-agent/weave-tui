@@ -25,6 +25,8 @@ type CommandResult struct {
 	ResetPrompt bool
 	// Notify shows a message in chat (info).
 	Notify string
+	// ShowKeybindings opens the keybindings help overlay.
+	ShowKeybindings bool
 	// Command publishes a tea.Cmd.
 	Command tea.Cmd
 }
@@ -68,6 +70,10 @@ func NewCommandRegistry(bus sdk.Bus, sessionDir string) *CommandRegistry {
 
 	r.register("/help", "Show available commands", false, func(_ string) CommandResult {
 		return CommandResult{Notify: r.helpText()}
+	})
+
+	r.register("/keybind-help", "Show keybindings help", false, func(_ string) CommandResult {
+		return CommandResult{ShowKeybindings: true}
 	})
 
 	r.register("/compact", "Compact conversation history", false, func(args string) CommandResult {

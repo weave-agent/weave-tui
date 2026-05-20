@@ -27,6 +27,7 @@ func TestCommandRegistry_BuiltinCommands(t *testing.T) {
 	assert.Contains(t, names, "/clear")
 	assert.Contains(t, names, "/quit")
 	assert.Contains(t, names, "/help")
+	assert.Contains(t, names, "/keybind-help")
 	assert.Contains(t, names, "/compact")
 	assert.Contains(t, names, "/name")
 	assert.Contains(t, names, "/login")
@@ -673,4 +674,15 @@ func TestCommandRegistry_LoginLogoutInHelp(t *testing.T) {
 	help := r.helpText()
 	assert.Contains(t, help, "/login")
 	assert.Contains(t, help, "/logout")
+}
+
+func TestCommandRegistry_DispatchKeybindHelp(t *testing.T) {
+	b := bus.New()
+	defer func() { _ = b.Close() }()
+
+	r := NewCommandRegistry(b, "")
+
+	handled, result := r.Dispatch("/keybind-help")
+	require.True(t, handled)
+	assert.True(t, result.ShowKeybindings)
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -434,4 +435,58 @@ func TestModel_V2KeyDispatch_MultiRuneText(t *testing.T) {
 
 	assert.NotNil(t, cmd) // virtual cursor blink cmd
 	assert.Equal(t, "abc", m.editor.Value())
+}
+
+func TestBindingRegistry_AllBindingsUsesResolvedKeys(t *testing.T) {
+	r := NewBindingRegistry()
+	r.Register("app.custom", []string{"ctrl+d"}, "Custom action")
+
+	bindings := r.AllBindings()
+	byAction := make(map[BindingAction]Binding, len(bindings))
+	for _, binding := range bindings {
+		byAction[binding.Action] = binding
+	}
+
+	assert.NotContains(t, byAction[ActionExit].Keys, "ctrl+d")
+	assert.Contains(t, byAction["app.custom"].Keys, "ctrl+d")
+}
+
+func TestModel_KeybindHelpCommandOpensDialog(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 100
+	m.height = 30
+
+	model, cmd := m.onSubmit("/keybind-help")
+	m = model.(Model)
+
+	assert.Nil(t, cmd)
+	require.False(t, m.dialogStack.Empty())
+	assert.Equal(t, dialogKeybindingsHelp, m.dialogStack.Peek().ID())
+}
+
+func TestModel_KeybindingsHelpRendersResolvedBindings(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 100
+	m.height = 30
+	m = m.showKeybindingsHelp()
+
+	canvas := uv.NewScreenBuffer(m.width, m.height)
+	m.Draw(canvas, canvas.Bounds())
+	rendered := canvas.Render()
+
+	assert.Contains(t, rendered, "Keybindings")
+	assert.Contains(t, rendered, "ctrl+d")
+}
+
+func TestModel_KeybindingsHelpEscapeClosesDialog(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 100
+	m.height = 30
+	m = m.showKeybindingsHelp()
+
+	model, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m = model.(Model)
+
+	assert.Nil(t, cmd)
+	assert.True(t, m.dialogStack.Empty())
 }
