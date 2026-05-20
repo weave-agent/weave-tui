@@ -902,11 +902,11 @@ func TestModel_AdvanceToolSpinners(t *testing.T) {
 	frameBefore := panel.State()
 	require.Equal(t, messages.ToolRunning, frameBefore)
 
-	m = m.advanceToolSpinners()
+	m.advanceToolSpinners()
 
 	// Spinner frame should have advanced (visible in view)
 	view1 := panel.View(80)
-	m = m.advanceToolSpinners()
+	m.advanceToolSpinners()
 	view2 := panel.View(80)
 
 	// After advancing twice, the header should contain a different spinner frame
