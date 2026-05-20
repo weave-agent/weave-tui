@@ -2360,7 +2360,7 @@ func TestModel_RefreshEditorCompletion_SlashCommand(t *testing.T) {
 	m = m.refreshEditorCompletion()
 	assert.True(t, m.editor.CompletionActive())
 	assert.Equal(t, components.CompletionSlash, m.editor.Completion().Kind())
-	assert.Equal(t, 1, m.editor.Completion().FilteredCount())
+	assert.Equal(t, 2, m.editor.Completion().FilteredCount())
 	item, ok := m.editor.Completion().SelectedItem()
 	require.True(t, ok)
 	assert.Equal(t, "/help ", item.Value)
@@ -2562,7 +2562,7 @@ func TestModel_CompletionKeyFlow_TypingUpdatesFilter(t *testing.T) {
 
 	require.True(t, m.editor.CompletionActive())
 	assert.Equal(t, components.CompletionSlash, m.editor.Completion().Kind())
-	assert.Equal(t, 1, m.editor.Completion().FilteredCount())
+	assert.Equal(t, 2, m.editor.Completion().FilteredCount())
 	item, ok := m.editor.Completion().SelectedItem()
 	require.True(t, ok)
 	assert.Equal(t, "/help ", item.Value)
