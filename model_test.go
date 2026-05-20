@@ -1933,6 +1933,36 @@ func TestModel_AgentEndMsg_WithEmptyString(t *testing.T) {
 	assert.Empty(t, m.chat.Items())
 }
 
+func TestModel_AgentEndMsg_InterruptsRunningTools(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	// Start a tool via message end (pending state)
+	model, _ := m.Update(MessageEndMsg{
+		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash"}},
+	})
+	m = model.(Model)
+
+	// Transition to running
+	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash"})
+	m = model.(Model)
+
+	// Agent ends while tool is still running
+	model, _ = m.Update(AgentEndMsg{Payload: nil})
+	m = model.(Model)
+
+	items := m.chat.Items()
+	require.Len(t, items, 1)
+	tp, ok := items[0].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, messages.ToolInterrupted, tp.State())
+	assert.Contains(t, tp.View(80), "(interrupted)")
+	assert.Empty(t, m.pendingToolCalls)
+	assert.Empty(t, m.pendingToolOrder)
+}
+
 func TestModel_GracefulShutdown(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 
