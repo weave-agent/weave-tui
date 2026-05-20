@@ -340,6 +340,24 @@ func TestModel_SlashCommandNewClearsChat(t *testing.T) {
 	assert.Empty(t, m2.toolPanels)
 }
 
+func TestModel_SlashCommandNewPublishesAgentReset(t *testing.T) {
+	b := bus.New()
+	defer func() { _ = b.Close() }()
+
+	ch := subscribeToChan(b, "agent.reset")
+
+	m := newModel(b, nil, nil, nil)
+	m.width = 80
+	m.height = 10
+	m.chat = m.chat.SetSize(80, 10)
+	m.prompted = true
+
+	_, _ = m.onSubmit("/new")
+
+	evt := <-ch
+	assert.Equal(t, "agent.reset", evt.Topic)
+}
+
 func TestModel_SlashCommandClear(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80

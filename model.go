@@ -1772,6 +1772,10 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 		}
 
 		if result.ResetPrompt {
+			if m.bus != nil {
+				m.bus.Publish(sdk.NewEvent("agent.reset", nil))
+			}
+
 			m.prompted = false
 		}
 
