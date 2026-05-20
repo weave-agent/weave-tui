@@ -910,10 +910,10 @@ func TestModel_AdvanceToolSpinners(t *testing.T) {
 	view2 := panel.View(80)
 
 	// After advancing twice, the header should contain a different spinner frame
-	// We can't easily assert the exact frame, but we can verify the panel is running
 	assert.Equal(t, messages.ToolRunning, panel.State())
 	assert.Contains(t, view1, "bash")
 	assert.Contains(t, view2, "bash")
+	assert.NotEqual(t, view1, view2, "spinner should produce different views after advancing")
 }
 
 func TestModel_ToolStartMsg_UpdatesExistingPanel(t *testing.T) {
@@ -1673,17 +1673,20 @@ func TestModel_InterruptStreaming(t *testing.T) {
 	assert.Nil(t, cmd)
 }
 
-func TestModel_InterruptNoStreamingMessage(t *testing.T) {
+func TestModel_EscapeWithNoStreamingMessage(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	// Interrupt with no streaming message should be no-op
-	model, cmd := m.dispatchBinding(ActionInterrupt)
+	// ESC with no streaming message and no active tool:
+	// handleEscape always schedules a double-press timeout tick;
+	// with nil bus, PublishInterrupt is skipped; interruptStreaming
+	// returns nil since no streaming message exists. Should not panic.
+	model, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = model.(Model)
 
-	assert.Nil(t, cmd)
+	assert.NotNil(t, cmd)
 	assert.Empty(t, m.chat.Items())
 }
 
@@ -1838,8 +1841,11 @@ func TestModel_EscapeInterruptsGenericTool_WithNilBus(t *testing.T) {
 	m = model.(Model)
 
 	require.NotNil(t, cmd)
-	// No bus means no interrupt event to verify; just ensure no panic and
-	// interruptStreaming was called (pending tool cleared via model mutation).
+	executeBatchCmd(t, cmd)
+	// With nil bus, no interrupt event is published and no ToolInterruptedMsg
+	// can arrive, so pending tool calls remain until the lifecycle message
+	// arrives (which requires a real bus/agent loop).
+	assert.NotEmpty(t, m.pendingToolCalls)
 }
 
 func TestModel_EscapeDuringToolRunning_PanelBecomesInterrupted(t *testing.T) {

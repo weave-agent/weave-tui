@@ -733,6 +733,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.onToolComplete(msg)
 		m.contextTokens += estimateContextTokens(msg.Content)
 		m.updateFooterContextUsage()
+		m.syncChatViewport()
 
 		return m, tea.Tick(800*time.Millisecond, func(time.Time) tea.Msg {
 			return toolFlashExpireMsg{}
@@ -742,6 +743,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.onToolError(msg)
 		m.contextTokens += estimateContextTokens(msg.Error)
 		m.updateFooterContextUsage()
+		m.syncChatViewport()
 
 		return m, tea.Tick(800*time.Millisecond, func(time.Time) tea.Msg {
 			return toolFlashExpireMsg{}

@@ -531,7 +531,7 @@ func TestBridge_ToolLifecycleEvents(t *testing.T) {
 	close(events)
 	<-done
 
-	// Should have: state change (Idle→ToolRunning) + ToolStart + ToolProgress + state change (ToolRunning→Idle) + ToolComplete + Shutdown
+	// Should have: state change (Idle→ToolRunning) + ToolStart + ToolProgress + state change (ToolRunning→Streaming) + ToolComplete + Shutdown
 	var toolStartFound, toolProgressFound, toolCompleteFound bool
 	var stateChanges []AgentStateChangeMsg
 
