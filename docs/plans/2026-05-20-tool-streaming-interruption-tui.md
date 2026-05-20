@@ -22,10 +22,10 @@ Fix ESC so it always interrupts running tools (not just streaming assistants). A
 - [x] Run extension tests — must pass
 
 ### Task 2: Add tool event messages and bridge forwarding
-- [ ] Add `ToolStartMsg`, `ToolProgressMsg`, `ToolCompleteMsg`, `ToolErrorMsg`, `ToolInterruptedMsg` types
-- [ ] Extend `Bridge` to translate new bus events into Tea messages
-- [ ] Write tests for bridge event translation
-- [ ] Run extension tests — must pass
+- [x] Add `ToolStartMsg`, `ToolProgressMsg`, `ToolCompleteMsg`, `ToolErrorMsg`, `ToolInterruptedMsg` types
+- [x] Extend `Bridge` to translate new bus events into Tea messages
+- [x] Write tests for bridge event translation
+- [x] Run extension tests — must pass
 
 ### Task 3: Render tool lifecycle in chat
 - [ ] Track in-flight tools in model state (map[string]ToolProgress)

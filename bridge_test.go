@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/weave-agent/weave-tui/palette"
 	"github.com/weave-agent/weave/bus"
 	"github.com/weave-agent/weave/sdk"
 
@@ -110,6 +111,119 @@ func TestTranslateEvent_ToolResult_NilPayload(t *testing.T) {
 	require.True(t, ok)
 	assert.Empty(t, tr.ToolID)
 	assert.Empty(t, tr.Tool)
+}
+
+func TestTranslateEvent_ToolStart(t *testing.T) {
+	payload := map[string]any{
+		"id":    "tc1",
+		"tool":  "bash",
+		"input": "ls -la",
+	}
+
+	msg := translateEvent(sdk.NewEvent(topicToolStart, payload))
+	ts, ok := msg.(ToolStartMsg)
+	require.True(t, ok)
+	assert.Equal(t, "tc1", ts.ToolID)
+	assert.Equal(t, "bash", ts.Tool)
+	assert.Equal(t, "ls -la", ts.Input)
+}
+
+func TestTranslateEvent_ToolStart_NilPayload(t *testing.T) {
+	msg := translateEvent(sdk.NewEvent(topicToolStart, nil))
+	ts, ok := msg.(ToolStartMsg)
+	require.True(t, ok)
+	assert.Empty(t, ts.ToolID)
+	assert.Empty(t, ts.Tool)
+}
+
+func TestTranslateEvent_ToolProgress(t *testing.T) {
+	payload := map[string]any{
+		"id":      "tc1",
+		"tool":    "bash",
+		"content": "line 1\nline 2",
+	}
+
+	msg := translateEvent(sdk.NewEvent(topicToolProgress, payload))
+	tp, ok := msg.(ToolProgressMsg)
+	require.True(t, ok)
+	assert.Equal(t, "tc1", tp.ToolID)
+	assert.Equal(t, "bash", tp.Tool)
+	assert.Equal(t, "line 1\nline 2", tp.Content)
+}
+
+func TestTranslateEvent_ToolProgress_NilPayload(t *testing.T) {
+	msg := translateEvent(sdk.NewEvent(topicToolProgress, nil))
+	tp, ok := msg.(ToolProgressMsg)
+	require.True(t, ok)
+	assert.Empty(t, tp.ToolID)
+	assert.Empty(t, tp.Content)
+}
+
+func TestTranslateEvent_ToolComplete(t *testing.T) {
+	payload := map[string]any{
+		"id":      "tc1",
+		"tool":    "bash",
+		"content": "output here",
+	}
+
+	msg := translateEvent(sdk.NewEvent(topicToolComplete, payload))
+	tc, ok := msg.(ToolCompleteMsg)
+	require.True(t, ok)
+	assert.Equal(t, "tc1", tc.ToolID)
+	assert.Equal(t, "bash", tc.Tool)
+	assert.Equal(t, "output here", tc.Content)
+}
+
+func TestTranslateEvent_ToolComplete_NilPayload(t *testing.T) {
+	msg := translateEvent(sdk.NewEvent(topicToolComplete, nil))
+	tc, ok := msg.(ToolCompleteMsg)
+	require.True(t, ok)
+	assert.Empty(t, tc.ToolID)
+	assert.Empty(t, tc.Content)
+}
+
+func TestTranslateEvent_ToolError(t *testing.T) {
+	payload := map[string]any{
+		"id":    "tc1",
+		"tool":  "bash",
+		"error": "command not found",
+	}
+
+	msg := translateEvent(sdk.NewEvent(topicToolError, payload))
+	te, ok := msg.(ToolErrorMsg)
+	require.True(t, ok)
+	assert.Equal(t, "tc1", te.ToolID)
+	assert.Equal(t, "bash", te.Tool)
+	assert.Equal(t, "command not found", te.Error)
+}
+
+func TestTranslateEvent_ToolError_NilPayload(t *testing.T) {
+	msg := translateEvent(sdk.NewEvent(topicToolError, nil))
+	te, ok := msg.(ToolErrorMsg)
+	require.True(t, ok)
+	assert.Empty(t, te.ToolID)
+	assert.Empty(t, te.Error)
+}
+
+func TestTranslateEvent_ToolInterrupted(t *testing.T) {
+	payload := map[string]any{
+		"id":   "tc1",
+		"tool": "bash",
+	}
+
+	msg := translateEvent(sdk.NewEvent(topicToolInterrupted, payload))
+	ti, ok := msg.(ToolInterruptedMsg)
+	require.True(t, ok)
+	assert.Equal(t, "tc1", ti.ToolID)
+	assert.Equal(t, "bash", ti.Tool)
+}
+
+func TestTranslateEvent_ToolInterrupted_NilPayload(t *testing.T) {
+	msg := translateEvent(sdk.NewEvent(topicToolInterrupted, nil))
+	ti, ok := msg.(ToolInterruptedMsg)
+	require.True(t, ok)
+	assert.Empty(t, ti.ToolID)
+	assert.Empty(t, ti.Tool)
 }
 
 func TestTranslateEvent_AgentEnd(t *testing.T) {
@@ -374,6 +488,156 @@ func TestPublishSteer(t *testing.T) {
 	evt := <-ch
 	assert.Equal(t, topicSteer, evt.Topic)
 	assert.Equal(t, "steer text", evt.Payload)
+}
+
+func TestBridge_ToolLifecycleEvents(t *testing.T) {
+	sender := &collectingSender{}
+	events := make(chan sdk.Event, 20)
+
+	done := make(chan struct{})
+
+	go func() {
+		Bridge(sender, events)
+		close(done)
+	}()
+
+	// Tool lifecycle: start → progress → complete
+	events <- sdk.NewEvent(topicToolStart, map[string]any{
+		"id":   "tc1",
+		"tool": "bash",
+		"input": "ls",
+	})
+
+	events <- sdk.NewEvent(topicToolProgress, map[string]any{
+		"id":      "tc1",
+		"tool":    "bash",
+		"content": "partial output",
+	})
+
+	events <- sdk.NewEvent(topicToolComplete, map[string]any{
+		"id":      "tc1",
+		"tool":    "bash",
+		"content": "final output",
+	})
+
+	close(events)
+	<-done
+
+	// Should have: state change (Idle→ToolRunning) + ToolStart + ToolProgress + state change (ToolRunning→Idle) + ToolComplete + Shutdown
+	var toolStartFound, toolProgressFound, toolCompleteFound bool
+	var stateChanges []AgentStateChangeMsg
+
+	for _, msg := range sender.msgs {
+		switch m := msg.(type) {
+		case ToolStartMsg:
+			toolStartFound = true
+			assert.Equal(t, "tc1", m.ToolID)
+			assert.Equal(t, "bash", m.Tool)
+			assert.Equal(t, "ls", m.Input)
+		case ToolProgressMsg:
+			toolProgressFound = true
+			assert.Equal(t, "partial output", m.Content)
+		case ToolCompleteMsg:
+			toolCompleteFound = true
+			assert.Equal(t, "final output", m.Content)
+		case AgentStateChangeMsg:
+			stateChanges = append(stateChanges, m)
+		}
+	}
+
+	assert.True(t, toolStartFound, "expected ToolStartMsg")
+	assert.True(t, toolProgressFound, "expected ToolProgressMsg")
+	assert.True(t, toolCompleteFound, "expected ToolCompleteMsg")
+	require.Len(t, stateChanges, 2)
+	assert.Equal(t, palette.StateToolRunning, stateChanges[0].State)
+	assert.Equal(t, palette.StateStreaming, stateChanges[1].State)
+}
+
+func TestBridge_ToolErrorEvent(t *testing.T) {
+	sender := &collectingSender{}
+	events := make(chan sdk.Event, 10)
+
+	done := make(chan struct{})
+
+	go func() {
+		Bridge(sender, events)
+		close(done)
+	}()
+
+	events <- sdk.NewEvent(topicToolStart, map[string]any{
+		"id":   "tc1",
+		"tool": "bash",
+	})
+
+	events <- sdk.NewEvent(topicToolError, map[string]any{
+		"id":    "tc1",
+		"tool":  "bash",
+		"error": "command not found",
+	})
+
+	close(events)
+	<-done
+
+	var toolErrorFound bool
+	var stateChanges []AgentStateChangeMsg
+
+	for _, msg := range sender.msgs {
+		switch m := msg.(type) {
+		case ToolErrorMsg:
+			toolErrorFound = true
+			assert.Equal(t, "command not found", m.Error)
+		case AgentStateChangeMsg:
+			stateChanges = append(stateChanges, m)
+		}
+	}
+
+	assert.True(t, toolErrorFound, "expected ToolErrorMsg")
+	require.Len(t, stateChanges, 2)
+	assert.Equal(t, palette.StateToolRunning, stateChanges[0].State)
+	assert.Equal(t, palette.StateStreaming, stateChanges[1].State)
+}
+
+func TestBridge_ToolInterruptedEvent(t *testing.T) {
+	sender := &collectingSender{}
+	events := make(chan sdk.Event, 10)
+
+	done := make(chan struct{})
+
+	go func() {
+		Bridge(sender, events)
+		close(done)
+	}()
+
+	events <- sdk.NewEvent(topicToolStart, map[string]any{
+		"id":   "tc1",
+		"tool": "bash",
+	})
+
+	events <- sdk.NewEvent(topicToolInterrupted, map[string]any{
+		"id":   "tc1",
+		"tool": "bash",
+	})
+
+	close(events)
+	<-done
+
+	var toolInterruptedFound bool
+	var stateChanges []AgentStateChangeMsg
+
+	for _, msg := range sender.msgs {
+		switch m := msg.(type) {
+		case ToolInterruptedMsg:
+			toolInterruptedFound = true
+			assert.Equal(t, "tc1", m.ToolID)
+		case AgentStateChangeMsg:
+			stateChanges = append(stateChanges, m)
+		}
+	}
+
+	assert.True(t, toolInterruptedFound, "expected ToolInterruptedMsg")
+	require.Len(t, stateChanges, 2)
+	assert.Equal(t, palette.StateToolRunning, stateChanges[0].State)
+	assert.Equal(t, palette.StateStreaming, stateChanges[1].State)
 }
 
 // collectingSender captures Send calls for testing.

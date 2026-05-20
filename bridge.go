@@ -41,6 +41,12 @@ const (
 	topicAuthLoginSuccess = "auth.login.success"
 	topicAuthLogout       = "auth.logout"
 
+	topicToolStart       = "tool.start"
+	topicToolProgress    = "tool.progress"
+	topicToolComplete    = "tool.complete"
+	topicToolError       = "tool.error"
+	topicToolInterrupted = "tool.interrupted"
+
 	keyProvider = "provider"
 	keyModel    = "model"
 )
@@ -75,6 +81,40 @@ type ToolResultMsg struct {
 	ToolID string
 	Tool   string
 	Result sdk.ToolResult
+}
+
+// ToolStartMsg is sent when a tool begins executing.
+type ToolStartMsg struct {
+	ToolID string
+	Tool   string
+	Input  string
+}
+
+// ToolProgressMsg carries a live update from a running tool.
+type ToolProgressMsg struct {
+	ToolID  string
+	Tool    string
+	Content string
+}
+
+// ToolCompleteMsg is sent when a tool finishes successfully.
+type ToolCompleteMsg struct {
+	ToolID  string
+	Tool    string
+	Content string
+}
+
+// ToolErrorMsg is sent when a tool fails.
+type ToolErrorMsg struct {
+	ToolID string
+	Tool   string
+	Error  string
+}
+
+// ToolInterruptedMsg is sent when a tool is interrupted (e.g., by ESC).
+type ToolInterruptedMsg struct {
+	ToolID string
+	Tool   string
 }
 
 type AgentEndMsg struct {
@@ -181,6 +221,19 @@ func (t *agentStateTracker) update(msg tea.Msg) (palette.State, bool) {
 			t.toolCount += len(msg.ToolCalls)
 			t.state = palette.StateToolRunning
 		}
+	case ToolStartMsg:
+		t.toolCount++
+		t.state = palette.StateToolRunning
+	case ToolCompleteMsg, ToolErrorMsg, ToolInterruptedMsg:
+		if t.toolCount > 0 {
+			t.toolCount--
+		}
+
+		if t.toolCount > 0 {
+			t.state = palette.StateToolRunning
+		} else if t.state == palette.StateToolRunning {
+			t.state = palette.StateStreaming
+		}
 	case TurnEndMsg:
 		t.state = palette.StateIdle
 		t.toolCount = 0
@@ -230,6 +283,16 @@ func translateEvent(evt sdk.Event) tea.Msg {
 		return translateMsgEnd(evt.Payload)
 	case topicToolResult:
 		return translateToolResult(evt.Payload)
+	case topicToolStart:
+		return translateToolStart(evt.Payload)
+	case topicToolProgress:
+		return translateToolProgress(evt.Payload)
+	case topicToolComplete:
+		return translateToolComplete(evt.Payload)
+	case topicToolError:
+		return translateToolError(evt.Payload)
+	case topicToolInterrupted:
+		return translateToolInterrupted(evt.Payload)
 	case topicEnd:
 		return AgentEndMsg{Payload: evt.Payload}
 	case topicSessionResume:
@@ -284,6 +347,70 @@ func translateToolResult(payload any) ToolResultMsg {
 	}
 
 	return ToolResultMsg{ToolID: id, Tool: tool, Result: result}
+}
+
+func translateToolStart(payload any) ToolStartMsg {
+	m, ok := payload.(map[string]any)
+	if !ok {
+		return ToolStartMsg{}
+	}
+
+	id, _ := m["id"].(string)
+	tool, _ := m["tool"].(string)
+	input, _ := m["input"].(string)
+
+	return ToolStartMsg{ToolID: id, Tool: tool, Input: input}
+}
+
+func translateToolProgress(payload any) ToolProgressMsg {
+	m, ok := payload.(map[string]any)
+	if !ok {
+		return ToolProgressMsg{}
+	}
+
+	id, _ := m["id"].(string)
+	tool, _ := m["tool"].(string)
+	content, _ := m["content"].(string)
+
+	return ToolProgressMsg{ToolID: id, Tool: tool, Content: content}
+}
+
+func translateToolComplete(payload any) ToolCompleteMsg {
+	m, ok := payload.(map[string]any)
+	if !ok {
+		return ToolCompleteMsg{}
+	}
+
+	id, _ := m["id"].(string)
+	tool, _ := m["tool"].(string)
+	content, _ := m["content"].(string)
+
+	return ToolCompleteMsg{ToolID: id, Tool: tool, Content: content}
+}
+
+func translateToolError(payload any) ToolErrorMsg {
+	m, ok := payload.(map[string]any)
+	if !ok {
+		return ToolErrorMsg{}
+	}
+
+	id, _ := m["id"].(string)
+	tool, _ := m["tool"].(string)
+	errStr, _ := m["error"].(string)
+
+	return ToolErrorMsg{ToolID: id, Tool: tool, Error: errStr}
+}
+
+func translateToolInterrupted(payload any) ToolInterruptedMsg {
+	m, ok := payload.(map[string]any)
+	if !ok {
+		return ToolInterruptedMsg{}
+	}
+
+	id, _ := m["id"].(string)
+	tool, _ := m["tool"].(string)
+
+	return ToolInterruptedMsg{ToolID: id, Tool: tool}
 }
 
 func translateModelChangeFailed(payload any) ModelChangeFailedMsg {
