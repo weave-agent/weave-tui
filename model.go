@@ -3130,6 +3130,7 @@ func (m Model) drawNormalUI(scr uv.Screen, area uv.Rectangle, dockedRows int) La
 
 	m.drawHeader(scr, lt.Header)
 	m.drawMainContent(scr, lt.Main)
+	m.drawSeparator(scr, lt.Separator)
 	m.drawPills(scr, lt.Pills)
 	m.drawPanelTray(scr, lt.PanelTray)
 	m.drawActivePanel(scr, lt.AbovePanel)
@@ -3161,12 +3162,6 @@ func (m Model) countLayoutRows() (headerRows, pillRows int) {
 func (m Model) layoutRows() (headerRows, pillRows, trayRows, abovePanelRows, belowPanelRows int) {
 	headerRows, pillRows = m.countLayoutRows()
 	trayRows, abovePanelRows, belowPanelRows = m.panelRows()
-
-	if pillRows > 0 && trayRows > 0 {
-		trayRows++
-	} else if pillRows > 0 {
-		pillRows++
-	}
 
 	return headerRows, pillRows, trayRows, abovePanelRows, belowPanelRows
 }
@@ -3301,6 +3296,15 @@ func (m Model) drawPanelOverlay(scr uv.Screen, area uv.Rectangle, panelID string
 
 	contentArea := uv.Rect(overlayArea.Min.X+2, overlayArea.Min.Y+1, max(overlayArea.Dx()-4, 0), max(overlayArea.Dy()-2, 0))
 	m.panelManager.DrawPanel(panelID, scr, contentArea)
+}
+
+func (m Model) drawSeparator(scr uv.Screen, area uv.Rectangle) {
+	if area.Dy() == 0 {
+		return
+	}
+
+	style := lipgloss.NewStyle().Background(lipgloss.Color(m.theme.Background))
+	uv.NewStyledString(style.Render(strings.Repeat(" ", area.Dx()))).Draw(scr, area)
 }
 
 func (m Model) drawPills(scr uv.Screen, area uv.Rectangle) {

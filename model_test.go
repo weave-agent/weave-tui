@@ -3710,10 +3710,12 @@ func TestModel_SpinnerWithTrayResizesChatViewport(t *testing.T) {
 	headerRows, pillRows, trayRows, aboveRows, belowRows := m.layoutRows()
 	lt := m.layout.ComputeWithPanels(m.width, m.height, m.editor.Height()+m.attach.Height(), headerRows, pillRows, m.dockedRows(), trayRows, aboveRows, belowRows)
 	assert.Equal(t, lt.Pills.Max.Y, lt.PanelTray.Min.Y)
-	assert.Equal(t, 2, lt.PanelTray.Dy())
+	assert.Equal(t, 1, lt.PanelTray.Dy())
+	assert.Equal(t, 1, lt.Separator.Dy())
+	assert.Equal(t, lt.Separator.Max.Y, lt.Pills.Min.Y)
 }
 
-func TestModel_LayoutRows_AddsBlankLineBelowThinkingTrayStack(t *testing.T) {
+func TestModel_LayoutRows_AddsBlankLineAboveLowerStack(t *testing.T) {
 	m := newModelNoLanding()
 	m.width = 80
 	m.height = 24
@@ -3726,7 +3728,9 @@ func TestModel_LayoutRows_AddsBlankLineBelowThinkingTrayStack(t *testing.T) {
 	lt := m.layout.ComputeWithPanels(m.width, m.height, m.editor.Height()+m.attach.Height(), headerRows, pillRows, m.dockedRows(), trayRows, aboveRows, belowRows)
 
 	assert.Equal(t, 1, pillRows)
-	assert.Equal(t, 2, trayRows)
+	assert.Equal(t, 1, trayRows)
+	assert.Equal(t, 1, lt.Separator.Dy())
+	assert.Equal(t, lt.Separator.Max.Y, lt.Pills.Min.Y)
 	assert.Equal(t, lt.Pills.Max.Y, lt.PanelTray.Min.Y)
 	assert.Equal(t, lt.PanelTray.Max.Y, lt.Editor.Min.Y)
 }

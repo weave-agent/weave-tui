@@ -5,7 +5,10 @@ import (
 	"github.com/charmbracelet/ultraviolet/layout"
 )
 
-const footerRows = 2
+const (
+	footerRows        = 2
+	chatSeparatorRows = 1
+)
 
 // Layout holds the computed rectangle regions for each TUI section.
 //
@@ -15,6 +18,8 @@ const footerRows = 2
 //	│                                 │
 //	│  Main (flex)                    │  chat viewport or landing
 //	│                                 │
+//	├─────────────────────────────────┤
+//	│  Separator (1 row)             │  empty row above the lower stack
 //	├─────────────────────────────────┤
 //	│  Pills (0-1 rows)               │  spinner, status, tool progress
 //	├─────────────────────────────────┤
@@ -33,6 +38,7 @@ const footerRows = 2
 type Layout struct {
 	Header     uv.Rectangle
 	Main       uv.Rectangle
+	Separator  uv.Rectangle
 	PanelTray  uv.Rectangle
 	AbovePanel uv.Rectangle
 	Docked     uv.Rectangle
@@ -78,7 +84,7 @@ func (e LayoutEngine) ComputeWithPanels(width, height, editorLines, headerRows, 
 	}
 
 	editorRows := editorLines + 2 // content + top/bottom border
-	mainRows := height - headerRows - trayRows - abovePanelRows - pillRows - dockedRows - editorRows - belowPanelRows - footerRows
+	mainRows := height - headerRows - chatSeparatorRows - trayRows - abovePanelRows - pillRows - dockedRows - editorRows - belowPanelRows - footerRows
 
 	if mainRows < 1 {
 		return minimalLayout(width, height)
@@ -89,7 +95,7 @@ func (e LayoutEngine) ComputeWithPanels(width, height, editorLines, headerRows, 
 		targets     []*uv.Rectangle
 	)
 
-	var header, main, tray, abovePanel, docked, pills, editor, belowPanel, footer uv.Rectangle
+	var header, main, separator, tray, abovePanel, docked, pills, editor, belowPanel, footer uv.Rectangle
 
 	if headerRows > 0 {
 		constraints = append(constraints, layout.Len(headerRows))
@@ -98,6 +104,9 @@ func (e LayoutEngine) ComputeWithPanels(width, height, editorLines, headerRows, 
 
 	constraints = append(constraints, layout.Fill(1))
 	targets = append(targets, &main)
+
+	constraints = append(constraints, layout.Len(chatSeparatorRows))
+	targets = append(targets, &separator)
 
 	if pillRows > 0 {
 		constraints = append(constraints, layout.Len(pillRows))
@@ -136,6 +145,7 @@ func (e LayoutEngine) ComputeWithPanels(width, height, editorLines, headerRows, 
 	return Layout{
 		Header:     header,
 		Main:       main,
+		Separator:  separator,
 		PanelTray:  tray,
 		AbovePanel: abovePanel,
 		Docked:     docked,
