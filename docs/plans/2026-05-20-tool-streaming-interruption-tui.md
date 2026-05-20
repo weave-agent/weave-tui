@@ -16,10 +16,10 @@ Fix ESC so it always interrupts running tools (not just streaming assistants). A
 ## Implementation Steps
 
 ### Task 1: Fix ESC to always publish interrupt
-- [ ] Modify `handleEscape()` to always call `PublishInterrupt(m.bus)` regardless of `activeTool`
-- [ ] Keep existing `activeTool` checks for extra behavior (editor clear, subagent abort)
-- [ ] Write/update tests for ESC during tool execution
-- [ ] Run extension tests — must pass
+- [x] Modify `handleEscape()` to always call `PublishInterrupt(m.bus)` regardless of `activeTool`
+- [x] Keep existing `activeTool` checks for extra behavior (editor clear, subagent abort)
+- [x] Write/update tests for ESC during tool execution
+- [x] Run extension tests — must pass
 
 ### Task 2: Add tool event messages and bridge forwarding
 - [ ] Add `ToolStartMsg`, `ToolProgressMsg`, `ToolCompleteMsg`, `ToolErrorMsg`, `ToolInterruptedMsg` types

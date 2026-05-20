@@ -1380,6 +1380,36 @@ func TestModel_EscapeInterruptsAwaitAgentAfterSubagentCompletes(t *testing.T) {
 	}
 }
 
+func TestModel_EscapeInterruptsGenericTool(t *testing.T) {
+	b := bus.New()
+	defer func() { _ = b.Close() }()
+
+	ch := subscribeToChan(b, topicInterrupt)
+
+	m := newModel(b, nil, nil, nil)
+	m.width = 80
+	m.height = 20
+	m.chat = m.chat.SetSize(80, 20)
+
+	model, _ := m.Update(MessageEndMsg{
+		ToolCalls: []sdk.ToolCall{{ID: "tool-1", Name: "grep"}},
+	})
+	m = model.(Model)
+
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+
+	require.NotNil(t, cmd)
+
+	executeBatchCmd(t, cmd)
+
+	select {
+	case evt := <-ch:
+		assert.Equal(t, topicInterrupt, evt.Topic)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for interrupt event")
+	}
+}
+
 func TestModel_AgentEndMsg_WithError(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80

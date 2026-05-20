@@ -1274,25 +1274,31 @@ func (m Model) handleEscape() (tea.Model, tea.Cmd) {
 	m.doublePressGen++
 	m.escapePressed = true
 
-	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
+	// Always publish interrupt
+	if m.bus != nil {
+		cmds = append(cmds, PublishInterrupt(m.bus))
+	}
 
 	activeTool := m.activeToolName()
 
 	if activeTool == "await_agent" || strings.HasPrefix(activeTool, "subagent_") {
-		if m.bus != nil {
-			cmd = PublishInterrupt(m.bus)
-		}
+		// Subagent/await_agent handled by the always-published interrupt above
 	} else {
 		// First press — interrupt streaming if active, start timeout.
 		var model tea.Model
 
+		var cmd tea.Cmd
+
 		model, cmd = m.interruptStreaming()
 		m = model.(Model)
+		cmds = append(cmds, cmd)
 	}
 
-	return m, tea.Batch(cmd, tea.Tick(doublePressWindow, func(_ time.Time) tea.Msg {
+	return m, tea.Batch(append(cmds, tea.Tick(doublePressWindow, func(_ time.Time) tea.Msg {
 		return doublePressTimeoutMsg{kind: doublePressEscape, gen: m.doublePressGen}
-	}))
+	}))...)
 }
 
 // dispatchBinding handles a resolved keybinding action.
