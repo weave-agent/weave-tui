@@ -1641,12 +1641,7 @@ func TestModel_ResumeSlashCommandIntegration(t *testing.T) {
 }
 
 func TestModel_InterruptStreaming(t *testing.T) {
-	b := bus.New()
-	defer func() { _ = b.Close() }()
-
-	ch := subscribeToChan(b, topicInterrupt)
-
-	m := newModel(b, nil, nil, nil)
+	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
@@ -1657,7 +1652,7 @@ func TestModel_InterruptStreaming(t *testing.T) {
 	model, _ = m.Update(MessageUpdateMsg{Content: "partial"})
 	m = model.(Model)
 
-	// Trigger interrupt
+	// Trigger interrupt — interruptStreaming only handles UI, not event publish.
 	model, cmd := m.interruptStreaming()
 	m = model.(Model)
 
@@ -1674,12 +1669,8 @@ func TestModel_InterruptStreaming(t *testing.T) {
 	// Verify spinner is hidden
 	assert.False(t, m.spinner.Visible())
 
-	// Verify interrupt event was published
-	require.NotNil(t, cmd)
-	cmd()
-
-	evt := <-ch
-	assert.Equal(t, topicInterrupt, evt.Topic)
+	// interruptStreaming no longer publishes the event; handleEscape does.
+	assert.Nil(t, cmd)
 }
 
 func TestModel_InterruptNoStreamingMessage(t *testing.T) {

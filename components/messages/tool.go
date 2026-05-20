@@ -78,6 +78,7 @@ func (p *ToolPanel) Expanded() bool {
 // SetResult updates the panel with a tool result.
 func (p *ToolPanel) SetResult(output string, isError bool) {
 	p.output = output
+	p.progress = ""
 	if isError {
 		p.state = ToolError
 	} else {
@@ -101,6 +102,8 @@ func (p *ToolPanel) SetProgress(content string) {
 // SetInterrupted marks the tool as interrupted by the user.
 func (p *ToolPanel) SetInterrupted() {
 	p.state = ToolInterrupted
+	p.flashUntil = time.Now().Add(800 * time.Millisecond)
+	p.needsPostFlashRender = true
 }
 
 // AdvanceSpinner cycles the spinner animation frame for running tools.

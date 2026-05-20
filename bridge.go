@@ -187,12 +187,51 @@ type AgentStateChangeMsg struct {
 // agentStateTracker tracks agent activity state from bus events.
 // It lives in the Bridge goroutine and sends state changes to the program.
 type agentStateTracker struct {
-	state     palette.State
-	toolCount int // pending tool calls awaiting results
+	state      palette.State
+	toolCount  int                 // pending tool calls awaiting results
+	activeTools map[string]struct{} // tracks in-flight tool IDs to prevent double-count
 }
 
 func newAgentStateTracker() *agentStateTracker {
-	return &agentStateTracker{state: palette.StateIdle}
+	return &agentStateTracker{
+		state:       palette.StateIdle,
+		activeTools: make(map[string]struct{}),
+	}
+}
+
+// addTool adds a tool ID to the active set and updates the count.
+func (t *agentStateTracker) addTool(id string) {
+	if id == "" {
+		return
+	}
+	if _, exists := t.activeTools[id]; !exists {
+		t.activeTools[id] = struct{}{}
+		t.toolCount = len(t.activeTools)
+	}
+}
+
+// removeTool removes a tool ID from the active set and updates the count.
+func (t *agentStateTracker) removeTool(id string) {
+	if id == "" {
+		return
+	}
+	if _, exists := t.activeTools[id]; exists {
+		delete(t.activeTools, id)
+		t.toolCount = len(t.activeTools)
+	}
+}
+
+// clearTools removes all active tools and resets the count.
+func (t *agentStateTracker) clearTools() {
+	t.activeTools = make(map[string]struct{})
+	t.toolCount = 0
+}
+
+// maybeReturnToStreaming transitions from ToolRunning to Streaming if no tools remain.
+func (t *agentStateTracker) maybeReturnToStreaming() {
+	if t.toolCount == 0 && t.state == palette.StateToolRunning {
+		t.state = palette.StateStreaming
+	}
 }
 
 // update computes the new state based on an incoming event message.
@@ -203,40 +242,39 @@ func (t *agentStateTracker) update(msg tea.Msg) (palette.State, bool) {
 	switch msg := msg.(type) {
 	case TurnStartMsg:
 		t.state = palette.StateStreaming
-		t.toolCount = 0
+		t.clearTools()
 	case MessageStartMsg:
 		t.state = palette.StateStreaming
 	case ToolResultMsg:
-		if t.toolCount > 0 {
-			t.toolCount--
-		}
-
-		if t.toolCount > 0 {
-			t.state = palette.StateToolRunning
-		} else if t.state == palette.StateToolRunning {
-			t.state = palette.StateStreaming
-		}
+		t.removeTool(msg.ToolID)
+		t.maybeReturnToStreaming()
 	case MessageEndMsg:
-		if len(msg.ToolCalls) > 0 {
-			t.toolCount += len(msg.ToolCalls)
+		for _, tc := range msg.ToolCalls {
+			t.addTool(tc.ID)
+		}
+		if t.toolCount > 0 {
 			t.state = palette.StateToolRunning
 		}
 	case ToolStartMsg:
-		t.toolCount++
-		t.state = palette.StateToolRunning
-	case ToolCompleteMsg, ToolErrorMsg, ToolInterruptedMsg:
-		if t.toolCount > 0 {
-			t.toolCount--
-		}
-
+		t.addTool(msg.ToolID)
 		if t.toolCount > 0 {
 			t.state = palette.StateToolRunning
-		} else if t.state == palette.StateToolRunning {
-			t.state = palette.StateStreaming
 		}
+	case ToolCompleteMsg, ToolErrorMsg, ToolInterruptedMsg:
+		var id string
+		switch m := msg.(type) {
+		case ToolCompleteMsg:
+			id = m.ToolID
+		case ToolErrorMsg:
+			id = m.ToolID
+		case ToolInterruptedMsg:
+			id = m.ToolID
+		}
+		t.removeTool(id)
+		t.maybeReturnToStreaming()
 	case TurnEndMsg:
 		t.state = palette.StateIdle
-		t.toolCount = 0
+		t.clearTools()
 	case AgentEndMsg:
 		if errStr, ok := msg.Payload.(string); ok && errStr != "" {
 			t.state = palette.StateError
@@ -244,7 +282,7 @@ func (t *agentStateTracker) update(msg tea.Msg) (palette.State, bool) {
 			t.state = palette.StateIdle
 		}
 
-		t.toolCount = 0
+		t.clearTools()
 	}
 
 	return t.state, t.state != prev

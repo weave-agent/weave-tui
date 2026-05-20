@@ -725,6 +725,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ToolProgressMsg:
 		m = m.onToolProgress(msg)
+		m.syncChatViewport()
 
 		return m, nil
 
@@ -748,8 +749,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ToolInterruptedMsg:
 		m = m.onToolInterrupted(msg)
+		m.syncChatViewport()
 
-		return m, nil
+		return m, tea.Tick(800*time.Millisecond, func(time.Time) tea.Msg {
+			return toolFlashExpireMsg{}
+		})
 
 	case toolFlashExpireMsg:
 		return m, nil
@@ -1724,7 +1728,9 @@ func (m Model) onToolStart(msg ToolStartMsg) Model {
 // onToolProgress updates a running tool panel with partial output.
 func (m Model) onToolProgress(msg ToolProgressMsg) Model {
 	return m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
-		p.SetRunning()
+		if p.State() == messages.ToolPending {
+			p.SetRunning()
+		}
 		p.SetProgress(msg.Content)
 	})
 }
@@ -1827,12 +1833,7 @@ func (m Model) interruptStreaming() (tea.Model, tea.Cmd) {
 	m.syncChatViewport()
 	m.footer = m.footer.SetTokenRate(0)
 
-	var cmds []tea.Cmd
-	if m.bus != nil {
-		cmds = append(cmds, PublishInterrupt(m.bus))
-	}
-
-	return m, tea.Batch(cmds...)
+	return m, nil
 }
 
 // AddUserMessage adds a user message to the chat.
