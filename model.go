@@ -751,6 +751,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ToolInterruptedMsg:
 		m.onToolInterrupted(msg)
+		if panel, ok := m.toolPanels[msg.ToolID]; ok {
+			m.contextTokens += estimateContextTokens(panel.Progress())
+			m.updateFooterContextUsage()
+		}
 		m.syncChatViewport()
 
 		return m, tea.Tick(800*time.Millisecond, func(time.Time) tea.Msg {
@@ -776,6 +780,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.footer = m.footer.SetTokenRate(0)
 		m.pendingToolCalls = make(map[string]string)
 		m.pendingToolOrder = nil
+
+		for _, panel := range m.toolPanels {
+			if panel.State() == messages.ToolPending || panel.State() == messages.ToolRunning {
+				panel.SetInterrupted()
+				m.chat = m.chat.UpdateItemByID(panel)
+			}
+		}
 
 		if msg.Payload != nil {
 			if errStr, ok := msg.Payload.(string); ok && errStr != "" {
@@ -1651,17 +1662,15 @@ func (m *Model) onMessageEnd(msg MessageEndMsg) {
 	}
 
 	am, idx := m.findStreamingAssistant()
-	if am == nil {
-		return
-	}
+	if am != nil {
+		if msg.Thinking != "" {
+			m.chat = m.chat.InsertItemAt(idx, messages.NewThinkingBlock(msg.Thinking))
+			idx++
+		}
 
-	if msg.Thinking != "" {
-		m.chat = m.chat.InsertItemAt(idx, messages.NewThinkingBlock(msg.Thinking))
-		idx++
+		am.Finalize(msg.Content)
+		m.chat = m.chat.UpdateItemAt(idx, am)
 	}
-
-	am.Finalize(msg.Content)
-	m.chat = m.chat.UpdateItemAt(idx, am)
 
 	for _, tc := range msg.ToolCalls {
 		args, err := json.Marshal(tc.Arguments)
@@ -1740,7 +1749,9 @@ func (m *Model) onToolComplete(msg ToolCompleteMsg) {
 	m.clearPendingToolCall(msg.ToolID)
 
 	m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
-		p.SetResult(msg.Content, false)
+		if p.State() != messages.ToolInterrupted {
+			p.SetResult(msg.Content, false)
+		}
 	})
 }
 
@@ -1749,7 +1760,9 @@ func (m *Model) onToolError(msg ToolErrorMsg) {
 	m.clearPendingToolCall(msg.ToolID)
 
 	m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
-		p.SetResult(msg.Error, true)
+		if p.State() != messages.ToolInterrupted {
+			p.SetResult(msg.Error, true)
+		}
 	})
 }
 
@@ -1830,6 +1843,8 @@ func (m Model) interruptStreaming() (tea.Model, tea.Cmd) {
 	m.spinner = m.spinner.Hide()
 	m.syncChatViewport()
 	m.footer = m.footer.SetTokenRate(0)
+	m.pendingToolCalls = make(map[string]string)
+	m.pendingToolOrder = nil
 
 	return m, nil
 }
@@ -1899,6 +1914,8 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 		if result.ClearChat {
 			m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
 			m.toolPanels = make(map[string]*messages.ToolPanel)
+			m.pendingToolCalls = make(map[string]string)
+			m.pendingToolOrder = nil
 			m.attach = m.attach.Clear()
 			m.showLanding = true
 		}

@@ -99,6 +99,11 @@ func (p *ToolPanel) SetProgress(content string) {
 	p.progress = content
 }
 
+// Progress returns the accumulated partial output from the tool.
+func (p *ToolPanel) Progress() string {
+	return p.progress
+}
+
 // SetInterrupted marks the tool as interrupted by the user.
 func (p *ToolPanel) SetInterrupted() {
 	p.state = ToolInterrupted
@@ -315,6 +320,10 @@ func spinnerFrameChar(frame int) string {
 }
 
 func truncateArgs(args string, maxLen int) string {
+	if maxLen <= 3 {
+		return "..."
+	}
+
 	args = strings.TrimSpace(args)
 	// Try to keep it on one line.
 	args = strings.ReplaceAll(args, "\n", " ")

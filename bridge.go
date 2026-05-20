@@ -187,8 +187,8 @@ type AgentStateChangeMsg struct {
 // agentStateTracker tracks agent activity state from bus events.
 // It lives in the Bridge goroutine and sends state changes to the program.
 type agentStateTracker struct {
-	state      palette.State
-	toolCount  int                 // pending tool calls awaiting results
+	state       palette.State
+	toolCount   int                 // pending tool calls awaiting results
 	activeTools map[string]struct{} // tracks in-flight tool IDs to prevent double-count
 }
 
@@ -256,6 +256,11 @@ func (t *agentStateTracker) update(msg tea.Msg) (palette.State, bool) {
 			t.state = palette.StateToolRunning
 		}
 	case ToolStartMsg:
+		t.addTool(msg.ToolID)
+		if t.toolCount > 0 {
+			t.state = palette.StateToolRunning
+		}
+	case ToolProgressMsg:
 		t.addTool(msg.ToolID)
 		if t.toolCount > 0 {
 			t.state = palette.StateToolRunning
