@@ -175,17 +175,14 @@ func (m ChatModel) JumpToBottom() ChatModel {
 
 // AddItem appends a chat item and auto-scrolls if near the bottom.
 func (m ChatModel) AddItem(item ChatItem) ChatModel {
-	nearBottom := m.NearBottom()
-
 	m.items = append(m.items, item)
 
 	if m.cache != nil {
 		*m.cache = append(*m.cache, cacheEntry{})
 	}
 
-	if m.autoScroll || nearBottom {
+	if m.autoScroll {
 		m.scrollToBottom()
-		m.autoScroll = true
 	} else {
 		m.newContent = true
 	}
@@ -655,7 +652,7 @@ func (m ChatModel) Draw(scr uv.Screen, area uv.Rectangle) {
 	}
 
 	// Render scroll indicators on the last visible line as a styled pill
-	if m.newContent || m.turnEndPending {
+	if (m.newContent || m.turnEndPending) && total > viewportHeight {
 		indicator := "↓ new content"
 		if m.turnEndPending && !m.newContent {
 			indicator = "↓ scroll to bottom"

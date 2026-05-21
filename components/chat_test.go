@@ -803,6 +803,41 @@ func TestChatModel_NoIndicatorWhenAtBottom(t *testing.T) {
 	assert.False(t, m.NewContent())
 }
 
+func TestChatModel_NoIndicatorWhenContentFits(t *testing.T) {
+	m := NewChatModel().SetSize(80, 10)
+	m = m.AddItem(stubItem{text: "short"})
+
+	// Force indicator flags even though content fits
+	m = m.SetTurnEndPending(true)
+	require.True(t, m.TurnEndPending())
+	require.True(t, m.AtBottom())
+
+	// Indicator should NOT render since everything fits in viewport
+	scr := uv.NewScreenBuffer(80, 10)
+	m.Draw(scr, uv.Rect(0, 0, 80, 10))
+	rendered := scr.Render()
+
+	assert.NotContains(t, rendered, "scroll to bottom")
+	assert.NotContains(t, rendered, "new content")
+}
+
+func TestChatModel_NoAutoScrollWhenNearBottomButDisabled(t *testing.T) {
+	m := NewChatModel().SetSize(80, 3)
+	m = m.AddItem(stubItem{text: "line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10"})
+	require.True(t, m.AutoScroll())
+	require.True(t, m.AtBottom())
+
+	// Scroll up slightly (still within 3 lines of bottom)
+	m = m.ScrollUp(2)
+	require.True(t, m.NearBottom())
+	require.False(t, m.AutoScroll())
+
+	// Add new content - should NOT auto-scroll or re-enable autoScroll
+	m = m.AddItem(stubItem{text: "line11"})
+	assert.False(t, m.AutoScroll())
+	assert.True(t, m.NewContent())
+}
+
 // --- Task 2: Chat spacing and scroll indicator tests ---
 
 func TestChatModel_BlankLineBetweenItems(t *testing.T) {
