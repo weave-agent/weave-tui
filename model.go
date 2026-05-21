@@ -271,6 +271,12 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		m.statusMsg = "No providers configured. Use /providers to set an API key."
 	}
 
+	if payload, ok := sdk.GetInitialSession(); ok {
+		m.rebuildChatFromMessages(payload.Messages)
+		m.showLanding = false
+		m.prompted = true
+	}
+
 	return m
 }
 

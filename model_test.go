@@ -69,6 +69,27 @@ func newModelNoLanding() Model {
 	return m
 }
 
+func TestNewModel_AppliesInitialSession(t *testing.T) {
+	sdk.ResetInitialSession()
+	defer sdk.ResetInitialSession()
+
+	sdk.SetInitialSession(sdk.SessionResumePayload{
+		SessionID: "sess-initial",
+		Messages: []sdk.Message{
+			{Role: sdk.RoleUser, Content: "previous"},
+			{Role: sdk.RoleAssistant, Content: "answer"},
+		},
+	})
+
+	m := newModel(nil, nil, nil, nil)
+
+	assert.False(t, m.showLanding)
+	assert.True(t, m.prompted)
+	require.Len(t, m.chat.Items(), 2)
+	assert.Equal(t, "previous", m.chat.Items()[0].(*messages.UserMessage).Content())
+	assert.Equal(t, "answer", m.chat.Items()[1].(*messages.AssistantMessage).Content())
+}
+
 func TestModel_NewlineKeybindingsInsertEditorNewline(t *testing.T) {
 	tests := []tea.KeyPressMsg{
 		{Code: tea.KeyEnter, Mod: tea.ModShift},
