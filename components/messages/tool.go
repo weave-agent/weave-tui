@@ -49,7 +49,7 @@ func NewToolPanel(toolID, toolName, args string) *ToolPanel {
 	return &ToolPanel{
 		toolID:   toolID,
 		toolName: toolName,
-		args:     truncateArgs(args, 100),
+		args:     strings.TrimSpace(args),
 		state:    ToolPending,
 		expanded: false,
 	}
@@ -194,7 +194,7 @@ func (p *ToolPanel) renderHeader() string {
 	}
 
 	if p.args != "" {
-		formatted := truncateArgs(formatArgs(p.args), 100)
+		formatted := formatArgs(p.args)
 		if formatted != "" {
 			return fmt.Sprintf(" %s %s(%s)", stateLabel, p.toolName, formatted)
 		}
@@ -340,8 +340,7 @@ func truncateArgs(args string, maxLen int) string {
 	return args
 }
 
-// formatArgs converts a JSON object string into a compact key: value representation.
-// {"command": "ls -la", "timeout": 60} → command: "ls -la", timeout: 60
+// formatArgs converts a JSON object string into compact key=value pairs.
 func formatArgs(argsJSON string) string {
 	argsJSON = strings.TrimSpace(argsJSON)
 	if argsJSON == "" || argsJSON == "{}" {
@@ -364,25 +363,34 @@ func formatArgs(argsJSON string) string {
 
 	sort.Strings(keys)
 
-	var parts []string
-
+	parts := make([]string, 0, len(keys))
 	for _, k := range keys {
-		v := m[k]
-		switch val := v.(type) {
-		case string:
-			parts = append(parts, fmt.Sprintf("%s: %q", k, val))
-		case float64:
-			if val == float64(int64(val)) {
-				parts = append(parts, fmt.Sprintf("%s: %d", k, int64(val)))
-			} else {
-				parts = append(parts, fmt.Sprintf("%s: %g", k, val))
-			}
-		case bool:
-			parts = append(parts, fmt.Sprintf("%s: %t", k, val))
-		default:
-			parts = append(parts, fmt.Sprintf("%s: %v", k, val))
-		}
+		parts = append(parts, fmt.Sprintf("%s=%s", k, formatArgValue(m[k])))
 	}
 
 	return strings.Join(parts, ", ")
+}
+
+func formatArgValue(value any) string {
+	switch val := value.(type) {
+	case string:
+		return fmt.Sprintf("%q", val)
+	case float64:
+		if val == float64(int64(val)) {
+			return fmt.Sprintf("%d", int64(val))
+		}
+
+		return fmt.Sprintf("%g", val)
+	case bool:
+		return fmt.Sprintf("%t", val)
+	case nil:
+		return "null"
+	default:
+		encoded, err := json.Marshal(val)
+		if err != nil {
+			return fmt.Sprintf("%v", val)
+		}
+
+		return string(encoded)
+	}
 }

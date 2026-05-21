@@ -430,3 +430,54 @@ func TestToolPanel_Draw_Interrupted(t *testing.T) {
 	output := uv.TrimSpace(canvas.Render())
 	assert.Contains(t, output, "(interrupted)")
 }
+
+func TestFormatArgs(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "object",
+			input: `{"command":"go env GOPATH && rg -n \"type View\"","auto_background_after":0}`,
+			want:  `auto_background_after=0, command="go env GOPATH && rg -n \"type View\""`,
+		},
+		{
+			name:  "empty object",
+			input: `{}`,
+			want:  "",
+		},
+		{
+			name:  "non json",
+			input: "ls -la",
+			want:  "ls -la",
+		},
+		{
+			name:  "nested value",
+			input: `{"options":{"limit":10},"paths":["a","b"]}`,
+			want:  `options={"limit":10}, paths=["a","b"]`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, formatArgs(tt.input))
+		})
+	}
+}
+
+func TestToolPanel_View_WithFormattedArgs(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", `{"command":"ls -la /tmp","auto_background_after":0}`)
+	view := p.View(80)
+
+	assert.Contains(t, view, `bash(auto_background_after=0, command="ls -la /tmp")`)
+	assert.NotContains(t, view, `{"command"`)
+}
+
+func TestToolPanel_View_DoesNotTruncateArgs(t *testing.T) {
+	command := strings.Repeat("x", 150)
+	p := NewToolPanel("tc1", "bash", `{"command":"`+command+`"}`)
+	view := p.View(240)
+
+	assert.Contains(t, view, command)
+}
