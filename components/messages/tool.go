@@ -175,7 +175,7 @@ func (p *ToolPanel) View(width int) string {
 	content.WriteString(header)
 
 	if body != "" {
-		content.WriteString("\n")
+		content.WriteString("\n\n")
 		content.WriteString(body)
 	}
 
