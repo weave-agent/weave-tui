@@ -91,18 +91,18 @@ func TestThinkingBlock_View_HasThereforeSymbol(t *testing.T) {
 	view := b.View(80)
 	assert.Contains(t, view, "∴")
 	assert.Contains(t, view, "Thinking")
-	assert.Contains(t, view, "░")
+	assert.NotContains(t, view, "░")
 }
 
-func TestThinkingBlock_View_HasBarIndent(t *testing.T) {
+func TestThinkingBlock_View_NoBarIndent(t *testing.T) {
 	b := NewThinkingBlock("first line\nsecond line")
 	view := b.View(80)
-	// Content should be indented with "  ░ " prefix
 	lines := strings.Split(view, "\n")
 	require.GreaterOrEqual(t, len(lines), 3)
-	// First line is header with bar, subsequent lines have "  ░ " prefix
-	assert.Contains(t, lines[1], "░", "content line should have bar")
-	assert.Contains(t, lines[2], "░", "content line should have bar")
+	assert.True(t, strings.Contains(lines[1], "first line"))
+	assert.True(t, strings.Contains(lines[2], "second line"))
+	assert.False(t, strings.HasPrefix(lines[1], "  "))
+	assert.False(t, strings.HasPrefix(lines[2], "  "))
 }
 
 func TestThinkingBlock_Draw(t *testing.T) {
