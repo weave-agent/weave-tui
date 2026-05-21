@@ -256,20 +256,24 @@ func TestToolPanel_SetResult_SetsFlashTimer(t *testing.T) {
 	assert.True(t, p.flashUntil.After(time.Now()), "flash timer should be in the future")
 }
 
-func TestToolPanel_BorderedCardHasBorderChars(t *testing.T) {
+func TestToolPanel_CardHasTopAndBottomLines(t *testing.T) {
 	p := NewToolPanel("tc1", "bash", "ls -la")
 	view := p.View(80)
-	// Rounded border should contain corner chars
-	assert.Contains(t, view, "╭", "should have rounded top-left border")
+
+	assert.Contains(t, view, "─")
+	assert.NotContains(t, view, "╭")
+	assert.NotContains(t, view, "│")
 }
 
-func TestToolPanel_BorderedCard_SuccessHasBorder(t *testing.T) {
+func TestToolPanel_Card_SuccessHasTopAndBottomLines(t *testing.T) {
 	p := NewToolPanel("tc1", "bash", "ls")
 	p.SetResult("output", false)
-	// Clear flash to test settled border color
 	p.flashUntil = time.Time{}
 	view := p.View(80)
-	assert.Contains(t, view, "╭", "should have rounded border in success state")
+
+	assert.Contains(t, view, "─")
+	assert.NotContains(t, view, "╭")
+	assert.NotContains(t, view, "│")
 }
 
 func TestToolPanel_SetRunning(t *testing.T) {

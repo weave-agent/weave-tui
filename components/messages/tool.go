@@ -161,13 +161,15 @@ func (p *ToolPanel) View(width int) string {
 	theme := palette.DefaultTheme()
 	borderColor := borderColorForState(p.state, p.flashUntil, theme)
 
-	borderStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
+	lineStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderLeft(false).
+		BorderRight(false).
 		BorderForeground(lipgloss.Color(borderColor)).
-		Width(width - 2) // account for border chars
+		Width(width)
 
 	header := p.renderHeader()
-	body := p.renderBody(width - 4) // account for border + padding
+	body := p.renderBody(width)
 
 	var content strings.Builder
 	content.WriteString(header)
@@ -177,7 +179,7 @@ func (p *ToolPanel) View(width int) string {
 		content.WriteString(body)
 	}
 
-	return borderStyle.Render(content.String())
+	return lineStyle.Render(content.String())
 }
 
 // Draw renders the tool panel into a screen buffer region.
