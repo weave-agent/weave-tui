@@ -13,8 +13,22 @@ The `--name tui` ensures your fork shadows the official extension.
 ## Install
 
 ```bash
-weave install github.com/weave-agent/weave-tui --name tui
+weave install github.com/weave-agent/weave-tui@latest --name tui
 ```
+
+## Use from Go extensions
+
+Extensions can import the TUI extension API from a released module version:
+
+```bash
+go get github.com/weave-agent/weave-tui@latest
+```
+
+```go
+import tui "github.com/weave-agent/weave-tui"
+```
+
+Releases are tagged with standard Go module versions, so downstream extensions can pin versions like `github.com/weave-agent/weave-tui v0.1.0` in `go.mod`.
 
 ## Completion behavior
 
