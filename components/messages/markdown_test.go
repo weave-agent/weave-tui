@@ -29,11 +29,20 @@ func TestMarkdownRenderer_Bold(t *testing.T) {
 
 func TestMarkdownRenderer_Headers(t *testing.T) {
 	r := NewMarkdownRenderer(80)
-	input := "# Main Title\n## Subtitle\nSome text"
+	input := "# Main Title\n## Subtitle\n### Section\n#### Detail\n##### Minor\n###### Small\nSome text"
 	out := ansi.Strip(r.Render(input))
 	assert.Contains(t, out, "Main Title")
 	assert.Contains(t, out, "Subtitle")
+	assert.Contains(t, out, "Section")
+	assert.Contains(t, out, "Detail")
+	assert.Contains(t, out, "Minor")
+	assert.Contains(t, out, "Small")
 	assert.Contains(t, out, "Some text")
+	assert.NotContains(t, out, "## Subtitle")
+	assert.NotContains(t, out, "### Section")
+	assert.NotContains(t, out, "#### Detail")
+	assert.NotContains(t, out, "##### Minor")
+	assert.NotContains(t, out, "###### Small")
 }
 
 func TestMarkdownRenderer_PlainTextPassthrough(t *testing.T) {

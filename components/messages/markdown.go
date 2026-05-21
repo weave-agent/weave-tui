@@ -6,6 +6,8 @@ import (
 
 	"github.com/alecthomas/chroma/v2/formatters"
 	"github.com/charmbracelet/glamour"
+	glamouransi "github.com/charmbracelet/glamour/ansi"
+	"github.com/charmbracelet/glamour/styles"
 
 	"github.com/weave-agent/weave-tui/xchroma"
 )
@@ -62,10 +64,21 @@ func (r *MarkdownRenderer) Render(text string) string {
 	return strings.TrimSpace(out)
 }
 
+func markdownStyle() glamouransi.StyleConfig {
+	style := styles.DarkStyleConfig
+	style.H2.Prefix = ""
+	style.H3.Prefix = ""
+	style.H4.Prefix = ""
+	style.H5.Prefix = ""
+	style.H6.Prefix = ""
+
+	return style
+}
+
 // rebuild recreates the glamour renderer with the current width.
 func (r *MarkdownRenderer) rebuild() {
 	opts := []glamour.TermRendererOption{
-		glamour.WithStandardStyle("dark"),
+		glamour.WithStyles(markdownStyle()),
 		glamour.WithChromaFormatter(chromaFormatterName),
 	}
 	if r.width > 0 {
