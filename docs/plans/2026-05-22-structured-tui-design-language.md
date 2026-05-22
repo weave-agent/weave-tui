@@ -113,13 +113,13 @@
 - [x] run `go test ./...` - must pass before task 5
 
 ### Task 5: Redesign landing as boot/status screen
-- [ ] update `landing.go` to reduce splash/logo dominance and render a boot/status layout
-- [ ] render label/value rows for model, provider, and extensions using muted labels and accent values
-- [ ] keep shortcut hints quiet and functional using the same muted style grammar as the rest of the UI
-- [ ] ensure landing uses the active theme through the style set rather than pulling default colors directly
-- [ ] write/update landing tests for layout, labels, extension wrapping, and theme use
-- [ ] write tests for narrow/short terminal behavior if existing coverage does not already cover it
-- [ ] run `go test ./...` - must pass before task 6
+- [x] update `landing.go` to reduce splash/logo dominance and render a boot/status layout
+- [x] render label/value rows for model, provider, and extensions using muted labels and accent values
+- [x] keep shortcut hints quiet and functional using the same muted style grammar as the rest of the UI
+- [x] ensure landing uses the active theme through the style set rather than pulling default colors directly
+- [x] write/update landing tests for layout, labels, extension wrapping, and theme use
+- [x] write tests for narrow/short terminal behavior if existing coverage does not already cover it
+- [x] run `go test ./...` - must pass before task 6
 
 ### Task 6: Unify focus and selection states
 - [ ] migrate `components/completion.go` selected rows to the shared selected-row style helper

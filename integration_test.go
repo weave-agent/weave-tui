@@ -37,7 +37,7 @@ func TestIntegration_FullStreamingFlow(t *testing.T) {
 	// 1. Landing state is shown initially
 	require.True(t, m.showLanding, "landing should be shown initially")
 	view := m.View()
-	assert.Contains(t, view.Content, "█████", "landing logo should be visible")
+	assert.Contains(t, view.Content, "weave", "landing title should be visible")
 
 	// 2. Submit prompt — hides landing, publishes prompt event
 	model, _ := m.onSubmit("explain Go")
@@ -539,7 +539,7 @@ func TestIntegration_LandingToChatAndBack(t *testing.T) {
 	// Landing shown initially
 	require.True(t, m.showLanding)
 	view := m.View()
-	assert.Contains(t, view.Content, "█████")
+	assert.Contains(t, view.Content, "weave")
 	// Horizontal rule should be present in landing
 	assert.Contains(t, view.Content, "─")
 
@@ -553,7 +553,7 @@ func TestIntegration_LandingToChatAndBack(t *testing.T) {
 	m = model.(Model)
 	assert.True(t, m.showLanding)
 	view = m.View()
-	assert.Contains(t, view.Content, "█████")
+	assert.Contains(t, view.Content, "weave")
 
 	// Submit again
 	model, _ = m.onSubmit("second message")

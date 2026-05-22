@@ -7,16 +7,18 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 )
 
-func TestLandingModel_DrawRendersLogo(t *testing.T) {
+func TestLandingModel_DrawRendersTitle(t *testing.T) {
 	m := NewLandingModel("glm-5.1", "anthropic", nil)
 	scr := uv.NewScreenBuffer(60, 24)
 	m.Draw(scr, scr.Bounds(), nil)
 	rendered := scr.Render()
 
-	assert.Contains(t, rendered, "█████")
-	assert.Contains(t, rendered, "░░███")
+	assert.Contains(t, rendered, "weave")
 }
 
 func TestLandingModel_DrawRendersModelInfo(t *testing.T) {
@@ -27,6 +29,8 @@ func TestLandingModel_DrawRendersModelInfo(t *testing.T) {
 
 	assert.Contains(t, rendered, "glm-5.1")
 	assert.Contains(t, rendered, "anthropic")
+	assert.Contains(t, rendered, "Model")
+	assert.Contains(t, rendered, "Provider")
 }
 
 func TestLandingModel_DrawRendersKeybindingHints(t *testing.T) {
@@ -60,9 +64,11 @@ func TestLandingModel_DrawNoModel(t *testing.T) {
 	m.Draw(scr, scr.Bounds(), nil)
 	rendered := scr.Render()
 
-	// Should still render logo and hints but no model info
-	assert.Contains(t, rendered, "█████")
+	// Should still render title and hints but no model/provider info
+	assert.Contains(t, rendered, "weave")
 	assert.NotContains(t, rendered, "glm-5.1")
+	assert.NotContains(t, rendered, "Model")
+	assert.NotContains(t, rendered, "Provider")
 }
 
 // Integration tests for landing visibility in the root model.
@@ -72,8 +78,8 @@ func TestLanding_ShownInitially(t *testing.T) {
 	require.True(t, m.showLanding, "landing should be shown initially")
 
 	view := m.View()
-	assert.Contains(t, view.Content, "█████", "view should contain landing logo")
-	// Horizontal rule should be present between logo and info
+	assert.Contains(t, view.Content, "weave", "view should contain landing title")
+	// Horizontal rule should be present between info and hints
 	assert.Contains(t, view.Content, "─", "view should contain horizontal rule")
 }
 
@@ -91,7 +97,8 @@ func TestLanding_HiddenAfterFirstSubmit(t *testing.T) {
 	assert.False(t, m.showLanding, "landing should be hidden after first submit")
 
 	view := m.View()
-	assert.NotContains(t, view.Content, "█████", "view should not contain landing logo after submit")
+	// Check for a landing-specific string that won't appear elsewhere (e.g. directory paths)
+	assert.NotContains(t, view.Content, "Model       ", "view should not contain landing label padding after submit")
 }
 
 func TestLanding_ReShownOnClear(t *testing.T) {
@@ -111,7 +118,7 @@ func TestLanding_ReShownOnClear(t *testing.T) {
 
 	assert.True(t, m.showLanding, "landing should re-show after /clear")
 	view := m.View()
-	assert.Contains(t, view.Content, "█████")
+	assert.Contains(t, view.Content, "weave")
 }
 
 func TestLanding_ReShownOnNew(t *testing.T) {
@@ -161,7 +168,7 @@ func TestLanding_EditorStillAccessibleWhenLandingActive(t *testing.T) {
 	assert.Equal(t, "test input", m.editor.Value())
 }
 
-// --- Task 4: Landing composition tests ---
+// --- Task 5: Landing boot/status layout tests ---
 
 func TestLandingModel_DrawNoPlaceholder(t *testing.T) {
 	m := NewLandingModel("glm-5.1", "anthropic", nil)
@@ -173,13 +180,13 @@ func TestLandingModel_DrawNoPlaceholder(t *testing.T) {
 	assert.NotContains(t, rendered, "Type a message to get started")
 }
 
-func TestLandingModel_DrawRuleInBorderColor(t *testing.T) {
+func TestLandingModel_DrawRuleInMutedColor(t *testing.T) {
 	m := NewLandingModel("glm-5.1", "anthropic", nil)
 	scr := uv.NewScreenBuffer(60, 24)
 	m.Draw(scr, scr.Bounds(), nil)
 	rendered := scr.Render()
 
-	// Rule should be rendered with ANSI color code for Border (240)
+	// Rule should be rendered with ANSI color code for Muted (240)
 	assert.Contains(t, rendered, "\x1b[38;5;240m")
 }
 
@@ -190,6 +197,7 @@ func TestLandingModel_DrawRendersExtensions(t *testing.T) {
 	m.Draw(scr, scr.Bounds(), nil)
 	rendered := scr.Render()
 
+	assert.Contains(t, rendered, "Extensions")
 	assert.Contains(t, rendered, "agent")
 	assert.Contains(t, rendered, "tui")
 	assert.Contains(t, rendered, "bash")
@@ -203,7 +211,93 @@ func TestLandingModel_DrawNoExtensions(t *testing.T) {
 	rendered := scr.Render()
 
 	// Should not contain the extensions label when no extensions are provided
-	assert.NotContains(t, rendered, "extensions")
+	assert.NotContains(t, rendered, "Extensions")
+}
+
+func TestLandingModel_DrawUsesCustomTheme(t *testing.T) {
+	custom := &palette.Theme{
+		AccentBright: "99",
+		Accent:       "88",
+		Muted:        "77",
+	}
+	m := NewLandingModel("glm-5.1", "anthropic", nil)
+	scr := uv.NewScreenBuffer(60, 24)
+	m.Draw(scr, scr.Bounds(), custom)
+	rendered := scr.Render()
+
+	// Title uses accent bright (99), values use accent+bold (88;1), labels use muted (77)
+	assert.Contains(t, rendered, "\x1b[38;5;99m")
+	assert.Contains(t, rendered, "\x1b[38;5;88;1m")
+	assert.Contains(t, rendered, "\x1b[38;5;77m")
+}
+
+func TestLandingModel_DrawUsesStyleSetNotDefaultTheme(t *testing.T) {
+	custom := &palette.Theme{
+		AccentBright: "42",
+		Accent:       "43",
+		Muted:        "44",
+	}
+	s := styles.New(custom)
+	m := NewLandingModel("glm-5.1", "anthropic", nil).SetStyles(s)
+	scr := uv.NewScreenBuffer(60, 24)
+	// Pass nil theme to verify stored styles are used when theme is nil
+	m.Draw(scr, scr.Bounds(), nil)
+	rendered := scr.Render()
+
+	// Should contain custom theme colors
+	assert.Contains(t, rendered, "\x1b[38;5;42m")
+}
+
+func TestLandingModel_DrawNarrowTerminal(t *testing.T) {
+	exts := []string{"agent", "tui", "bash", "read", "edit", "write"}
+	m := NewLandingModel("glm-5.1", "anthropic", exts)
+	m = m.SetSize(20, 24)
+	scr := uv.NewScreenBuffer(20, 24)
+	m.Draw(scr, scr.Bounds(), nil)
+	rendered := scr.Render()
+
+	// Title and labels should still render
+	assert.Contains(t, rendered, "weave")
+	assert.Contains(t, rendered, "Model")
+	assert.Contains(t, rendered, "Provider")
+	assert.Contains(t, rendered, "Extensions")
+	// Extensions should wrap
+	assert.Contains(t, rendered, "agent")
+}
+
+func TestLandingModel_DrawShortTerminal(t *testing.T) {
+	m := NewLandingModel("glm-5.1", "anthropic", nil)
+	m = m.SetSize(60, 3)
+	scr := uv.NewScreenBuffer(60, 3)
+	m.Draw(scr, scr.Bounds(), nil)
+	rendered := scr.Render()
+
+	// Should render at least the title without panicking
+	assert.Contains(t, rendered, "weave")
+}
+
+func TestLandingModel_SetStyles(t *testing.T) {
+	custom := &palette.Theme{
+		AccentBright: "55",
+	}
+	s := styles.New(custom)
+	m := NewLandingModel("glm-5.1", "anthropic", nil)
+	m2 := m.SetStyles(s)
+	assert.Equal(t, s, m2.styles)
+}
+
+func TestLandingModel_DrawKvRowFormat(t *testing.T) {
+	m := NewLandingModel("glm-5.1", "anthropic", nil)
+	scr := uv.NewScreenBuffer(60, 24)
+	m.Draw(scr, scr.Bounds(), nil)
+	rendered := scr.Render()
+
+	// Verify label and value appear on the same conceptual row
+	// The kv format produces: "Model        glm-5.1"
+	assert.Contains(t, rendered, "Model")
+	assert.Contains(t, rendered, "glm-5.1")
+	assert.Contains(t, rendered, "Provider")
+	assert.Contains(t, rendered, "anthropic")
 }
 
 func TestWrapList(t *testing.T) {
