@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	tuimodel "github.com/weave-agent/weave-tui/internal/model"
 	"github.com/weave-agent/weave/sdk"
 
 	"github.com/stretchr/testify/assert"
@@ -40,7 +41,7 @@ func TestTUI_CloseWithoutSubscribe(t *testing.T) {
 }
 
 func TestModel_View(t *testing.T) {
-	m := newModel(nil, nil, nil, nil)
+	m := tuimodel.NewModelWithConfig(nil, nil, nil, nil, TUIConfig{})
 	// View includes: chat (empty) + editor (empty) + footer (2 lines)
 	// With no size set, chat="" and editor="" and footer renders "weave" label
 	view := m.View()
@@ -54,7 +55,7 @@ func TestModel_View(t *testing.T) {
 }
 
 func TestModel_Init(t *testing.T) {
-	m := newModel(nil, nil, nil, nil)
+	m := tuimodel.NewModelWithConfig(nil, nil, nil, nil, TUIConfig{})
 	cmd := m.Init()
 	assert.NotNil(t, cmd)
 }

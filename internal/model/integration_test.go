@@ -1,4 +1,4 @@
-package tui
+package model
 
 import (
 	"encoding/json"
@@ -204,7 +204,7 @@ func TestIntegration_TokenRateDisplayAndAutoScroll(t *testing.T) {
 
 	// Add enough items to make chat scrollable
 	for i := range 10 {
-		m.chat = m.chat.AddItem(stubItem{text: fmt.Sprintf("line %d content here", i)})
+		m.chat = m.chat.AddItem(stubItem{Text: fmt.Sprintf("line %d content here", i)})
 	}
 
 	// Scroll up so we're not near bottom (beyond 3-line threshold)
@@ -253,7 +253,7 @@ func TestIntegration_SDKUIThroughOverlayStack(t *testing.T) {
 	// Test SetStatus
 	ui.SetStatus("test", "active")
 
-	model, _ := m.Update(extStatusMsg{key: "test", text: "active"})
+	model, _ := m.Update(extStatusMsg{Key: "test", Text: "active"})
 	m = model.(Model)
 	assert.Equal(t, "active", m.footer.ExtStatus()["test"])
 
@@ -269,12 +269,12 @@ func TestIntegration_SDKUIThroughOverlayStack(t *testing.T) {
 	ui.SetProgram(sender)
 
 	req := &overlayRequest{
-		kind:   requestSelect,
-		title:  "Pick an option",
-		items:  []string{"alpha", "beta", "gamma"},
-		result: make(chan overlayResponse, 1),
+		Kind:   requestSelect,
+		Title:  "Pick an option",
+		Items:  []string{"alpha", "beta", "gamma"},
+		Result: make(chan overlayResponse, 1),
 	}
-	require.NoError(t, ui.enqueue(req))
+	require.NoError(t, ui.EnqueuePopup(req))
 
 	model, _ = m.handlePopupPending()
 	m = model.(Model)
@@ -292,20 +292,20 @@ func TestIntegration_SDKUIThroughOverlayStack(t *testing.T) {
 	assert.True(t, m.dialogStack.Empty())
 
 	select {
-	case resp := <-req.result:
-		assert.Equal(t, 1, resp.index)
-		require.NoError(t, resp.err)
+	case resp := <-req.Result:
+		assert.Equal(t, 1, resp.Index)
+		require.NoError(t, resp.Err)
 	default:
 		t.Fatal("expected response on result channel")
 	}
 
 	// Test Confirm via popup queue
 	req2 := &overlayRequest{
-		kind:    requestConfirm,
-		message: "Continue?",
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestConfirm,
+		Message: "Continue?",
+		Result:  make(chan overlayResponse, 1),
 	}
-	require.NoError(t, ui.enqueue(req2))
+	require.NoError(t, ui.EnqueuePopup(req2))
 
 	model, _ = m.handlePopupPending()
 	m = model.(Model)
@@ -316,19 +316,19 @@ func TestIntegration_SDKUIThroughOverlayStack(t *testing.T) {
 	assert.True(t, m.dialogStack.Empty())
 
 	select {
-	case resp := <-req2.result:
-		assert.True(t, resp.confirmed)
+	case resp := <-req2.Result:
+		assert.True(t, resp.Confirmed)
 	default:
 		t.Fatal("expected response on result channel")
 	}
 
 	// Test Input via popup queue
 	req3 := &overlayRequest{
-		kind:    requestInput,
-		message: "Enter name:",
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestInput,
+		Message: "Enter name:",
+		Result:  make(chan overlayResponse, 1),
 	}
-	require.NoError(t, ui.enqueue(req3))
+	require.NoError(t, ui.EnqueuePopup(req3))
 
 	model, _ = m.handlePopupPending()
 	m = model.(Model)
@@ -339,9 +339,9 @@ func TestIntegration_SDKUIThroughOverlayStack(t *testing.T) {
 	assert.True(t, m.dialogStack.Empty())
 
 	select {
-	case resp := <-req3.result:
-		assert.Equal(t, "test-value", resp.value)
-		require.NoError(t, resp.err)
+	case resp := <-req3.Result:
+		assert.Equal(t, "test-value", resp.Value)
+		require.NoError(t, resp.Err)
 	default:
 		t.Fatal("expected response on result channel")
 	}

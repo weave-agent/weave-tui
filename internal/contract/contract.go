@@ -9,6 +9,12 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 )
 
+// TUIConfig holds TUI-specific preferences.
+type TUIConfig struct {
+	Theme          string `json:"theme,omitempty"`
+	EditorMaxLines int    `json:"editor_max_lines,omitempty"`
+}
+
 // TUIExtAPI provides TUI-specific extension capabilities.
 // Extensions that need deeper TUI integration implement TUIExtension and
 // receive this API during wiring.

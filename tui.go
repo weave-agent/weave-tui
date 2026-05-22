@@ -9,6 +9,8 @@ import (
 	"github.com/weave-agent/weave/sdk"
 
 	tuibridge "github.com/weave-agent/weave-tui/internal/bridge"
+	tuimodel "github.com/weave-agent/weave-tui/internal/model"
+	tuiui "github.com/weave-agent/weave-tui/internal/ui"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -36,7 +38,7 @@ type TUI struct {
 	mu      sync.Mutex
 	program *tea.Program
 	done    chan struct{}
-	ui      *TUIImpl
+	ui      *tuiui.TUIImpl
 }
 
 // NewTUI creates a new TUI extension.
@@ -46,7 +48,7 @@ func NewTUI(cfg sdk.Config, ps sdk.PreferenceStore, tuiCfg TUIConfig) (*TUI, err
 		return nil, ErrNoTTY
 	}
 
-	ui := NewTUIImpl(nil, nil)
+	ui := tuiui.NewTUIImpl(nil, nil)
 
 	return &TUI{
 		cfg:    cfg,
@@ -100,7 +102,7 @@ func (t *TUI) Subscribe(bus sdk.Bus) error {
 		return nil
 	})
 
-	model := newModelWithConfig(bus, t.cfg, t.ps, t.ui, t.tuiCfg)
+	model := tuimodel.NewModelWithConfig(bus, t.cfg, t.ps, t.ui, t.tuiCfg)
 
 	t.mu.Lock()
 	t.program = tea.NewProgram(model)

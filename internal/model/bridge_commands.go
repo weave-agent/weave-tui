@@ -1,4 +1,4 @@
-package tui
+package model
 
 import (
 	tuiauth "github.com/weave-agent/weave-tui/internal/auth"

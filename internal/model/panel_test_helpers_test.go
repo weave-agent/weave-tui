@@ -1,4 +1,4 @@
-package tui
+package model
 
 import (
 	tea "charm.land/bubbletea/v2"

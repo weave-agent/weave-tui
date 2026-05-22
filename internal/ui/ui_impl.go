@@ -1,4 +1,4 @@
-package tui
+package ui
 
 import (
 	"errors"
@@ -17,8 +17,6 @@ import (
 	tuikeybindings "github.com/weave-agent/weave-tui/internal/keybindings"
 	"github.com/weave-agent/weave-tui/internal/palette"
 	"github.com/weave-agent/weave-tui/internal/panels"
-
-	tea "charm.land/bubbletea/v2"
 )
 
 // pendingCommand holds a command registered before the registry was set.
@@ -28,10 +26,7 @@ type pendingCommand struct {
 }
 
 // pendingStatus holds a status update registered before the program was running.
-type pendingStatus struct {
-	key  string
-	text string
-}
+type pendingStatus = extStatusMsg
 
 // TUIImpl implements sdk.UI and TUIExtAPI by delegating to the TUI's internal
 // registries and overlay components.
@@ -97,6 +92,14 @@ func (u *TUIImpl) SetSize(width, height int) {
 	u.height = height
 }
 
+// PanelManager returns the panel manager shared with the Bubble Tea model.
+func (u *TUIImpl) PanelManager() *panels.PanelManager {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	return u.panelManager
+}
+
 // SetRegistries sets the command and binding registries under lock.
 // Any commands registered before the registry was available are flushed.
 func (u *TUIImpl) SetRegistries(commands *tuicommands.CommandRegistry, bindings *tuikeybindings.BindingRegistry) {
@@ -127,19 +130,19 @@ func (u *TUIImpl) Select(title string, items []string, opts ...sdk.SelectOption)
 	}
 
 	req := &overlayRequest{
-		kind:        requestSelect,
-		title:       title,
-		items:       items,
-		keepContent: config.KeepContent,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestSelect,
+		Title:       title,
+		Items:       items,
+		KeepContent: config.KeepContent,
+		Result:      make(chan overlayResponse, 1),
 	}
 	if err := u.enqueue(req); err != nil {
 		return -1, err
 	}
 
 	select {
-	case resp := <-req.result:
-		return resp.index, resp.err
+	case resp := <-req.Result:
+		return resp.Index, resp.Err
 	case <-u.done:
 		return -1, errors.New("tui shutting down")
 	}
@@ -153,18 +156,18 @@ func (u *TUIImpl) Confirm(message string, opts ...sdk.ConfirmOption) (bool, erro
 	}
 
 	req := &overlayRequest{
-		kind:        requestConfirm,
-		message:     message,
-		keepContent: config.KeepContent,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestConfirm,
+		Message:     message,
+		KeepContent: config.KeepContent,
+		Result:      make(chan overlayResponse, 1),
 	}
 	if err := u.enqueue(req); err != nil {
 		return false, err
 	}
 
 	select {
-	case resp := <-req.result:
-		return resp.confirmed, resp.err
+	case resp := <-req.Result:
+		return resp.Confirmed, resp.Err
 	case <-u.done:
 		return false, errors.New("tui shutting down")
 	}
@@ -178,19 +181,19 @@ func (u *TUIImpl) Input(prompt string, opts ...sdk.InputOption) (string, error) 
 	}
 
 	req := &overlayRequest{
-		kind:        requestInput,
-		message:     prompt,
-		keepContent: config.KeepContent,
-		mask:        config.Mask,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestInput,
+		Message:     prompt,
+		KeepContent: config.KeepContent,
+		Mask:        config.Mask,
+		Result:      make(chan overlayResponse, 1),
 	}
 	if err := u.enqueue(req); err != nil {
 		return "", err
 	}
 
 	select {
-	case resp := <-req.result:
-		return resp.value, resp.err
+	case resp := <-req.Result:
+		return resp.Value, resp.Err
 	case <-u.done:
 		return "", errors.New("tui shutting down")
 	}
@@ -205,14 +208,14 @@ func (u *TUIImpl) SetStatus(key, text string) {
 	p := u.program
 
 	if p == nil {
-		u.pendingStatuses = append(u.pendingStatuses, pendingStatus{key: key, text: text})
+		u.pendingStatuses = append(u.pendingStatuses, pendingStatus{Key: key, Text: text})
 		u.mu.Unlock()
 
 		return
 	}
 	u.mu.Unlock()
 
-	p.Send(extStatusMsg{key: key, text: text})
+	p.Send(extStatusMsg{Key: key, Text: text})
 }
 
 // DrainStatuses returns and clears pending status updates buffered before
@@ -321,20 +324,20 @@ func (u *TUIImpl) MultiSelect(title string, items []string, defaults []bool, opt
 	}
 
 	req := &overlayRequest{
-		kind:        requestMultiSelect,
-		title:       title,
-		items:       items,
-		defaults:    defaults,
-		keepContent: config.KeepContent,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestMultiSelect,
+		Title:       title,
+		Items:       items,
+		Defaults:    defaults,
+		KeepContent: config.KeepContent,
+		Result:      make(chan overlayResponse, 1),
 	}
 	if err := u.enqueue(req); err != nil {
 		return nil, err
 	}
 
 	select {
-	case resp := <-req.result:
-		return resp.selected, resp.err
+	case resp := <-req.Result:
+		return resp.Selected, resp.Err
 	case <-u.done:
 		return nil, errors.New("tui shutting down")
 	}
@@ -348,19 +351,19 @@ func (u *TUIImpl) Editor(prompt, initial string, opts ...sdk.EditorOption) (stri
 	}
 
 	req := &overlayRequest{
-		kind:        requestEditor,
-		title:       prompt,
-		initial:     initial,
-		keepContent: config.KeepContent,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestEditor,
+		Title:       prompt,
+		Initial:     initial,
+		KeepContent: config.KeepContent,
+		Result:      make(chan overlayResponse, 1),
 	}
 	if err := u.enqueue(req); err != nil {
 		return "", err
 	}
 
 	select {
-	case resp := <-req.result:
-		return resp.value, resp.err
+	case resp := <-req.Result:
+		return resp.Value, resp.Err
 	case <-u.done:
 		return "", errors.New("tui shutting down")
 	}
@@ -407,7 +410,7 @@ func (u *TUIImpl) SetTheme(name string) error {
 	u.mu.Unlock()
 
 	if p != nil {
-		p.Send(themeChangedMsg{theme: t})
+		p.Send(themeChangedMsg{Theme: t})
 	}
 
 	return nil
@@ -604,7 +607,7 @@ func (u *TUIImpl) EditorText() string {
 	}
 
 	resp := make(chan string, 1)
-	p.Send(editorTextRequestMsg{response: resp})
+	p.Send(editorTextRequestMsg{Response: resp})
 
 	select {
 	case text := <-resp:
@@ -623,7 +626,7 @@ func (u *TUIImpl) SetEditorText(text string) {
 	u.mu.Unlock()
 
 	if p != nil {
-		p.Send(setEditorTextMsg{text: text})
+		p.Send(setEditorTextMsg{Text: text})
 	}
 }
 
@@ -634,7 +637,7 @@ func (u *TUIImpl) PasteToEditor(text string) {
 	u.mu.Unlock()
 
 	if p != nil {
-		p.Send(pasteToEditorMsg{text: text})
+		p.Send(pasteToEditorMsg{Text: text})
 	}
 }
 
@@ -677,7 +680,7 @@ func (u *TUIImpl) SetFooter(component TUIComponent) {
 	u.mu.Unlock()
 
 	if p != nil {
-		p.Send(setFooterMsg{component: component})
+		p.Send(setFooterMsg{Component: component})
 	}
 }
 
@@ -688,7 +691,7 @@ func (u *TUIImpl) SetHeader(component TUIComponent) {
 	u.mu.Unlock()
 
 	if p != nil {
-		p.Send(setHeaderMsg{component: component})
+		p.Send(setHeaderMsg{Component: component})
 	}
 }
 
@@ -723,8 +726,41 @@ func (u *TUIImpl) SetWorkingFrames(frames []string, interval time.Duration) {
 	u.mu.Unlock()
 
 	if p != nil {
-		p.Send(setWorkingFramesMsg{frames: workingFrames, interval: interval})
+		p.Send(setWorkingFramesMsg{Frames: workingFrames, Interval: interval})
 	}
+}
+
+// WorkingFrames returns the configured spinner frames and interval.
+func (u *TUIImpl) WorkingFrames() ([]string, time.Duration) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	frames := make([]string, len(u.workingFrames))
+	copy(frames, u.workingFrames)
+
+	return frames, u.workingInterval
+}
+
+// InputHandlers returns a snapshot of registered raw key handlers.
+func (u *TUIImpl) InputHandlers() []func(KeyEvent) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	handlers := make([]func(KeyEvent), len(u.inputHandlers))
+	copy(handlers, u.inputHandlers)
+
+	return handlers
+}
+
+// AutocompleteProviders returns a snapshot of registered autocomplete providers.
+func (u *TUIImpl) AutocompleteProviders() []AutocompleteProvider {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	providers := make([]AutocompleteProvider, len(u.autocompleteProviders))
+	copy(providers, u.autocompleteProviders)
+
+	return providers
 }
 
 // enqueue adds a request to the popup queue and notifies the program.
@@ -753,6 +789,11 @@ func (u *TUIImpl) enqueue(req *overlayRequest) error {
 	return nil
 }
 
+// EnqueuePopup adds a request to the popup queue and notifies the program.
+func (u *TUIImpl) EnqueuePopup(req *overlayRequest) error {
+	return u.enqueue(req)
+}
+
 // dequeue removes and returns the next popup request, or nil if empty.
 func (u *TUIImpl) dequeue() *overlayRequest {
 	u.mu.Lock()
@@ -768,6 +809,11 @@ func (u *TUIImpl) dequeue() *overlayRequest {
 	return req
 }
 
+// DequeuePopup removes and returns the next popup request, or nil if empty.
+func (u *TUIImpl) DequeuePopup() *overlayRequest {
+	return u.dequeue()
+}
+
 // hasPendingPopups returns true if there are queued popup requests.
 func (u *TUIImpl) hasPendingPopups() bool {
 	u.mu.Lock()
@@ -776,18 +822,9 @@ func (u *TUIImpl) hasPendingPopups() bool {
 	return len(u.popupQ) > 0
 }
 
-// handlePopupPending processes queued popup requests by pushing them onto the dialog stack.
-func (m Model) handlePopupPending() (Model, tea.Cmd) {
-	if m.ui == nil {
-		return m, nil
-	}
-
-	req := m.ui.dequeue()
-	if req == nil {
-		return m, nil
-	}
-
-	return pushPopupDialog(m, req)
+// HasPendingPopups returns true if there are queued popup requests.
+func (u *TUIImpl) HasPendingPopups() bool {
+	return u.hasPendingPopups()
 }
 
 // richRendererAdapter adapts a RichToolRenderer to sdk.ToolRenderer.
@@ -798,33 +835,4 @@ type richRendererAdapter struct {
 
 func (a *richRendererAdapter) Render(content string, width int) string {
 	return a.renderer.Render(content, a.themeFunc(), width)
-}
-
-// Internal tea.Msg types for TUIExtAPI.
-
-type panelChangedMsg struct{}
-
-type setEditorTextMsg struct {
-	text string
-}
-
-type pasteToEditorMsg struct {
-	text string
-}
-
-type editorTextRequestMsg struct {
-	response chan string
-}
-
-type setFooterMsg struct {
-	component TUIComponent
-}
-
-type setHeaderMsg struct {
-	component TUIComponent
-}
-
-type setWorkingFramesMsg struct {
-	frames   []string
-	interval time.Duration
 }

@@ -1,4 +1,4 @@
-package tui
+package model
 
 import (
 	"encoding/json"
@@ -2752,7 +2752,7 @@ func TestModel_TurnEndSetsScrollIndicator(t *testing.T) {
 
 	// Add enough items to make chat scrollable
 	for i := range 10 {
-		m.chat = m.chat.AddItem(stubItem{text: fmt.Sprintf("line%d", i)})
+		m.chat = m.chat.AddItem(stubItem{Text: fmt.Sprintf("line%d", i)})
 	}
 
 	// Scroll up so we're not at bottom
@@ -2773,7 +2773,7 @@ func TestModel_ScrollToBottomClearsIndicator(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 5)
 
 	for i := range 10 {
-		m.chat = m.chat.AddItem(stubItem{text: fmt.Sprintf("line%d", i)})
+		m.chat = m.chat.AddItem(stubItem{Text: fmt.Sprintf("line%d", i)})
 	}
 
 	m.chat = m.chat.ScrollUp(3).SetTurnEndPending(true)
@@ -2788,10 +2788,10 @@ func TestModel_ScrollToBottomClearsIndicator(t *testing.T) {
 
 // stubItem is a simple ChatItem for tests in the tui package.
 type stubItem struct {
-	text string
+	Text string
 }
 
-func (s stubItem) View(width int) string { return s.text }
+func (s stubItem) View(width int) string { return s.Text }
 
 // --- Attachment integration tests ---
 
@@ -2868,7 +2868,7 @@ func TestModel_AttachmentsPanel_Remove(t *testing.T) {
 	m = addTestAttachment(m, "a.go", "aaa")
 	m = m.syncAttachmentPanel()
 
-	model, _ := m.Update(removeAttachmentMsg{index: 0})
+	model, _ := m.Update(removeAttachmentMsg{Index: 0})
 	m = model.(Model)
 
 	assert.Empty(t, m.attach.Items())
@@ -3387,7 +3387,7 @@ func TestModel_ThemeChangedMsg(t *testing.T) {
 		Accent:     "123",
 		Foreground: "255",
 	}
-	updated, _ := m.Update(themeChangedMsg{theme: customTheme})
+	updated, _ := m.Update(themeChangedMsg{Theme: customTheme})
 	m = updated.(Model)
 
 	assert.Equal(t, "123", m.theme.Accent)
@@ -3398,7 +3398,7 @@ func TestModel_ThemeChangedMsg_NilTheme(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 
 	original := m.theme
-	updated, _ := m.Update(themeChangedMsg{theme: nil})
+	updated, _ := m.Update(themeChangedMsg{Theme: nil})
 	m = updated.(Model)
 
 	// Nil theme should be ignored
@@ -4500,7 +4500,7 @@ func TestModel_SetEditorTextMsg_UpdatesEditor(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.editor = m.editor.SetValue("old text")
 
-	updated, _ := m.Update(setEditorTextMsg{text: "new text"})
+	updated, _ := m.Update(setEditorTextMsg{Text: "new text"})
 	m = updated.(Model)
 
 	assert.Equal(t, "new text", m.editor.Value())
@@ -4510,7 +4510,7 @@ func TestModel_PasteToEditorMsg_PastesText(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.editor = m.editor.SetValue("hello ")
 
-	updated, _ := m.Update(pasteToEditorMsg{text: "world"})
+	updated, _ := m.Update(pasteToEditorMsg{Text: "world"})
 	m = updated.(Model)
 
 	assert.Contains(t, m.editor.Value(), "world")
@@ -4521,7 +4521,7 @@ func TestModel_EditorTextRequestMsg_RespondsWithValue(t *testing.T) {
 	m.editor = m.editor.SetValue("editor contents")
 
 	resp := make(chan string, 1)
-	_, _ = m.Update(editorTextRequestMsg{response: resp})
+	_, _ = m.Update(editorTextRequestMsg{Response: resp})
 
 	select {
 	case text := <-resp:
@@ -4535,7 +4535,7 @@ func TestModel_SetFooterMsg_SetsCustomFooter(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	comp := &mockTUIComponent{}
 
-	updated, _ := m.Update(setFooterMsg{component: comp})
+	updated, _ := m.Update(setFooterMsg{Component: comp})
 	m = updated.(Model)
 
 	assert.Equal(t, comp, m.customFooter)
@@ -4545,7 +4545,7 @@ func TestModel_SetHeaderMsg_SetsCustomHeader(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	comp := &mockTUIComponent{}
 
-	updated, _ := m.Update(setHeaderMsg{component: comp})
+	updated, _ := m.Update(setHeaderMsg{Component: comp})
 	m = updated.(Model)
 
 	assert.Equal(t, comp, m.customHeader)
@@ -4555,7 +4555,7 @@ func TestModel_SetWorkingFramesMsg_UpdatesSpinner(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	frames := []string{"|", "/", "-", "\\"}
 
-	updated, _ := m.Update(setWorkingFramesMsg{frames: frames, interval: 100 * time.Millisecond})
+	updated, _ := m.Update(setWorkingFramesMsg{Frames: frames, Interval: 100 * time.Millisecond})
 	m = updated.(Model)
 
 	// Verify custom frames were applied by making spinner visible and checking View

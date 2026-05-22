@@ -128,11 +128,11 @@
 - [x] run `go test ./...` - must pass before next task
 
 ### Task 10: Move root Bubble Tea model and UI implementation
-- [ ] move root Bubble Tea `Model`, focus state, landing screen, overlays orchestration, and attachments panel code to `internal/model`
-- [ ] move `TUIImpl` SDK UI implementation to `internal/ui`
-- [ ] update dependencies so `internal/model` and `internal/ui` communicate through internal types without importing root
-- [ ] move model/UI implementation tests with their owning packages and update imports
-- [ ] run `go test ./...` - must pass before next task
+- [x] move root Bubble Tea `Model`, focus state, landing screen, overlays orchestration, and attachments panel code to `internal/model`
+- [x] move `TUIImpl` SDK UI implementation to `internal/ui`
+- [x] update dependencies so `internal/model` and `internal/ui` communicate through internal types without importing root
+- [x] move model/UI implementation tests with their owning packages and update imports
+- [x] run `go test ./...` - must pass before next task
 
 ### Task 11: Move application lifecycle and root extension registration wiring
 - [ ] move TUI runtime lifecycle from root `tui.go` into `internal/app`

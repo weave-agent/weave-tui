@@ -1,11 +1,10 @@
-package tui
+package model
 
 import (
 	"fmt"
 
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
-	"github.com/weave-agent/weave-tui/internal/palette"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -21,62 +20,10 @@ const (
 	dialogLoginOAuth     = "login-oauth"
 )
 
-// overlayRequestKind identifies the type of cross-extension popup request.
-type overlayRequestKind int
-
-const (
-	requestSelect overlayRequestKind = iota
-	requestConfirm
-	requestInput
-	requestEditor
-	requestMultiSelect
-)
-
-// overlayRequest is an internal message sent to the Bubble Tea program
-// to trigger a popup overlay (Select, Confirm, Input, Editor, or MultiSelect).
-type overlayRequest struct {
-	kind        overlayRequestKind
-	title       string
-	message     string
-	items       []string
-	initial     string
-	defaults    []bool
-	keepContent bool
-	mask        rune
-	result      chan overlayResponse
-}
-
-// overlayResponse carries the result back to the blocking caller.
-type overlayResponse struct {
-	index     int
-	value     string
-	confirmed bool
-	selected  []int
-	err       error
-}
-
-// Internal tea.Msg types.
-
-type popupPendingMsg struct{}
-
-type extStatusMsg struct {
-	key  string
-	text string
-}
-
-// slashCommandsUpdatedMsg is sent when commands are dynamically registered,
-// so the editor can refresh its autocomplete list.
-type slashCommandsUpdatedMsg struct{}
-
-// themeChangedMsg is sent when the active theme is switched.
-type themeChangedMsg struct {
-	theme *palette.Theme
-}
-
 // checkNextPopupCmd returns a tea.Cmd that sends popupPendingMsg
 // if there are more queued popups.
 func checkNextPopupCmd(ui *TUIImpl) tea.Cmd {
-	if ui != nil && ui.hasPendingPopups() {
+	if ui != nil && ui.HasPendingPopups() {
 		return func() tea.Msg { return popupPendingMsg{} }
 	}
 
@@ -115,54 +62,54 @@ func nextPopupDialogID(kind overlayRequestKind, seq *int) string {
 
 // pushPopupDialog creates a dialog for a popup request and pushes it onto the stack.
 func pushPopupDialog(m Model, req *overlayRequest) (Model, tea.Cmd) {
-	id := nextPopupDialogID(req.kind, &m.popupSeq)
-	m.popupChans[id] = req.result
-	m.dockedOverlay = req.keepContent
+	id := nextPopupDialogID(req.Kind, &m.popupSeq)
+	m.popupChans[id] = req.Result
+	m.dockedOverlay = req.KeepContent
 
 	dialogWidth := m.width
 
 	dialogHeight := m.height
-	if req.keepContent {
+	if req.KeepContent {
 		dialogHeight = dockedOverlayHeight
 	}
 
-	switch req.kind {
+	switch req.Kind {
 	case requestSelect:
-		items := make([]overlays.SelectorItem, len(req.items))
-		for i, title := range req.items {
+		items := make([]overlays.SelectorItem, len(req.Items))
+		for i, title := range req.Items {
 			items[i] = overlays.SelectorItem{Title: title}
 		}
 
-		sel := overlays.NewSelectorModel(req.title, items).SetStyles(m.styles)
+		sel := overlays.NewSelectorModel(req.Title, items).SetStyles(m.styles)
 		sel = sel.SetSize(dialogWidth, dialogHeight)
 		sel = sel.Show()
 
 		m.dialogStack = m.dialogStack.Push(overlays.NewSelectorDialog(id, sel))
 
 	case requestConfirm:
-		conf := overlays.NewConfirmModel(req.message)
+		conf := overlays.NewConfirmModel(req.Message)
 		conf = conf.SetSize(dialogWidth, dialogHeight)
 		conf = conf.Show()
 
 		m.dialogStack = m.dialogStack.Push(overlays.NewConfirmDialog(id, conf))
 
 	case requestInput:
-		input := overlays.NewInputModel(req.message)
+		input := overlays.NewInputModel(req.Message)
 		input = input.SetSize(dialogWidth, dialogHeight)
-		input = input.SetMask(req.mask)
+		input = input.SetMask(req.Mask)
 		input = input.Show()
 
 		m.dialogStack = m.dialogStack.Push(overlays.NewInputDialog(id, input))
 
 	case requestEditor:
-		editor := overlays.NewEditorModel(req.title, req.initial)
+		editor := overlays.NewEditorModel(req.Title, req.Initial)
 		editor = editor.SetSize(dialogWidth, dialogHeight)
 		editor = editor.Show()
 
 		m.dialogStack = m.dialogStack.Push(overlays.NewEditorDialog(id, editor))
 
 	case requestMultiSelect:
-		ms := overlays.NewMultiSelectModel(req.title, req.items, req.defaults)
+		ms := overlays.NewMultiSelectModel(req.Title, req.Items, req.Defaults)
 		ms = ms.SetSize(dialogWidth, dialogHeight)
 		ms = ms.Show()
 
@@ -170,4 +117,18 @@ func pushPopupDialog(m Model, req *overlayRequest) (Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// handlePopupPending processes queued popup requests by pushing them onto the dialog stack.
+func (m Model) handlePopupPending() (Model, tea.Cmd) {
+	if m.ui == nil {
+		return m, nil
+	}
+
+	req := m.ui.DequeuePopup()
+	if req == nil {
+		return m, nil
+	}
+
+	return pushPopupDialog(m, req)
 }

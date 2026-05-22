@@ -1,4 +1,4 @@
-package tui
+package model
 
 import tuibridge "github.com/weave-agent/weave-tui/internal/bridge"
 

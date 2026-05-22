@@ -1,4 +1,4 @@
-package tui
+package model
 
 import (
 	"fmt"
@@ -19,28 +19,28 @@ const attachmentsPanelID = "attachments"
 const dialogAttachmentEditor = "attachment-editor"
 
 type editAttachmentMsg struct {
-	index int
+	Index int
 }
 
 type externalEditAttachmentMsg struct {
-	index int
+	Index int
 }
 
 type removeAttachmentMsg struct {
-	index int
+	Index int
 }
 
 type attachmentsPanelDrawer struct {
-	items    []attachments.Attachment
-	selected int
-	theme    *palette.Theme
+	Items    []attachments.Attachment
+	Selected int
+	Theme    *palette.Theme
 }
 
 func newAttachmentsPanelDrawer(items []attachments.Attachment, selected int, theme *palette.Theme) *attachmentsPanelDrawer {
 	return &attachmentsPanelDrawer{
-		items:    items,
-		selected: normalizeAttachmentSelection(selected, len(items)),
-		theme:    theme,
+		Items:    items,
+		Selected: normalizeAttachmentSelection(selected, len(items)),
+		Theme:    theme,
 	}
 }
 
@@ -49,7 +49,7 @@ func (d *attachmentsPanelDrawer) Draw(scr uv.Screen, area uv.Rectangle) {
 		return
 	}
 
-	theme := d.theme
+	theme := d.Theme
 	if theme == nil {
 		theme = palette.DefaultTheme()
 	}
@@ -57,7 +57,7 @@ func (d *attachmentsPanelDrawer) Draw(scr uv.Screen, area uv.Rectangle) {
 	styleSet := styles.New(theme)
 	drawLine(scr, area, 0, styleSet.MutedBright().Bold(true).Render("Attachments"))
 
-	if len(d.items) == 0 {
+	if len(d.Items) == 0 {
 		drawLine(scr, area, 2, styleSet.Muted().Render("No attachments"))
 		drawLine(scr, area, area.Dy()-1, styleSet.Muted().Render("Esc editor"))
 
@@ -65,14 +65,14 @@ func (d *attachmentsPanelDrawer) Draw(scr uv.Screen, area uv.Rectangle) {
 	}
 
 	listHeight := max(area.Dy()-4, 1)
-	start := visibleAttachmentStart(d.selected, listHeight, len(d.items))
+	start := visibleAttachmentStart(d.Selected, listHeight, len(d.Items))
 
-	for row := 0; row < listHeight && start+row < len(d.items); row++ {
+	for row := 0; row < listHeight && start+row < len(d.Items); row++ {
 		idx := start + row
-		item := d.items[idx]
+		item := d.Items[idx]
 
 		label := fmt.Sprintf("%s   %d lines", filepath.Base(item.Path), item.Lines)
-		if idx == d.selected {
+		if idx == d.Selected {
 			label = styleSet.SelectedRow().Render("› " + label)
 		} else {
 			label = styleSet.MutedBright().Render("  " + label)
@@ -92,21 +92,21 @@ func (d *attachmentsPanelDrawer) Update(msg tea.Msg) (PanelDrawer, tea.Cmd) {
 
 	switch key.Code {
 	case tea.KeyUp:
-		d.selected = normalizeAttachmentSelection(d.selected-1, len(d.items))
+		d.Selected = normalizeAttachmentSelection(d.Selected-1, len(d.Items))
 		return d, nil
 	case tea.KeyDown:
-		d.selected = normalizeAttachmentSelection(d.selected+1, len(d.items))
+		d.Selected = normalizeAttachmentSelection(d.Selected+1, len(d.Items))
 		return d, nil
 	case tea.KeyDelete, tea.KeyBackspace:
-		idx := d.selected
-		return d, func() tea.Msg { return removeAttachmentMsg{index: idx} }
+		idx := d.Selected
+		return d, func() tea.Msg { return removeAttachmentMsg{Index: idx} }
 	case tea.KeyEnter, tea.KeyKpEnter:
-		idx := d.selected
-		return d, func() tea.Msg { return editAttachmentMsg{index: idx} }
+		idx := d.Selected
+		return d, func() tea.Msg { return editAttachmentMsg{Index: idx} }
 	case 'g', 'G':
 		if key.Mod&tea.ModCtrl != 0 {
-			idx := d.selected
-			return d, func() tea.Msg { return externalEditAttachmentMsg{index: idx} }
+			idx := d.Selected
+			return d, func() tea.Msg { return externalEditAttachmentMsg{Index: idx} }
 		}
 	}
 
@@ -121,9 +121,9 @@ func (d *attachmentsPanelDrawer) Handles(msg tea.Msg) bool {
 
 	switch key.Code {
 	case tea.KeyUp, tea.KeyDown, tea.KeyDelete, tea.KeyBackspace, tea.KeyEnter, tea.KeyKpEnter:
-		return len(d.items) > 0
+		return len(d.Items) > 0
 	case 'g', 'G':
-		return len(d.items) > 0 && key.Mod&tea.ModCtrl != 0
+		return len(d.Items) > 0 && key.Mod&tea.ModCtrl != 0
 	}
 
 	return false

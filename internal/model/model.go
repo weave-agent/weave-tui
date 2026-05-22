@@ -1,4 +1,4 @@
-package tui
+package model
 
 import (
 	"context"
@@ -204,6 +204,11 @@ func newModel(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui *TUIImpl) 
 	return newModelWithConfig(bus, cfg, ps, ui, TUIConfig{})
 }
 
+// NewModelWithConfig creates a root Bubble Tea model with explicit TUI configuration.
+func NewModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui *TUIImpl, tuiCfg TUIConfig) Model {
+	return newModelWithConfig(bus, cfg, ps, ui, tuiCfg)
+}
+
 // newModelWithConfig creates a new root model with explicit TUI configuration.
 func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui *TUIImpl, tuiCfg TUIConfig) Model {
 	var cfgPath string
@@ -293,7 +298,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		popupChans:        make(map[string]chan overlayResponse),
 		theme:             palette.DefaultTheme(),
 		styles:            styles.New(palette.DefaultTheme()),
-		panelManager:      ui.panelManager,
+		panelManager:      ui.PanelManager(),
 		panelTray:         panels.NewPanelTray(),
 		focus:             FocusEditor,
 		editingAttachment: -1,
@@ -485,10 +490,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// deadlocking the Bubble Tea event loop when handlers call TUI
 		// APIs that send messages back into the loop (e.g. EditorText).
 		if m.ui != nil {
-			m.ui.mu.Lock()
-			handlers := make([]func(KeyEvent), len(m.ui.inputHandlers))
-			copy(handlers, m.ui.inputHandlers)
-			m.ui.mu.Unlock()
+			handlers := m.ui.InputHandlers()
 
 			ev := KeyEvent{Code: msg.Code, Mod: int(msg.Mod), String: msg.String()}
 			go func(handlers []func(KeyEvent), event KeyEvent) {
@@ -674,15 +676,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case removeAttachmentMsg:
-		m = m.removeAttachment(msg.index)
+		m = m.removeAttachment(msg.Index)
 
 		return m, nil
 
 	case editAttachmentMsg:
-		return m.openAttachmentEditor(msg.index)
+		return m.openAttachmentEditor(msg.Index)
 
 	case externalEditAttachmentMsg:
-		return m.openAttachmentExternalEditor(msg.index)
+		return m.openAttachmentExternalEditor(msg.Index)
 
 	case externalEditorMsg:
 		if msg.err != nil {
@@ -918,7 +920,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handlePopupPending()
 
 	case extStatusMsg:
-		m.footer = m.footer.SetExtStatus(msg.key, msg.text)
+		m.footer = m.footer.SetExtStatus(msg.Key, msg.Text)
 		return m, nil
 
 	case tuievents.NotifyMsg:
@@ -1027,8 +1029,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case themeChangedMsg:
-		if msg.theme != nil {
-			m.theme = msg.theme
+		if msg.Theme != nil {
+			m.theme = msg.Theme
 		}
 
 		m.styles = styles.New(m.theme)
@@ -1052,7 +1054,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case setEditorTextMsg:
-		m.editor = m.editor.SetValue(msg.text)
+		m.editor = m.editor.SetValue(msg.Text)
 
 		return m, nil
 
@@ -1062,28 +1064,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		var cmd tea.Cmd
 
-		m.editor, cmd = m.editor.Update(tea.PasteMsg{Content: msg.text})
+		m.editor, cmd = m.editor.Update(tea.PasteMsg{Content: msg.Text})
 		m = m.refreshEditorCompletion()
 
 		return m, cmd
 
 	case editorTextRequestMsg:
-		msg.response <- m.editor.Value()
+		msg.Response <- m.editor.Value()
 
 		return m, nil
 
 	case setFooterMsg:
-		m.customFooter = msg.component
+		m.customFooter = msg.Component
 
 		return m, nil
 
 	case setHeaderMsg:
-		m.customHeader = msg.component
+		m.customHeader = msg.Component
 
 		return m, nil
 
 	case setWorkingFramesMsg:
-		m.spinner = m.spinner.SetCustomFrames(msg.frames, msg.interval)
+		m.spinner = m.spinner.SetCustomFrames(msg.Frames, msg.Interval)
 
 		return m, nil
 
@@ -1503,7 +1505,7 @@ func (m Model) dispatchBinding(action tuikeybindings.BindingAction) (tea.Model, 
 		// Clean up any pending popup channels to prevent goroutine leaks.
 		for id, ch := range m.popupChans {
 			select {
-			case ch <- overlayResponse{err: errors.New("session reset")}:
+			case ch <- overlayResponse{Err: errors.New("session reset")}:
 			default:
 			}
 
@@ -2601,11 +2603,11 @@ func (m Model) handleDialogDone(d overlays.Dialog, pendingCmd tea.Cmd) (tea.Mode
 		// Popup dialogs: send result on channel.
 		if ch, ok := m.popupChans[id]; ok {
 			resp := overlayResponse{
-				index:     result.Index,
-				value:     result.Value,
-				confirmed: result.Confirmed,
-				selected:  result.Selected,
-				err:       result.Err,
+				Index:     result.Index,
+				Value:     result.Value,
+				Confirmed: result.Confirmed,
+				Selected:  result.Selected,
+				Err:       result.Err,
 			}
 			ch <- resp
 
@@ -2646,7 +2648,7 @@ func (m Model) handleDialogForceCancel(d overlays.Dialog) (tea.Model, tea.Cmd) {
 	default:
 		// Popup dialog cancellation.
 		if ch, ok := m.popupChans[id]; ok {
-			ch <- overlayResponse{err: errors.New("canceled")}
+			ch <- overlayResponse{Err: errors.New("canceled")}
 
 			m.dockedOverlay = false
 			delete(m.popupChans, id)
@@ -3165,10 +3167,7 @@ func (m Model) refreshEditorCompletion() Model {
 
 	// Check registered autocomplete providers
 	if m.ui != nil {
-		m.ui.mu.Lock()
-		providers := make([]AutocompleteProvider, len(m.ui.autocompleteProviders))
-		copy(providers, m.ui.autocompleteProviders)
-		m.ui.mu.Unlock()
+		providers := m.ui.AutocompleteProviders()
 
 		for _, provider := range providers {
 			suggestions := provider.Suggestions(AutocompleteContext{

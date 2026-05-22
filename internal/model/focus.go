@@ -1,4 +1,4 @@
-package tui
+package model
 
 // FocusTarget tracks which UI element has keyboard focus.
 type FocusTarget int

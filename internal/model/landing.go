@@ -1,4 +1,4 @@
-package tui
+package model
 
 import (
 	"fmt"
@@ -93,8 +93,8 @@ func (m LandingModel) Draw(scr uv.Screen, area uv.Rectangle, theme *palette.Them
 		switch {
 		case strings.HasPrefix(line, "logo:"):
 			rendered = accentBrightStyle.Render(strings.TrimPrefix(line, "logo:"))
-		case strings.HasPrefix(line, "title:"):
-			rendered = accentBrightStyle.Render(strings.TrimPrefix(line, "title:"))
+		case strings.HasPrefix(line, "Title:"):
+			rendered = accentBrightStyle.Render(strings.TrimPrefix(line, "Title:"))
 		case strings.HasPrefix(line, "kv:"):
 			parts := strings.SplitN(strings.TrimPrefix(line, "kv:"), "|", 2)
 			if len(parts) == 2 {

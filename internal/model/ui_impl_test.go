@@ -1,4 +1,4 @@
-package tui
+package model
 
 import (
 	"sync"
@@ -56,8 +56,8 @@ func TestTUIImpl_SetStatus(t *testing.T) {
 	require.Len(t, sender.msgs, 1)
 	msg, ok := sender.msgs[0].(extStatusMsg)
 	require.True(t, ok)
-	assert.Equal(t, "build", msg.key)
-	assert.Equal(t, "compiling...", msg.text)
+	assert.Equal(t, "build", msg.Key)
+	assert.Equal(t, "compiling...", msg.Text)
 }
 
 func TestTUIImpl_SetStatus_NoProgram(t *testing.T) {
@@ -222,25 +222,25 @@ func TestTUIImpl_PopupQueue(t *testing.T) {
 	ui := NewTUIImpl(nil, nil)
 	ui.SetProgram(sender)
 
-	assert.False(t, ui.hasPendingPopups())
+	assert.False(t, ui.HasPendingPopups())
 
 	req := &overlayRequest{
-		kind:   requestSelect,
-		title:  "Pick one",
-		items:  []string{"a", "b"},
-		result: make(chan overlayResponse, 1),
+		Kind:   requestSelect,
+		Title:  "Pick one",
+		Items:  []string{"a", "b"},
+		Result: make(chan overlayResponse, 1),
 	}
-	require.NoError(t, ui.enqueue(req))
+	require.NoError(t, ui.EnqueuePopup(req))
 
-	assert.True(t, ui.hasPendingPopups())
+	assert.True(t, ui.HasPendingPopups())
 
-	dequeued := ui.dequeue()
+	dequeued := ui.DequeuePopup()
 	require.NotNil(t, dequeued)
-	assert.Equal(t, requestSelect, dequeued.kind)
-	assert.Equal(t, "Pick one", dequeued.title)
+	assert.Equal(t, requestSelect, dequeued.Kind)
+	assert.Equal(t, "Pick one", dequeued.Title)
 
-	assert.False(t, ui.hasPendingPopups())
-	assert.Nil(t, ui.dequeue())
+	assert.False(t, ui.HasPendingPopups())
+	assert.Nil(t, ui.DequeuePopup())
 }
 
 func TestTUIImpl_PopupQueueFIFO(t *testing.T) {
@@ -248,19 +248,19 @@ func TestTUIImpl_PopupQueueFIFO(t *testing.T) {
 	ui := NewTUIImpl(nil, nil)
 	ui.SetProgram(sender)
 
-	req1 := &overlayRequest{kind: requestSelect, title: "first", result: make(chan overlayResponse, 1)}
-	req2 := &overlayRequest{kind: requestConfirm, message: "second", result: make(chan overlayResponse, 1)}
+	req1 := &overlayRequest{Kind: requestSelect, Title: "first", Result: make(chan overlayResponse, 1)}
+	req2 := &overlayRequest{Kind: requestConfirm, Message: "second", Result: make(chan overlayResponse, 1)}
 
-	require.NoError(t, ui.enqueue(req1))
-	require.NoError(t, ui.enqueue(req2))
+	require.NoError(t, ui.EnqueuePopup(req1))
+	require.NoError(t, ui.EnqueuePopup(req2))
 
-	first := ui.dequeue()
+	first := ui.DequeuePopup()
 	require.NotNil(t, first)
-	assert.Equal(t, requestSelect, first.kind)
+	assert.Equal(t, requestSelect, first.Kind)
 
-	second := ui.dequeue()
+	second := ui.DequeuePopup()
 	require.NotNil(t, second)
-	assert.Equal(t, requestConfirm, second.kind)
+	assert.Equal(t, requestConfirm, second.Kind)
 }
 
 func TestTUIImpl_EnqueueSendsPopupPendingMsg(t *testing.T) {
@@ -269,12 +269,12 @@ func TestTUIImpl_EnqueueSendsPopupPendingMsg(t *testing.T) {
 	ui.SetProgram(sender)
 
 	req := &overlayRequest{
-		kind:   requestSelect,
-		title:  "Pick",
-		items:  []string{"a"},
-		result: make(chan overlayResponse, 1),
+		Kind:   requestSelect,
+		Title:  "Pick",
+		Items:  []string{"a"},
+		Result: make(chan overlayResponse, 1),
 	}
-	ui.enqueue(req) //nolint:errcheck,gosec // test
+	ui.EnqueuePopup(req) //nolint:errcheck,gosec // test
 
 	require.Len(t, sender.msgs, 1)
 	_, ok := sender.msgs[0].(popupPendingMsg)
@@ -285,7 +285,7 @@ func TestTUIImpl_EnqueueSendsPopupPendingMsg(t *testing.T) {
 // and returns the updated model.
 func activatePopup(m Model, ui *TUIImpl, req *overlayRequest) Model {
 	ui.SetProgram(&mockSender{})
-	_ = ui.enqueue(req)
+	_ = ui.EnqueuePopup(req)
 	updated, _ := m.handlePopupPending()
 
 	return updated
@@ -299,10 +299,10 @@ func TestModel_HandlePopupPending_Select(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:   requestSelect,
-		title:  "Choose",
-		items:  []string{"opt1", "opt2", "opt3"},
-		result: make(chan overlayResponse, 1),
+		Kind:   requestSelect,
+		Title:  "Choose",
+		Items:  []string{"opt1", "opt2", "opt3"},
+		Result: make(chan overlayResponse, 1),
 	}
 
 	m = activatePopup(m, ui, req)
@@ -321,9 +321,9 @@ func TestModel_HandlePopupPending_Confirm(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:    requestConfirm,
-		message: "Are you sure?",
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestConfirm,
+		Message: "Are you sure?",
+		Result:  make(chan overlayResponse, 1),
 	}
 
 	m = activatePopup(m, ui, req)
@@ -342,9 +342,9 @@ func TestModel_HandlePopupPending_Input(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:    requestInput,
-		message: "Enter value:",
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestInput,
+		Message: "Enter Value:",
+		Result:  make(chan overlayResponse, 1),
 	}
 
 	m = activatePopup(m, ui, req)
@@ -363,10 +363,10 @@ func TestModel_HandlePopupPending_InputWithMask(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:    requestInput,
-		message: "Password:",
-		mask:    '*',
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestInput,
+		Message: "Password:",
+		Mask:    '*',
+		Result:  make(chan overlayResponse, 1),
 	}
 
 	m = activatePopup(m, ui, req)
@@ -434,9 +434,9 @@ func TestModel_PopupConfirmYes(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:    requestConfirm,
-		message: "Proceed?",
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestConfirm,
+		Message: "Proceed?",
+		Result:  make(chan overlayResponse, 1),
 	}
 	m = activatePopup(m, ui, req)
 	require.False(t, m.dialogStack.Empty())
@@ -445,8 +445,8 @@ func TestModel_PopupConfirmYes(t *testing.T) {
 	m = updated.(Model)
 
 	select {
-	case resp := <-req.result:
-		assert.True(t, resp.confirmed)
+	case resp := <-req.Result:
+		assert.True(t, resp.Confirmed)
 	default:
 		t.Fatal("expected response on result channel")
 	}
@@ -462,9 +462,9 @@ func TestModel_PopupConfirmNo(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:    requestConfirm,
-		message: "Proceed?",
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestConfirm,
+		Message: "Proceed?",
+		Result:  make(chan overlayResponse, 1),
 	}
 	m = activatePopup(m, ui, req)
 	require.False(t, m.dialogStack.Empty())
@@ -473,8 +473,8 @@ func TestModel_PopupConfirmNo(t *testing.T) {
 	m = updated.(Model)
 
 	select {
-	case resp := <-req.result:
-		assert.False(t, resp.confirmed)
+	case resp := <-req.Result:
+		assert.False(t, resp.Confirmed)
 	default:
 		t.Fatal("expected response on result channel")
 	}
@@ -490,10 +490,10 @@ func TestModel_PopupSelectCancel(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:   requestSelect,
-		title:  "Pick",
-		items:  []string{"a", "b"},
-		result: make(chan overlayResponse, 1),
+		Kind:   requestSelect,
+		Title:  "Pick",
+		Items:  []string{"a", "b"},
+		Result: make(chan overlayResponse, 1),
 	}
 	m = activatePopup(m, ui, req)
 	require.False(t, m.dialogStack.Empty())
@@ -502,9 +502,9 @@ func TestModel_PopupSelectCancel(t *testing.T) {
 	m = updated.(Model)
 
 	select {
-	case resp := <-req.result:
-		assert.Equal(t, -1, resp.index)
-		require.Error(t, resp.err)
+	case resp := <-req.Result:
+		assert.Equal(t, -1, resp.Index)
+		require.Error(t, resp.Err)
 	default:
 		t.Fatal("expected response on result channel")
 	}
@@ -520,10 +520,10 @@ func TestModel_PopupSelectConfirm(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:   requestSelect,
-		title:  "Pick",
-		items:  []string{"a", "b", "c"},
-		result: make(chan overlayResponse, 1),
+		Kind:   requestSelect,
+		Title:  "Pick",
+		Items:  []string{"a", "b", "c"},
+		Result: make(chan overlayResponse, 1),
 	}
 	m = activatePopup(m, ui, req)
 	require.False(t, m.dialogStack.Empty())
@@ -532,9 +532,9 @@ func TestModel_PopupSelectConfirm(t *testing.T) {
 	m = updated.(Model)
 
 	select {
-	case resp := <-req.result:
-		assert.Equal(t, 1, resp.index)
-		require.NoError(t, resp.err)
+	case resp := <-req.Result:
+		assert.Equal(t, 1, resp.Index)
+		require.NoError(t, resp.Err)
 	default:
 		t.Fatal("expected response on result channel")
 	}
@@ -550,9 +550,9 @@ func TestModel_PopupInputSubmit(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:    requestInput,
-		message: "Name:",
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestInput,
+		Message: "Name:",
+		Result:  make(chan overlayResponse, 1),
 	}
 	m = activatePopup(m, ui, req)
 	require.False(t, m.dialogStack.Empty())
@@ -561,9 +561,9 @@ func TestModel_PopupInputSubmit(t *testing.T) {
 	m = updated.(Model)
 
 	select {
-	case resp := <-req.result:
-		assert.Equal(t, "hi", resp.value)
-		require.NoError(t, resp.err)
+	case resp := <-req.Result:
+		assert.Equal(t, "hi", resp.Value)
+		require.NoError(t, resp.Err)
 	default:
 		t.Fatal("expected response on result channel")
 	}
@@ -579,9 +579,9 @@ func TestModel_PopupInputCancel(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:    requestInput,
-		message: "Name:",
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestInput,
+		Message: "Name:",
+		Result:  make(chan overlayResponse, 1),
 	}
 	m = activatePopup(m, ui, req)
 	require.False(t, m.dialogStack.Empty())
@@ -590,8 +590,8 @@ func TestModel_PopupInputCancel(t *testing.T) {
 	m = updated.(Model)
 
 	select {
-	case resp := <-req.result:
-		require.Error(t, resp.err)
+	case resp := <-req.Result:
+		require.Error(t, resp.Err)
 	default:
 		t.Fatal("expected response on result channel")
 	}
@@ -607,10 +607,10 @@ func TestModel_HandlePopupPending_Editor(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:    requestEditor,
-		title:   "Edit note:",
-		initial: "prefill",
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestEditor,
+		Title:   "Edit note:",
+		Initial: "prefill",
+		Result:  make(chan overlayResponse, 1),
 	}
 
 	m = activatePopup(m, ui, req)
@@ -629,10 +629,10 @@ func TestModel_PopupEditorSubmit(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:    requestEditor,
-		title:   "Edit:",
-		initial: "",
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestEditor,
+		Title:   "Edit:",
+		Initial: "",
+		Result:  make(chan overlayResponse, 1),
 	}
 	m = activatePopup(m, ui, req)
 	require.False(t, m.dialogStack.Empty())
@@ -641,9 +641,9 @@ func TestModel_PopupEditorSubmit(t *testing.T) {
 	m = updated.(Model)
 
 	select {
-	case resp := <-req.result:
-		assert.Equal(t, "edited text", resp.value)
-		require.NoError(t, resp.err)
+	case resp := <-req.Result:
+		assert.Equal(t, "edited text", resp.Value)
+		require.NoError(t, resp.Err)
 	default:
 		t.Fatal("expected response on result channel")
 	}
@@ -659,10 +659,10 @@ func TestModel_PopupEditorCancel(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:    requestEditor,
-		title:   "Edit:",
-		initial: "",
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestEditor,
+		Title:   "Edit:",
+		Initial: "",
+		Result:  make(chan overlayResponse, 1),
 	}
 	m = activatePopup(m, ui, req)
 	require.False(t, m.dialogStack.Empty())
@@ -671,8 +671,8 @@ func TestModel_PopupEditorCancel(t *testing.T) {
 	m = updated.(Model)
 
 	select {
-	case resp := <-req.result:
-		require.Error(t, resp.err)
+	case resp := <-req.Result:
+		require.Error(t, resp.Err)
 	default:
 		t.Fatal("expected response on result channel")
 	}
@@ -703,11 +703,11 @@ func TestModel_HandlePopupPending_MultiSelect(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:     requestMultiSelect,
-		title:    "Pick fruits",
-		items:    []string{"apple", "banana", "cherry"},
-		defaults: []bool{true, false, true},
-		result:   make(chan overlayResponse, 1),
+		Kind:     requestMultiSelect,
+		Title:    "Pick fruits",
+		Items:    []string{"apple", "banana", "cherry"},
+		Defaults: []bool{true, false, true},
+		Result:   make(chan overlayResponse, 1),
 	}
 
 	m = activatePopup(m, ui, req)
@@ -726,11 +726,11 @@ func TestModel_PopupMultiSelectConfirm(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:     requestMultiSelect,
-		title:    "Pick",
-		items:    []string{"a", "b", "c"},
-		defaults: []bool{false, true, false},
-		result:   make(chan overlayResponse, 1),
+		Kind:     requestMultiSelect,
+		Title:    "Pick",
+		Items:    []string{"a", "b", "c"},
+		Defaults: []bool{false, true, false},
+		Result:   make(chan overlayResponse, 1),
 	}
 	m = activatePopup(m, ui, req)
 	require.False(t, m.dialogStack.Empty())
@@ -739,9 +739,9 @@ func TestModel_PopupMultiSelectConfirm(t *testing.T) {
 	m = updated.(Model)
 
 	select {
-	case resp := <-req.result:
-		assert.Equal(t, []int{0, 2}, resp.selected)
-		require.NoError(t, resp.err)
+	case resp := <-req.Result:
+		assert.Equal(t, []int{0, 2}, resp.Selected)
+		require.NoError(t, resp.Err)
 	default:
 		t.Fatal("expected response on result channel")
 	}
@@ -757,10 +757,10 @@ func TestModel_PopupMultiSelectCancel(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:   requestMultiSelect,
-		title:  "Pick",
-		items:  []string{"a", "b"},
-		result: make(chan overlayResponse, 1),
+		Kind:   requestMultiSelect,
+		Title:  "Pick",
+		Items:  []string{"a", "b"},
+		Result: make(chan overlayResponse, 1),
 	}
 	m = activatePopup(m, ui, req)
 	require.False(t, m.dialogStack.Empty())
@@ -769,8 +769,8 @@ func TestModel_PopupMultiSelectCancel(t *testing.T) {
 	m = updated.(Model)
 
 	select {
-	case resp := <-req.result:
-		require.Error(t, resp.err)
+	case resp := <-req.Result:
+		require.Error(t, resp.Err)
 	default:
 		t.Fatal("expected response on result channel")
 	}
@@ -786,10 +786,10 @@ func TestModel_PopupView_MultiSelect(t *testing.T) {
 	m.dialogStack = overlays.NewDialogStack()
 	m.dialogStack = m.dialogStack.Push(overlays.NewMultiSelectDialog(
 		"popup-multiselect-1",
-		overlays.NewMultiSelectModel("Pick items:", []string{"A", "B", "C"}, nil).SetSize(80, 24).Show(),
+		overlays.NewMultiSelectModel("Pick Items:", []string{"A", "B", "C"}, nil).SetSize(80, 24).Show(),
 	))
 	view := m.View()
-	assert.Contains(t, view.Content, "Pick items:")
+	assert.Contains(t, view.Content, "Pick Items:")
 	assert.Contains(t, view.Content, "☐")
 }
 
@@ -801,20 +801,20 @@ func TestModel_PopupSequentialQueuing(t *testing.T) {
 	m.ui = ui
 
 	req1 := &overlayRequest{
-		kind:   requestSelect,
-		title:  "First",
-		items:  []string{"a"},
-		result: make(chan overlayResponse, 1),
+		Kind:   requestSelect,
+		Title:  "First",
+		Items:  []string{"a"},
+		Result: make(chan overlayResponse, 1),
 	}
 	req2 := &overlayRequest{
-		kind:    requestConfirm,
-		message: "Second?",
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestConfirm,
+		Message: "Second?",
+		Result:  make(chan overlayResponse, 1),
 	}
 
 	ui.SetProgram(&mockSender{})
-	require.NoError(t, ui.enqueue(req1))
-	require.NoError(t, ui.enqueue(req2))
+	require.NoError(t, ui.EnqueuePopup(req1))
+	require.NoError(t, ui.EnqueuePopup(req2))
 
 	// First popup should be activated on dialog stack
 	m, _ = m.handlePopupPending()
@@ -825,7 +825,7 @@ func TestModel_PopupSequentialQueuing(t *testing.T) {
 	m = updated.(Model)
 
 	// Second should still be queued
-	assert.True(t, ui.hasPendingPopups())
+	assert.True(t, ui.HasPendingPopups())
 
 	m, _ = m.handlePopupPending()
 	require.False(t, m.dialogStack.Empty())
@@ -835,7 +835,7 @@ func TestModel_PopupSequentialQueuing(t *testing.T) {
 	m = updated.(Model)
 
 	assert.True(t, m.dialogStack.Empty())
-	assert.False(t, ui.hasPendingPopups())
+	assert.False(t, ui.HasPendingPopups())
 }
 
 func TestTUIImpl_NotifyTyped(t *testing.T) {
@@ -882,8 +882,8 @@ func TestTUIImpl_SetWorking(t *testing.T) {
 	require.Len(t, sender.msgs, 1)
 	msg, ok := sender.msgs[0].(extStatusMsg)
 	require.True(t, ok)
-	assert.Equal(t, "working", msg.key)
-	assert.Equal(t, "compiling...", msg.text)
+	assert.Equal(t, "working", msg.Key)
+	assert.Equal(t, "compiling...", msg.Text)
 }
 
 func TestTUIImpl_ClearWorking(t *testing.T) {
@@ -896,8 +896,8 @@ func TestTUIImpl_ClearWorking(t *testing.T) {
 	require.Len(t, sender.msgs, 1)
 	msg, ok := sender.msgs[0].(extStatusMsg)
 	require.True(t, ok)
-	assert.Equal(t, "working", msg.key)
-	assert.Empty(t, msg.text)
+	assert.Equal(t, "working", msg.Key)
+	assert.Empty(t, msg.Text)
 }
 
 func TestModel_NotifyTypedMsg_ErrorBanner(t *testing.T) {
@@ -966,7 +966,7 @@ func TestModel_ExtStatusMsgUpdatesFooter(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	updated, _ := m.Update(extStatusMsg{key: "test", text: "running"})
+	updated, _ := m.Update(extStatusMsg{Key: "test", Text: "running"})
 	m = updated.(Model)
 
 	assert.Equal(t, "running", m.footer.ExtStatus()["test"])
@@ -1122,8 +1122,8 @@ func TestTUIImpl_SetTheme_SwitchesActiveTheme(t *testing.T) {
 	require.Len(t, sender.msgs, 1)
 	msg, ok := sender.msgs[0].(themeChangedMsg)
 	require.True(t, ok)
-	assert.Equal(t, "123", msg.theme.Accent)
-	assert.Equal(t, "255", msg.theme.Foreground)
+	assert.Equal(t, "123", msg.Theme.Accent)
+	assert.Equal(t, "255", msg.Theme.Foreground)
 }
 
 func TestTUIImpl_SetTheme_UnknownTheme(t *testing.T) {
@@ -1220,7 +1220,7 @@ func TestTUIImpl_SetOrder_PreservesOmittedPanels(t *testing.T) {
 	ui.SetOrder([]string{"p3", "missing"})
 
 	assert.Equal(t, []string{"p3", "p1", "p2"}, ui.GetOrder())
-	assert.Equal(t, []string{"p3", "p1", "p2"}, ui.panelManager.VisiblePanels())
+	assert.Equal(t, []string{"p3", "p1", "p2"}, ui.PanelManager().VisiblePanels())
 }
 
 func TestTUIImpl_RegisterTheme_EmptyName(t *testing.T) {
@@ -1270,17 +1270,17 @@ func TestTUIImpl_Select_WithKeepContent(t *testing.T) {
 
 	// Enqueue with KeepContent option
 	req := &overlayRequest{
-		kind:        requestSelect,
-		title:       "Pick",
-		items:       []string{"a", "b"},
-		keepContent: true,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestSelect,
+		Title:       "Pick",
+		Items:       []string{"a", "b"},
+		KeepContent: true,
+		Result:      make(chan overlayResponse, 1),
 	}
-	require.NoError(t, ui.enqueue(req))
+	require.NoError(t, ui.EnqueuePopup(req))
 
-	dequeued := ui.dequeue()
+	dequeued := ui.DequeuePopup()
 	require.NotNil(t, dequeued)
-	assert.True(t, dequeued.keepContent, "keepContent should flow through to request")
+	assert.True(t, dequeued.KeepContent, "keepContent should flow through to request")
 }
 
 func TestTUIImpl_Confirm_WithKeepContent(t *testing.T) {
@@ -1289,16 +1289,16 @@ func TestTUIImpl_Confirm_WithKeepContent(t *testing.T) {
 	ui.SetProgram(sender)
 
 	req := &overlayRequest{
-		kind:        requestConfirm,
-		message:     "Sure?",
-		keepContent: true,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestConfirm,
+		Message:     "Sure?",
+		KeepContent: true,
+		Result:      make(chan overlayResponse, 1),
 	}
-	require.NoError(t, ui.enqueue(req))
+	require.NoError(t, ui.EnqueuePopup(req))
 
-	dequeued := ui.dequeue()
+	dequeued := ui.DequeuePopup()
 	require.NotNil(t, dequeued)
-	assert.True(t, dequeued.keepContent)
+	assert.True(t, dequeued.KeepContent)
 }
 
 func TestTUIImpl_Input_WithKeepContent(t *testing.T) {
@@ -1307,16 +1307,16 @@ func TestTUIImpl_Input_WithKeepContent(t *testing.T) {
 	ui.SetProgram(sender)
 
 	req := &overlayRequest{
-		kind:        requestInput,
-		message:     "Name:",
-		keepContent: true,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestInput,
+		Message:     "Name:",
+		KeepContent: true,
+		Result:      make(chan overlayResponse, 1),
 	}
-	require.NoError(t, ui.enqueue(req))
+	require.NoError(t, ui.EnqueuePopup(req))
 
-	dequeued := ui.dequeue()
+	dequeued := ui.DequeuePopup()
 	require.NotNil(t, dequeued)
-	assert.True(t, dequeued.keepContent)
+	assert.True(t, dequeued.KeepContent)
 }
 
 func TestTUIImpl_Input_WithMask(t *testing.T) {
@@ -1325,16 +1325,16 @@ func TestTUIImpl_Input_WithMask(t *testing.T) {
 	ui.SetProgram(sender)
 
 	req := &overlayRequest{
-		kind:    requestInput,
-		message: "Password:",
-		mask:    '*',
-		result:  make(chan overlayResponse, 1),
+		Kind:    requestInput,
+		Message: "Password:",
+		Mask:    '*',
+		Result:  make(chan overlayResponse, 1),
 	}
-	require.NoError(t, ui.enqueue(req))
+	require.NoError(t, ui.EnqueuePopup(req))
 
-	dequeued := ui.dequeue()
+	dequeued := ui.DequeuePopup()
 	require.NotNil(t, dequeued)
-	assert.Equal(t, rune('*'), dequeued.mask)
+	assert.Equal(t, rune('*'), dequeued.Mask)
 }
 
 func TestTUIImpl_Editor_WithKeepContent(t *testing.T) {
@@ -1343,16 +1343,16 @@ func TestTUIImpl_Editor_WithKeepContent(t *testing.T) {
 	ui.SetProgram(sender)
 
 	req := &overlayRequest{
-		kind:        requestEditor,
-		title:       "Edit:",
-		keepContent: true,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestEditor,
+		Title:       "Edit:",
+		KeepContent: true,
+		Result:      make(chan overlayResponse, 1),
 	}
-	require.NoError(t, ui.enqueue(req))
+	require.NoError(t, ui.EnqueuePopup(req))
 
-	dequeued := ui.dequeue()
+	dequeued := ui.DequeuePopup()
 	require.NotNil(t, dequeued)
-	assert.True(t, dequeued.keepContent)
+	assert.True(t, dequeued.KeepContent)
 }
 
 func TestTUIImpl_MultiSelect_WithKeepContent(t *testing.T) {
@@ -1361,17 +1361,17 @@ func TestTUIImpl_MultiSelect_WithKeepContent(t *testing.T) {
 	ui.SetProgram(sender)
 
 	req := &overlayRequest{
-		kind:        requestMultiSelect,
-		title:       "Pick",
-		items:       []string{"a", "b"},
-		keepContent: true,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestMultiSelect,
+		Title:       "Pick",
+		Items:       []string{"a", "b"},
+		KeepContent: true,
+		Result:      make(chan overlayResponse, 1),
 	}
-	require.NoError(t, ui.enqueue(req))
+	require.NoError(t, ui.EnqueuePopup(req))
 
-	dequeued := ui.dequeue()
+	dequeued := ui.DequeuePopup()
 	require.NotNil(t, dequeued)
-	assert.True(t, dequeued.keepContent)
+	assert.True(t, dequeued.KeepContent)
 }
 
 func TestModel_DockedOverlay_SetsFlag(t *testing.T) {
@@ -1382,11 +1382,11 @@ func TestModel_DockedOverlay_SetsFlag(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:        requestSelect,
-		title:       "Choose",
-		items:       []string{"opt1", "opt2"},
-		keepContent: true,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestSelect,
+		Title:       "Choose",
+		Items:       []string{"opt1", "opt2"},
+		KeepContent: true,
+		Result:      make(chan overlayResponse, 1),
 	}
 
 	m = activatePopup(m, ui, req)
@@ -1401,11 +1401,11 @@ func TestModel_DockedOverlay_ClearsOnDone(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:        requestSelect,
-		title:       "Choose",
-		items:       []string{"opt1", "opt2"},
-		keepContent: true,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestSelect,
+		Title:       "Choose",
+		Items:       []string{"opt1", "opt2"},
+		KeepContent: true,
+		Result:      make(chan overlayResponse, 1),
 	}
 
 	m = activatePopup(m, ui, req)
@@ -1426,10 +1426,10 @@ func TestModel_DockedOverlay_ClearsOnCancel(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:        requestConfirm,
-		message:     "Sure?",
-		keepContent: true,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestConfirm,
+		Message:     "Sure?",
+		KeepContent: true,
+		Result:      make(chan overlayResponse, 1),
 	}
 
 	m = activatePopup(m, ui, req)
@@ -1531,11 +1531,11 @@ func TestModel_DockedOverlay_DialogSizedForDockedArea(t *testing.T) {
 	m.ui = ui
 
 	req := &overlayRequest{
-		kind:        requestSelect,
-		title:       "Choose",
-		items:       []string{"a", "b", "c"},
-		keepContent: true,
-		result:      make(chan overlayResponse, 1),
+		Kind:        requestSelect,
+		Title:       "Choose",
+		Items:       []string{"a", "b", "c"},
+		KeepContent: true,
+		Result:      make(chan overlayResponse, 1),
 	}
 
 	m = activatePopup(m, ui, req)
@@ -1571,7 +1571,7 @@ func TestTUIImpl_EditorText(t *testing.T) {
 	require.True(t, ok)
 
 	// Send response to unblock
-	msg.response <- "editor contents"
+	msg.Response <- "editor contents"
 
 	select {
 	case text := <-textCh:
@@ -1597,7 +1597,7 @@ func TestTUIImpl_SetEditorText(t *testing.T) {
 	require.Len(t, sender.msgs, 1)
 	msg, ok := sender.msgs[0].(setEditorTextMsg)
 	require.True(t, ok)
-	assert.Equal(t, "hello world", msg.text)
+	assert.Equal(t, "hello world", msg.Text)
 }
 
 func TestTUIImpl_SetEditorText_NoProgram(t *testing.T) {
@@ -1616,7 +1616,7 @@ func TestTUIImpl_PasteToEditor(t *testing.T) {
 	require.Len(t, sender.msgs, 1)
 	msg, ok := sender.msgs[0].(pasteToEditorMsg)
 	require.True(t, ok)
-	assert.Equal(t, "pasted text", msg.text)
+	assert.Equal(t, "pasted text", msg.Text)
 }
 
 func TestTUIImpl_PasteToEditor_NoProgram(t *testing.T) {
@@ -1664,7 +1664,7 @@ func TestTUIImpl_SetFooter(t *testing.T) {
 	require.Len(t, sender.msgs, 1)
 	msg, ok := sender.msgs[0].(setFooterMsg)
 	require.True(t, ok)
-	assert.Equal(t, comp, msg.component)
+	assert.Equal(t, comp, msg.Component)
 }
 
 func TestTUIImpl_SetFooter_NoProgram(t *testing.T) {
@@ -1684,7 +1684,7 @@ func TestTUIImpl_SetHeader(t *testing.T) {
 	require.Len(t, sender.msgs, 1)
 	msg, ok := sender.msgs[0].(setHeaderMsg)
 	require.True(t, ok)
-	assert.Equal(t, comp, msg.component)
+	assert.Equal(t, comp, msg.Component)
 }
 
 func TestTUIImpl_SetHeader_NoProgram(t *testing.T) {
@@ -1702,8 +1702,8 @@ func TestTUIImpl_OnTerminalInput(t *testing.T) {
 		received = ev
 	})
 
-	require.Len(t, ui.inputHandlers, 1)
-	ui.inputHandlers[0](KeyEvent{Code: 'a', Mod: 0, String: "a"})
+	require.Len(t, ui.InputHandlers(), 1)
+	ui.InputHandlers()[0](KeyEvent{Code: 'a', Mod: 0, String: "a"})
 	assert.Equal(t, 'a', received.Code)
 }
 
@@ -1713,8 +1713,8 @@ func TestTUIImpl_AddAutocomplete(t *testing.T) {
 	provider := &mockAutocompleteProvider{}
 	ui.AddAutocomplete(provider)
 
-	require.Len(t, ui.autocompleteProviders, 1)
-	assert.Equal(t, provider, ui.autocompleteProviders[0])
+	require.Len(t, ui.AutocompleteProviders(), 1)
+	assert.Equal(t, provider, ui.AutocompleteProviders()[0])
 }
 
 func TestTUIImpl_SetWorkingFrames(t *testing.T) {
@@ -1725,14 +1725,15 @@ func TestTUIImpl_SetWorkingFrames(t *testing.T) {
 	frames := []string{"|", "/", "-", "\\"}
 	ui.SetWorkingFrames(frames, 100*time.Millisecond)
 
-	assert.Equal(t, frames, ui.workingFrames)
-	assert.Equal(t, 100*time.Millisecond, ui.workingInterval)
+	gotFrames, gotInterval := ui.WorkingFrames()
+	assert.Equal(t, frames, gotFrames)
+	assert.Equal(t, 100*time.Millisecond, gotInterval)
 
 	require.Len(t, sender.msgs, 1)
 	msg, ok := sender.msgs[0].(setWorkingFramesMsg)
 	require.True(t, ok)
-	assert.Equal(t, frames, msg.frames)
-	assert.Equal(t, 100*time.Millisecond, msg.interval)
+	assert.Equal(t, frames, msg.Frames)
+	assert.Equal(t, 100*time.Millisecond, msg.Interval)
 }
 
 func TestTUIImpl_SetWorkingFrames_NoProgram(t *testing.T) {
