@@ -1891,9 +1891,9 @@ func (m Model) onOutdatedExtensions(msg OutdatedNotificationMsg) (tea.Model, tea
 	text := formatOutdatedBanner(names)
 
 	m.showLanding = false
-	m.chat = m.chat.AddItem(newNotifyAssistantMsg(text))
+	m.showBanner(text, sdk.NotifyInfo)
 
-	return m, nil
+	return m, m.bannerTimer
 }
 
 // formatOutdatedBanner formats outdated extension names into a notification message.
@@ -2641,6 +2641,7 @@ func (m *Model) rebuildChatFromSession(sessionID string) {
 	if err != nil {
 		m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
 		am := messages.NewAssistantMessage()
+		am.SetStyles(styles.New(m.theme))
 		am.Finalize(fmt.Sprintf("Error loading session: %v", err))
 		m.chat = m.chat.AddItem(am)
 
@@ -2649,17 +2650,23 @@ func (m *Model) rebuildChatFromSession(sessionID string) {
 
 	m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
 	m.toolPanels = make(map[string]*messages.ToolPanel)
+	ss := styles.New(m.theme)
 
 	for _, entry := range entries {
 		switch entry.Role {
 		case sdk.RoleUser:
-			m.chat = m.chat.AddItem(messages.NewUserMessage(entry.Content))
+			um := messages.NewUserMessage(entry.Content)
+			um.SetStyles(ss)
+			m.chat = m.chat.AddItem(um)
 		case sdk.RoleAssistant:
 			if entry.Thinking != "" {
-				m.chat = m.chat.AddItem(messages.NewThinkingBlock(entry.Thinking))
+				tb := messages.NewThinkingBlock(entry.Thinking)
+				tb.SetStyles(ss)
+				m.chat = m.chat.AddItem(tb)
 			}
 
 			am := messages.NewAssistantMessage()
+			am.SetStyles(ss)
 			am.Finalize(entry.Content)
 			m.chat = m.chat.AddItem(am)
 
@@ -2669,6 +2676,7 @@ func (m *Model) rebuildChatFromSession(sessionID string) {
 					for _, tc := range tcs {
 						args, _ := json.Marshal(tc.Arguments)
 						panel := messages.NewToolPanel(tc.ID, tc.Name, string(args))
+						panel.SetStyles(ss)
 						m.toolPanels[tc.ID] = panel
 						m.chat = m.chat.AddItem(panel)
 					}
@@ -2680,6 +2688,7 @@ func (m *Model) rebuildChatFromSession(sessionID string) {
 			panel, ok := m.toolPanels[toolID]
 			if !ok {
 				panel = messages.NewToolPanel(toolID, toolName, "")
+				panel.SetStyles(ss)
 				m.toolPanels[toolID] = panel
 				m.chat = m.chat.AddItem(panel)
 			}
@@ -2695,6 +2704,7 @@ func (m *Model) rebuildChatFromSession(sessionID string) {
 func (m *Model) rebuildChatFromMessages(msgs []sdk.Message) {
 	m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
 	m.toolPanels = make(map[string]*messages.ToolPanel)
+	ss := styles.New(m.theme)
 
 	for _, msg := range msgs {
 		content := ""
@@ -2709,19 +2719,25 @@ func (m *Model) rebuildChatFromMessages(msgs []sdk.Message) {
 
 		switch msg.Role {
 		case sdk.RoleUser:
-			m.chat = m.chat.AddItem(messages.NewUserMessage(content))
+			um := messages.NewUserMessage(content)
+			um.SetStyles(ss)
+			m.chat = m.chat.AddItem(um)
 		case sdk.RoleAssistant:
 			if len(msg.Thinking) > 0 {
-				m.chat = m.chat.AddItem(messages.NewThinkingBlock(msg.Thinking[0].Thinking))
+				tb := messages.NewThinkingBlock(msg.Thinking[0].Thinking)
+				tb.SetStyles(ss)
+				m.chat = m.chat.AddItem(tb)
 			}
 
 			am := messages.NewAssistantMessage()
+			am.SetStyles(ss)
 			am.Finalize(content)
 			m.chat = m.chat.AddItem(am)
 
 			for _, tc := range msg.ToolCalls {
 				args, _ := json.Marshal(tc.Arguments)
 				panel := messages.NewToolPanel(tc.ID, tc.Name, string(args))
+				panel.SetStyles(ss)
 				m.toolPanels[tc.ID] = panel
 				m.chat = m.chat.AddItem(panel)
 			}
@@ -2729,6 +2745,7 @@ func (m *Model) rebuildChatFromMessages(msgs []sdk.Message) {
 			panel, ok := m.toolPanels[msg.ToolCallID]
 			if !ok {
 				panel = messages.NewToolPanel(msg.ToolCallID, msg.ToolName, "")
+				panel.SetStyles(ss)
 				m.toolPanels[msg.ToolCallID] = panel
 				m.chat = m.chat.AddItem(panel)
 			}

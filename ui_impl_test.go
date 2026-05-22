@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/weave-agent/weave-tui/components/messages"
 	"github.com/weave-agent/weave-tui/components/overlays"
 	"github.com/weave-agent/weave-tui/palette"
 	"github.com/weave-agent/weave/bus"
@@ -1033,13 +1032,11 @@ func TestModel_OutdatedNotificationAddsBanner(t *testing.T) {
 	updated, _ := m.Update(msg)
 	m = updated.(Model)
 
-	items := m.chat.Items()
-	require.Len(t, items, 1)
-	am, ok := items[0].(*messages.AssistantMessage)
-	require.True(t, ok)
-	assert.Contains(t, am.Content(), "Extension Updates Available")
-	assert.Contains(t, am.Content(), "mcp, diff-viewer")
-	assert.Contains(t, am.Content(), "weave update")
+	assert.Empty(t, m.chat.Items())
+	assert.Contains(t, m.bannerMsg, "Extension Updates Available")
+	assert.Contains(t, m.bannerMsg, "mcp, diff-viewer")
+	assert.Contains(t, m.bannerMsg, "weave update")
+	assert.Equal(t, sdk.NotifyInfo, m.bannerLevel)
 	assert.False(t, m.showLanding)
 }
 
@@ -1054,6 +1051,7 @@ func TestModel_OutdatedNotificationEmptyList(t *testing.T) {
 	m = updated.(Model)
 
 	assert.Empty(t, m.chat.Items())
+	assert.Empty(t, m.bannerMsg)
 }
 
 func TestModel_OutdatedNotificationSingleExtension(t *testing.T) {
@@ -1071,11 +1069,9 @@ func TestModel_OutdatedNotificationSingleExtension(t *testing.T) {
 	updated, _ := m.Update(msg)
 	m = updated.(Model)
 
-	items := m.chat.Items()
-	require.Len(t, items, 1)
-	am, ok := items[0].(*messages.AssistantMessage)
-	require.True(t, ok)
-	assert.Contains(t, am.Content(), "mcp")
+	assert.Empty(t, m.chat.Items())
+	assert.Contains(t, m.bannerMsg, "mcp")
+	assert.Equal(t, sdk.NotifyInfo, m.bannerLevel)
 }
 
 func TestFormatOutdatedBanner(t *testing.T) {
