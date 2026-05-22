@@ -103,14 +103,14 @@
 - [x] run `go test ./...` - must pass before task 4
 
 ### Task 4: Add status banner grammar for notifications
-- [ ] introduce a status banner/pill representation for UI notifications in the model layer
-- [ ] render notification banners in the existing pills/status area instead of appending ordinary UI notifications to the transcript by default
-- [ ] use marker grammar: info `i`, success `✓`, warning `!`, error `×`
-- [ ] implement persistence rules: success/info are ephemeral; warning/error persist until next user action or dismissal
-- [ ] keep transcript notification rendering available only for notifications that are semantically part of the conversation or required by extension APIs
-- [ ] write tests for banner rendering, marker/color selection, ephemeral behavior, and persistent warning/error behavior
-- [ ] write/update model tests for notification routing and dismissal-on-user-action behavior
-- [ ] run `go test ./...` - must pass before task 5
+- [x] introduce a status banner/pill representation for UI notifications in the model layer
+- [x] render notification banners in the existing pills/status area instead of appending ordinary UI notifications to the transcript by default
+- [x] use marker grammar: info `i`, success `✓`, warning `!`, error `×`
+- [x] implement persistence rules: success/info are ephemeral; warning/error persist until next user action or dismissal
+- [x] keep transcript notification rendering available only for notifications that are semantically part of the conversation or required by extension APIs
+- [x] write tests for banner rendering, marker/color selection, ephemeral behavior, and persistent warning/error behavior
+- [x] write/update model tests for notification routing and dismissal-on-user-action behavior
+- [x] run `go test ./...` - must pass before task 5
 
 ### Task 5: Redesign landing as boot/status screen
 - [ ] update `landing.go` to reduce splash/logo dominance and render a boot/status layout

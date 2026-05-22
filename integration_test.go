@@ -255,13 +255,11 @@ func TestIntegration_SDKUIThroughOverlayStack(t *testing.T) {
 	m = model.(Model)
 	assert.Equal(t, "active", m.footer.ExtStatus()["test"])
 
-	// Test Notify
+	// Test Notify — banners appear in the pills area, not the chat
 	model, _ = m.Update(notifyMsg{message: "notification via UI"})
 	m = model.(Model)
-	items := m.chat.Items()
-	am, ok := items[len(items)-1].(*messages.AssistantMessage)
-	require.True(t, ok)
-	assert.Equal(t, "notification via UI", am.Content())
+	assert.Equal(t, "notification via UI", m.bannerMsg)
+	assert.Equal(t, sdk.NotifyInfo, m.bannerLevel)
 
 	// Test Select via popup queue
 	sender := &mockSender{}

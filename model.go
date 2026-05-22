@@ -17,6 +17,7 @@ import (
 	"github.com/weave-agent/weave-tui/components/messages"
 	"github.com/weave-agent/weave-tui/components/overlays"
 	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 	"github.com/weave-agent/weave/sdk"
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
 
@@ -31,10 +32,17 @@ const doublePressWindow = 500 * time.Millisecond
 
 const statusMessageTimeout = 2 * time.Second
 
+const bannerMessageTimeout = 3 * time.Second
+
 const dockedOverlayHeight = 12
 
 // statusTimeoutMsg is sent when the transient status message should be cleared.
 type statusTimeoutMsg struct {
+	gen int
+}
+
+// bannerTimeoutMsg is sent when an ephemeral banner should be cleared.
+type bannerTimeoutMsg struct {
 	gen int
 }
 
@@ -136,6 +144,12 @@ type Model struct {
 	statusTimer tea.Cmd
 	statusGen   int
 	statusNew   bool // true for first frame after status is set (entrance animation)
+
+	// UI notification banner
+	bannerMsg   string
+	bannerLevel sdk.NotifyLevel
+	bannerGen   int
+	bannerTimer tea.Cmd
 
 	// theme is the active color theme for rendering.
 	theme *palette.Theme
@@ -623,9 +637,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m = m.refreshEditorCompletion()
 		}
 
+		if m.editor.Value() != oldValue {
+			m.dismissBannerOnUserAction()
+		}
+
 		return m, cmd
 
 	case tea.PasteMsg:
+		m.dismissBannerOnUserAction()
+
 		// Clear active selections before paste changes editor content
 		m.chat = m.chat.ClearSelection()
 		m.editor = m.editor.ClearSelection()
@@ -873,20 +893,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case notifyMsg:
 		m.showLanding = false
-		m.chat = m.chat.AddItem(newNotifyAssistantMsg(msg.message))
+		m.showBanner(msg.message, sdk.NotifyInfo)
 
-		return m, nil
+		return m, m.bannerTimer
 
 	case notifyTypedMsg:
 		m.showLanding = false
-		m.chat = m.chat.AddItem(messages.NewNotificationMessage(msg.message, msg.level))
+		m.showBanner(msg.message, msg.level)
 
-		return m, nil
+		return m, m.bannerTimer
 
 	case statusTimeoutMsg:
 		if msg.gen == m.statusGen {
 			m.statusMsg = ""
 			m.statusTimer = nil
+			m.syncChatViewport()
+		}
+
+		return m, nil
+
+	case bannerTimeoutMsg:
+		if msg.gen == m.bannerGen {
+			m.bannerMsg = ""
+			m.bannerLevel = 0
+			m.bannerTimer = nil
 			m.syncChatViewport()
 		}
 
@@ -1881,6 +1911,8 @@ func formatOutdatedBanner(names []string) string {
 
 // onSubmit handles editor submit — routes slash commands or publishes prompt/followup.
 func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
+	m.dismissBannerOnUserAction()
+
 	// Reject empty submissions without attachments.
 	if text == "" && len(m.attach.Items()) == 0 {
 		return m, nil
@@ -2921,6 +2953,56 @@ func (m *Model) showStatus(msg string) {
 	})
 }
 
+// showBanner sets a UI notification banner. Info and success are ephemeral
+// (auto-clear after a timeout); warning and error persist until the next user
+// action or explicit dismissal.
+func (m *Model) showBanner(message string, level sdk.NotifyLevel) {
+	m.bannerMsg = message
+	m.bannerLevel = level
+	m.bannerGen++
+	m.syncChatViewport()
+	gen := m.bannerGen
+
+	// Only ephemeral banners (info, success) auto-clear.
+	if level == sdk.NotifyInfo || level == sdk.NotifySuccess {
+		m.bannerTimer = tea.Tick(bannerMessageTimeout, func(_ time.Time) tea.Msg {
+			return bannerTimeoutMsg{gen: gen}
+		})
+	} else {
+		m.bannerTimer = nil
+	}
+}
+
+// clearBanner removes the current banner.
+func (m *Model) clearBanner() {
+	m.bannerMsg = ""
+	m.bannerLevel = 0
+	m.bannerTimer = nil
+}
+
+// dismissBannerOnUserAction clears persistent banners (warning/error) when the
+// user performs an action such as submitting, pasting, or changing editor content.
+func (m *Model) dismissBannerOnUserAction() {
+	if m.bannerLevel == sdk.NotifyWarning || m.bannerLevel == sdk.NotifyError {
+		m.clearBanner()
+		m.syncChatViewport()
+	}
+}
+
+// bannerMarkerForLevel returns the marker glyph for a notification level.
+func bannerMarkerForLevel(level sdk.NotifyLevel) string {
+	switch level {
+	case sdk.NotifySuccess:
+		return "✓"
+	case sdk.NotifyWarning:
+		return "!"
+	case sdk.NotifyError:
+		return "×"
+	default:
+		return "i"
+	}
+}
+
 // cycleSandboxMode requests the sandbox extension to advance to the next mode.
 func (m Model) cycleSandboxMode() (tea.Model, tea.Cmd) {
 	if m.bus != nil {
@@ -3274,6 +3356,10 @@ func (m Model) countLayoutRows() (headerRows, pillRows int) {
 		pillRows++
 	}
 
+	if m.bannerMsg != "" {
+		pillRows++
+	}
+
 	if m.statusMsg != "" {
 		pillRows++
 	}
@@ -3439,6 +3525,26 @@ func (m Model) drawPills(scr uv.Screen, area uv.Rectangle) {
 	if m.spinner.Visible() {
 		spArea := uv.Rect(area.Min.X+1, y, max(area.Dx()-1, 0), 1)
 		m.spinner.Draw(scr, spArea)
+
+		y++
+	}
+
+	if m.bannerMsg != "" && y < area.Max.Y {
+		s := styles.New(m.theme)
+		marker := bannerMarkerForLevel(m.bannerLevel)
+		var bannerStyle lipgloss.Style
+		switch m.bannerLevel {
+		case sdk.NotifySuccess:
+			bannerStyle = s.BannerSuccess()
+		case sdk.NotifyWarning:
+			bannerStyle = s.BannerWarning()
+		case sdk.NotifyError:
+			bannerStyle = s.BannerError()
+		default:
+			bannerStyle = s.BannerInfo()
+		}
+		bnArea := uv.Rect(area.Min.X+1, y, max(area.Dx()-1, 0), 1)
+		uv.NewStyledString(bannerStyle.Render(marker+" "+m.bannerMsg)).Draw(scr, bnArea)
 
 		y++
 	}

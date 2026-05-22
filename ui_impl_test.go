@@ -898,54 +898,65 @@ func TestTUIImpl_ClearWorking(t *testing.T) {
 	assert.Empty(t, msg.text)
 }
 
-func TestModel_NotifyTypedMsgAddsNotificationToChat(t *testing.T) {
+func TestModel_NotifyTypedMsg_ErrorBanner(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	updated, _ := m.Update(notifyTypedMsg{message: "error occurred", level: sdk.NotifyError})
+	updated, cmd := m.Update(notifyTypedMsg{message: "error occurred", level: sdk.NotifyError})
 	m = updated.(Model)
 
-	items := m.chat.Items()
-	require.Len(t, items, 1)
-	nm, ok := items[0].(*messages.NotificationMessage)
-	require.True(t, ok)
-	assert.Equal(t, "error occurred", nm.Content())
-	assert.Equal(t, sdk.NotifyError, nm.Level())
+	assert.Empty(t, m.chat.Items())
+	assert.Equal(t, "error occurred", m.bannerMsg)
+	assert.Equal(t, sdk.NotifyError, m.bannerLevel)
+	assert.Nil(t, cmd) // persistent banners have no timer
 	assert.False(t, m.showLanding)
 }
 
-func TestModel_NotifyTypedMsg_InfoLevel(t *testing.T) {
+func TestModel_NotifyTypedMsg_InfoBanner(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	updated, _ := m.Update(notifyTypedMsg{message: "info msg", level: sdk.NotifyInfo})
+	updated, cmd := m.Update(notifyTypedMsg{message: "info msg", level: sdk.NotifyInfo})
 	m = updated.(Model)
 
-	items := m.chat.Items()
-	require.Len(t, items, 1)
-	nm, ok := items[0].(*messages.NotificationMessage)
-	require.True(t, ok)
-	assert.Equal(t, sdk.NotifyInfo, nm.Level())
+	assert.Empty(t, m.chat.Items())
+	assert.Equal(t, "info msg", m.bannerMsg)
+	assert.Equal(t, sdk.NotifyInfo, m.bannerLevel)
+	assert.NotNil(t, cmd) // ephemeral banners have a timer
 }
 
-func TestModel_NotifyTypedMsg_WarningLevel(t *testing.T) {
+func TestModel_NotifyTypedMsg_WarningBanner(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	updated, _ := m.Update(notifyTypedMsg{message: "warning msg", level: sdk.NotifyWarning})
+	updated, cmd := m.Update(notifyTypedMsg{message: "warning msg", level: sdk.NotifyWarning})
 	m = updated.(Model)
 
-	items := m.chat.Items()
-	require.Len(t, items, 1)
-	nm, ok := items[0].(*messages.NotificationMessage)
-	require.True(t, ok)
-	assert.Equal(t, sdk.NotifyWarning, nm.Level())
+	assert.Empty(t, m.chat.Items())
+	assert.Equal(t, "warning msg", m.bannerMsg)
+	assert.Equal(t, sdk.NotifyWarning, m.bannerLevel)
+	assert.Nil(t, cmd) // persistent banners have no timer
+}
+
+func TestModel_NotifyTypedMsg_SuccessBanner(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+	m.chat = m.chat.SetSize(80, 10)
+
+	updated, cmd := m.Update(notifyTypedMsg{message: "success msg", level: sdk.NotifySuccess})
+	m = updated.(Model)
+
+	assert.Empty(t, m.chat.Items())
+	assert.Equal(t, "success msg", m.bannerMsg)
+	assert.Equal(t, sdk.NotifySuccess, m.bannerLevel)
+	assert.NotNil(t, cmd) // ephemeral banners have a timer
 }
 
 func TestModel_ExtStatusMsgUpdatesFooter(t *testing.T) {
@@ -959,20 +970,19 @@ func TestModel_ExtStatusMsgUpdatesFooter(t *testing.T) {
 	assert.Equal(t, "running", m.footer.ExtStatus()["test"])
 }
 
-func TestModel_NotifyMsgAddsToChat(t *testing.T) {
+func TestModel_NotifyMsg_Banner(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	updated, _ := m.Update(notifyMsg{message: "notification text"})
+	updated, cmd := m.Update(notifyMsg{message: "notification text"})
 	m = updated.(Model)
 
-	items := m.chat.Items()
-	require.Len(t, items, 1)
-	am, ok := items[0].(*messages.AssistantMessage)
-	require.True(t, ok)
-	assert.Equal(t, "notification text", am.Content())
+	assert.Empty(t, m.chat.Items())
+	assert.Equal(t, "notification text", m.bannerMsg)
+	assert.Equal(t, sdk.NotifyInfo, m.bannerLevel)
+	assert.NotNil(t, cmd) // untyped notify is treated as ephemeral info
 }
 
 func TestNewNotifyAssistantMsg(t *testing.T) {

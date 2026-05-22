@@ -268,26 +268,30 @@ func (s *Styles) BackgroundTint2() lipgloss.Style {
 func (s *Styles) BannerInfo() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.Color(s.theme.AccentBright)).
-		Background(lipgloss.Color(s.theme.BackgroundTint))
+		Background(lipgloss.Color(s.theme.BackgroundTint)).
+		Padding(0, 1)
 }
 
 // BannerSuccess returns the style for a success banner/pill.
 func (s *Styles) BannerSuccess() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.Color(s.theme.Success)).
-		Background(lipgloss.Color(s.theme.BackgroundTint))
+		Background(lipgloss.Color(s.theme.BackgroundTint)).
+		Padding(0, 1)
 }
 
 // BannerWarning returns the style for a warning banner/pill.
 func (s *Styles) BannerWarning() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.Color(s.theme.Warning)).
-		Background(lipgloss.Color(s.theme.BackgroundTint))
+		Background(lipgloss.Color(s.theme.BackgroundTint)).
+		Padding(0, 1)
 }
 
 // BannerError returns the style for an error banner/pill.
 func (s *Styles) BannerError() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.Color(s.theme.Error)).
-		Background(lipgloss.Color(s.theme.BackgroundTint))
+		Background(lipgloss.Color(s.theme.BackgroundTint)).
+		Padding(0, 1)
 }
