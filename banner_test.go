@@ -183,7 +183,7 @@ func TestBanner_ReplaceExistingBanner(t *testing.T) {
 	assert.Greater(t, m.bannerGen, gen1)
 }
 
-func TestBanner_LandingHidden(t *testing.T) {
+func TestBanner_LandingPreserved(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
@@ -192,15 +192,15 @@ func TestBanner_LandingHidden(t *testing.T) {
 	updated, _ := m.Update(notifyMsg{message: "hello"})
 	m = updated.(Model)
 
-	assert.False(t, m.showLanding)
+	assert.True(t, m.showLanding)
 }
 
 func TestBannerMarkerForLevel(t *testing.T) {
-	assert.Equal(t, "i", bannerMarkerForLevel(sdk.NotifyInfo))
+	assert.Equal(t, "•", bannerMarkerForLevel(sdk.NotifyInfo))
 	assert.Equal(t, "✓", bannerMarkerForLevel(sdk.NotifySuccess))
 	assert.Equal(t, "!", bannerMarkerForLevel(sdk.NotifyWarning))
 	assert.Equal(t, "×", bannerMarkerForLevel(sdk.NotifyError))
-	assert.Equal(t, "i", bannerMarkerForLevel(999)) // unknown level defaults to info
+	assert.Equal(t, "•", bannerMarkerForLevel(999)) // unknown level defaults to info
 }
 
 func TestBanner_CountLayoutRows(t *testing.T) {

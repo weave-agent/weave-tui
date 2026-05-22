@@ -897,13 +897,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case notifyMsg:
-		m.showLanding = false
 		m.showBanner(msg.message, sdk.NotifyInfo)
 
 		return m, m.bannerTimer
 
 	case notifyTypedMsg:
-		m.showLanding = false
 		m.showBanner(msg.message, msg.level)
 
 		return m, m.bannerTimer
@@ -1929,7 +1927,6 @@ func (m Model) onOutdatedExtensions(msg OutdatedNotificationMsg) (tea.Model, tea
 
 	text := formatOutdatedBanner(names)
 
-	m.showLanding = false
 	m.showBanner(text, sdk.NotifyInfo)
 
 	return m, m.bannerTimer
@@ -3064,7 +3061,7 @@ func bannerMarkerForLevel(level sdk.NotifyLevel) string {
 	case sdk.NotifyError:
 		return "×"
 	default:
-		return "i"
+		return "•"
 	}
 }
 

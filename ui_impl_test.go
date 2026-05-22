@@ -911,7 +911,7 @@ func TestModel_NotifyTypedMsg_ErrorBanner(t *testing.T) {
 	assert.Equal(t, "error occurred", m.bannerMsg)
 	assert.Equal(t, sdk.NotifyError, m.bannerLevel)
 	assert.Nil(t, cmd) // persistent banners have no timer
-	assert.False(t, m.showLanding)
+	assert.True(t, m.showLanding)
 }
 
 func TestModel_NotifyTypedMsg_InfoBanner(t *testing.T) {
@@ -1037,7 +1037,7 @@ func TestModel_OutdatedNotificationAddsBanner(t *testing.T) {
 	assert.Contains(t, m.bannerMsg, "weave update")
 	assert.Contains(t, m.bannerMsg, "mcp, diff-viewer")
 	assert.Equal(t, sdk.NotifyInfo, m.bannerLevel)
-	assert.False(t, m.showLanding)
+	assert.True(t, m.showLanding)
 }
 
 func TestModel_OutdatedNotificationEmptyList(t *testing.T) {
