@@ -602,6 +602,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.dispatchBinding(action)
 		}
 
+		if m.focus != FocusEditor {
+			return m, nil
+		}
+
 		// Completion key interception
 		if handled, model, cmd := m.handleCompletionKey(msg); handled {
 			return model, cmd
@@ -628,6 +632,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case tea.PasteMsg:
+		if m.focus != FocusEditor {
+			return m, nil
+		}
+
 		m.dismissBannerOnUserAction()
 
 		// Clear active selections before paste changes editor content

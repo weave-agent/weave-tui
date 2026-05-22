@@ -3827,6 +3827,84 @@ func TestModel_PanelFocusChain_CompletionActive_TabIgnored(t *testing.T) {
 	assert.Equal(t, FocusEditor, m.focus)
 }
 
+func TestModel_TrayFocus_BlocksEditorInput(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+	m.editor = m.editor.SetValue("before")
+
+	m.panelManager.Register(PanelConfig{ID: "p1", Title: "Test"}, &mockPanelDrawer{})
+	m.panelManager.Show("p1")
+	m.syncPanelTray()
+	m.focus = FocusTray
+	m.panelTray = m.panelTray.SetFocused(true)
+
+	model, _ := m.Update(tea.KeyPressMsg{Text: "x", Code: 'x'})
+	m = model.(Model)
+
+	assert.Equal(t, "before", m.editor.Value())
+	assert.Equal(t, FocusTray, m.focus)
+	assert.True(t, m.panelTray.IsFocused())
+}
+
+func TestModel_TrayFocus_BlocksEditorPaste(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+	m.editor = m.editor.SetValue("before")
+
+	m.panelManager.Register(PanelConfig{ID: "p1", Title: "Test"}, &mockPanelDrawer{})
+	m.panelManager.Show("p1")
+	m.syncPanelTray()
+	m.focus = FocusTray
+	m.panelTray = m.panelTray.SetFocused(true)
+
+	model, _ := m.Update(tea.PasteMsg{Content: " pasted"})
+	m = model.(Model)
+
+	assert.Equal(t, "before", m.editor.Value())
+	assert.Equal(t, FocusTray, m.focus)
+	assert.True(t, m.panelTray.IsFocused())
+}
+
+func TestModel_PanelFocus_UnhandledKeyBlocksEditorInput(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+	m.editor = m.editor.SetValue("before")
+
+	m.panelManager.Register(PanelConfig{ID: "p1", Title: "Test"}, &selectivePanelDrawer{})
+	m.panelManager.Show("p1")
+	m.focus = FocusPanel
+
+	model, _ := m.Update(tea.KeyPressMsg{Text: "x", Code: 'x'})
+	m = model.(Model)
+
+	assert.Equal(t, "before", m.editor.Value())
+	assert.Equal(t, FocusPanel, m.focus)
+}
+
+func TestModel_FocusReturnsToEditor_AllowsEditorInput(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+
+	m.panelManager.Register(PanelConfig{ID: "p1", Title: "Test"}, &mockPanelDrawer{})
+	m.panelManager.Show("p1")
+	m.syncPanelTray()
+	m.focus = FocusTray
+	m.panelTray = m.panelTray.SetFocused(true)
+
+	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m = model.(Model)
+	model, _ = m.Update(tea.KeyPressMsg{Text: "x", Code: 'x'})
+	m = model.(Model)
+
+	assert.Equal(t, "x", m.editor.Value())
+	assert.Equal(t, FocusEditor, m.focus)
+	assert.False(t, m.panelTray.IsFocused())
+}
+
 func TestModel_TrayNavigation_RightArrow(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
