@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
@@ -344,6 +345,20 @@ func TestAssistantMessage_RoleIndicator_NotInContent(t *testing.T) {
 	// Content should not include the role indicator
 	assert.Equal(t, "just content", m.Content())
 	assert.NotContains(t, m.Content(), "assistant")
+}
+
+func TestAssistantMessage_SetStyles_UsesCustomTheme(t *testing.T) {
+	custom := &palette.Theme{
+		Muted:      "99",
+		Foreground: "88",
+	}
+	m := NewAssistantMessage()
+	m.Finalize("hello world")
+	m.SetStyles(styles.New(custom))
+
+	view := m.View(80)
+	// The assistant marker uses Muted color
+	assert.Contains(t, view, "99", "marker should use custom theme muted color")
 }
 
 // --- Task 6: Fade-in animation tests ---

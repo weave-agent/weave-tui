@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 	"github.com/weave-agent/weave/sdk"
 
 	"charm.land/lipgloss/v2"
@@ -27,6 +28,7 @@ type AssistantMessage struct {
 	renderStarted bool
 	createdAt     time.Time
 	msgType       string
+	styles        *styles.Styles
 }
 
 // NewAssistantMessage creates a new assistant message in streaming mode.
@@ -35,7 +37,13 @@ func NewAssistantMessage() *AssistantMessage {
 		streaming: true,
 		renderer:  NewMarkdownRenderer(80),
 		createdAt: time.Now(),
+		styles:    styles.New(palette.DefaultTheme()),
 	}
+}
+
+// SetStyles sets the style set used for rendering.
+func (m *AssistantMessage) SetStyles(s *styles.Styles) {
+	m.styles = s
 }
 
 // SetWidth updates the markdown renderer width.
@@ -137,9 +145,7 @@ func (m *AssistantMessage) renderCustom(width int) (string, bool) {
 		content = fadeStyle.Render(content)
 	}
 
-	// Prepend subtle role indicator
-	roleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(palette.DefaultTheme().Muted))
-	roleIndicator := roleStyle.Render("◆")
+	roleIndicator := m.styles.AssistantMarkerRendered()
 
 	return roleIndicator + content, true
 }
@@ -168,9 +174,7 @@ func (m *AssistantMessage) View(width int) string {
 		content = fadeStyle.Render(content)
 	}
 
-	// Prepend subtle role indicator
-	roleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(palette.DefaultTheme().Muted))
-	roleIndicator := roleStyle.Render("◆")
+	roleIndicator := m.styles.AssistantMarkerRendered()
 
 	return roleIndicator + content
 }

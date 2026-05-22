@@ -5,19 +5,28 @@ import (
 	"unicode/utf8"
 
 	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 
-	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 )
 
 // ThinkingBlock renders a thinking section, always shown.
 type ThinkingBlock struct {
 	content string
+	styles  *styles.Styles
 }
 
 // NewThinkingBlock creates a new thinking block.
 func NewThinkingBlock(content string) *ThinkingBlock {
-	return &ThinkingBlock{content: content}
+	return &ThinkingBlock{
+		content: content,
+		styles:  styles.New(palette.DefaultTheme()),
+	}
+}
+
+// SetStyles sets the style set used for rendering.
+func (b *ThinkingBlock) SetStyles(s *styles.Styles) {
+	b.styles = s
 }
 
 // Content returns the thinking content.
@@ -31,21 +40,13 @@ func (b *ThinkingBlock) View(width int) string {
 		width = 80
 	}
 
-	theme := palette.DefaultTheme()
-
-	headerStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.ForegroundDim)).
-		Width(width)
-
 	lines := strings.Split(b.content, "\n")
 
 	var bldr strings.Builder
-	bldr.WriteString(headerStyle.Render("∴ Thinking…"))
+	bldr.WriteString(b.styles.ThinkingMarkerRendered() + " Thinking…")
 	bldr.WriteString("\n")
 
-	contentStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.ForegroundDim)).
-		Width(width)
+	contentStyle := b.styles.ForegroundDim().Width(width)
 
 	for _, line := range lines {
 		bldr.WriteString(contentStyle.Render(line))

@@ -7,6 +7,9 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 )
 
 func TestUserMessage_Content(t *testing.T) {
@@ -18,15 +21,15 @@ func TestUserMessage_View_PlainText(t *testing.T) {
 	m := NewUserMessage("fix the bug")
 	view := m.View(80)
 	assert.Contains(t, view, "fix the bug")
-	assert.Contains(t, view, "▐")
+	assert.Contains(t, view, styles.UserMarker)
 }
 
 func TestUserMessage_EmptyContent(t *testing.T) {
 	m := NewUserMessage("")
 	assert.Empty(t, m.Content())
-	// Empty message still renders bar styling
+	// Empty message still renders marker
 	view := m.View(80)
-	assert.Contains(t, view, "▐")
+	assert.Contains(t, view, styles.UserMarker)
 }
 
 func TestUserMessage_View_ZeroWidth(t *testing.T) {
@@ -148,7 +151,7 @@ func TestUserMessage_View_PlainTextNotAffected(t *testing.T) {
 	m := NewUserMessage("regular message without xml")
 	view := m.View(80)
 	assert.Contains(t, view, "regular message without xml")
-	assert.Contains(t, view, "▐")
+	assert.Contains(t, view, styles.UserMarker)
 }
 
 func TestUserMessage_Draw_PlainText(t *testing.T) {
@@ -195,29 +198,75 @@ func TestUserMessage_Draw_ZeroArea(t *testing.T) {
 
 // --- Styled user message tests (Task 2) ---
 
-func TestUserMessage_Styling_HasBorderAndPrefix(t *testing.T) {
+func TestUserMessage_Styling_HasMarkerOnFirstLine(t *testing.T) {
 	m := NewUserMessage("test message")
 	view := m.View(80)
 
-	assert.Contains(t, view, "▐", "should have left-edge bar")
+	assert.Contains(t, view, styles.UserMarker, "should have user marker on first line")
 }
 
-func TestUserMessage_Styling_MultilineHasPrefixOnEachLine(t *testing.T) {
+func TestUserMessage_Styling_MultilineMarkerOnlyOnFirstLine(t *testing.T) {
 	m := NewUserMessage("line1\nline2\nline3")
 	view := m.View(80)
 
 	lines := strings.Split(view, "\n")
 	require.Len(t, lines, 3)
 
-	for _, line := range lines {
-		assert.Contains(t, line, "▐", "each line should have left-edge bar")
-	}
+	// First line has the marker
+	assert.Contains(t, lines[0], styles.UserMarker, "first line should have user marker")
+	// Continuation lines have spaces instead of marker
+	assert.False(t, strings.Contains(lines[1], styles.UserMarker), "second line should not repeat marker")
+	assert.False(t, strings.Contains(lines[2], styles.UserMarker), "third line should not repeat marker")
+	// Continuation lines start with two spaces for alignment
+	assert.True(t, strings.HasPrefix(lines[1], "  "), "second line should start with alignment spaces")
+	assert.True(t, strings.HasPrefix(lines[2], "  "), "third line should start with alignment spaces")
 }
 
-func TestUserMessage_Styling_SkillHasBorderAndPrefix(t *testing.T) {
+func TestUserMessage_Styling_SkillHasMarker(t *testing.T) {
 	m := NewUserMessage("<skill name=\"test\">\nbody\n</skill>")
 	view := m.View(80)
 
-	assert.Contains(t, view, "▐")
+	assert.Contains(t, view, styles.UserMarker)
 	assert.Contains(t, view, "[skill test]")
+}
+
+func TestUserMessage_SetStyles_UsesCustomTheme(t *testing.T) {
+	custom := &palette.Theme{
+		AccentDim: "99",
+		Foreground: "88",
+	}
+	m := NewUserMessage("hello")
+	m.SetStyles(styles.New(custom))
+	view := m.View(80)
+
+	// The rendered view should contain ANSI color codes for the custom theme
+	assert.Contains(t, view, "99", "marker should use custom theme accent dim color")
+	assert.Contains(t, view, "88", "content should use custom theme foreground color")
+}
+
+func TestUserMessage_View_SingleLineSkillInvocation(t *testing.T) {
+	m := NewUserMessage("<skill name=\"analyze\">\ncode review\n</skill>")
+	m.ToggleExpanded()
+	view := m.View(80)
+
+	lines := strings.Split(view, "\n")
+	// First line should have marker + skill label
+	assert.Contains(t, lines[0], styles.UserMarker)
+	assert.Contains(t, view, "[skill analyze]")
+	// Body should start with spaces for alignment, no marker
+	bodyLine := ""
+	for _, line := range lines[1:] {
+		if strings.Contains(line, "code review") {
+			bodyLine = line
+			break
+		}
+	}
+	require.NotEmpty(t, bodyLine, "body line should contain 'code review'")
+	assert.False(t, strings.Contains(bodyLine, styles.UserMarker), "body line should not repeat marker")
+}
+
+func TestUserMessage_View_EmptyMessageHasMarker(t *testing.T) {
+	m := NewUserMessage("")
+	view := m.View(80)
+	assert.Contains(t, view, styles.UserMarker)
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
@@ -36,11 +37,20 @@ func parseSkillXML(content string) (*skillBlock, bool) {
 type UserMessage struct {
 	content  string
 	expanded bool
+	styles   *styles.Styles
 }
 
 // NewUserMessage creates a new user message.
 func NewUserMessage(content string) *UserMessage {
-	return &UserMessage{content: content}
+	return &UserMessage{
+		content: content,
+		styles:  styles.New(palette.DefaultTheme()),
+	}
+}
+
+// SetStyles sets the style set used for rendering.
+func (m *UserMessage) SetStyles(s *styles.Styles) {
+	m.styles = s
 }
 
 // Content returns the message text.
@@ -64,27 +74,23 @@ func (m *UserMessage) IsSkillInvocation() bool {
 	return ok
 }
 
-// View renders the user message with left-edge bar.
+// View renders the user message with the role marker on the first line only.
+// Continuation lines align under the content without repeating the marker.
 func (m *UserMessage) View(width int) string {
 	if width <= 0 {
 		width = 80
 	}
 
-	theme := palette.DefaultTheme()
-
-	barStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.AccentDim))
-	contentStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Foreground))
-
-	bar := barStyle.Render("▐")
-
+	marker := m.styles.UserMarkerRendered()
+	contentStyle := m.styles.Foreground()
 	contentWidth := max(1, width-2)
 
 	block, ok := parseSkillXML(m.content)
 	if !ok {
-		return styleUserContent(m.content, bar, contentStyle, contentWidth)
+		return styleUserContent(m.content, marker, contentStyle, contentWidth)
 	}
 
-	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Muted)).Width(contentWidth)
+	dimStyle := m.styles.Muted().Width(contentWidth)
 
 	if !m.expanded {
 		label := fmt.Sprintf("[skill %s]", block.name)
@@ -92,13 +98,13 @@ func (m *UserMessage) View(width int) string {
 			label += " " + block.trailing
 		}
 
-		return bar + " " + dimStyle.Render(label)
+		return marker + " " + dimStyle.Render(label)
 	}
 
 	var bldr strings.Builder
 
 	header := fmt.Sprintf("[skill %s] ▼", block.name)
-	bldr.WriteString(bar + " " + dimStyle.Render(header))
+	bldr.WriteString(marker + " " + dimStyle.Render(header))
 	bldr.WriteString("\n")
 
 	if block.body != "" {
@@ -120,16 +126,22 @@ func (m *UserMessage) View(width int) string {
 	return strings.TrimRight(bldr.String(), "\n")
 }
 
-// styleUserContent prefixes each line with the bar and a gap,
-// applying the content style to the text.
-func styleUserContent(content, bar string, contentStyle lipgloss.Style, width int) string {
+// styleUserContent prefixes the first line with the marker and a gap,
+// and continuation lines with spaces so they align under the content.
+func styleUserContent(content, marker string, contentStyle lipgloss.Style, width int) string {
 	lines := strings.Split(content, "\n")
 
 	var bldr strings.Builder
 
 	for i, line := range lines {
 		styledLine := contentStyle.Width(width).Render(line)
-		bldr.WriteString(bar + " " + styledLine)
+		if i == 0 {
+			bldr.WriteString(marker + " " + styledLine)
+		} else {
+			// Two spaces align continuation lines under first-line content
+			// because the marker "❯" is a single-column rune.
+			bldr.WriteString("  " + styledLine)
+		}
 
 		if i < len(lines)-1 {
 			bldr.WriteString("\n")

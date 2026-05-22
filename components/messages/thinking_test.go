@@ -7,6 +7,9 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 )
 
 func TestThinkingBlock_New(t *testing.T) {
@@ -118,4 +121,35 @@ func TestThinkingBlock_Draw_ZeroArea(t *testing.T) {
 	b := NewThinkingBlock("thinking content")
 	canvas := uv.NewScreenBuffer(80, 5)
 	b.Draw(canvas, uv.Rect(0, 0, 0, 0))
+}
+
+func TestThinkingBlock_SetStyles_UsesCustomTheme(t *testing.T) {
+	custom := &palette.Theme{
+		ForegroundDim: "99",
+	}
+	b := NewThinkingBlock("deep thoughts")
+	b.SetStyles(styles.New(custom))
+	view := b.View(80)
+
+	// The thinking marker and content should use the custom theme's ForegroundDim
+	assert.Contains(t, view, "99", "thinking marker/content should use custom theme foreground dim color")
+	assert.Contains(t, view, styles.ThinkingMarker)
+}
+
+func TestThinkingBlock_View_HasThinkingMarkerAndEllipsis(t *testing.T) {
+	b := NewThinkingBlock("content")
+	view := b.View(80)
+
+	assert.Contains(t, view, styles.ThinkingMarker)
+	assert.Contains(t, view, "Thinking…")
+	assert.Contains(t, view, "content")
+}
+
+func TestThinkingBlock_View_EmptyContentHasHeader(t *testing.T) {
+	b := NewThinkingBlock("")
+	view := b.View(80)
+
+	// Even with empty content, the header should be present
+	assert.Contains(t, view, styles.ThinkingMarker)
+	assert.Contains(t, view, "Thinking…")
 }

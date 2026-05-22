@@ -83,14 +83,14 @@
 - [x] run `go test ./...` - must pass before task 2
 
 ### Task 2: Migrate transcript role primitives
-- [ ] update `components/messages/user.go` so user messages use `❯` only on the first line
-- [ ] update user continuation lines to align under message content without repeating the marker
-- [ ] migrate assistant marker styling in `components/messages/assistant.go` to the style set while keeping `◆`
-- [ ] migrate thinking marker styling in `components/messages/thinking.go` to the style set while keeping `∴ Thinking…`
-- [ ] normalize human status copy touched by these components to sentence case and unicode ellipsis where ongoing
-- [ ] write/update user message tests for single-line, multi-line, and skill-invocation rendering
-- [ ] write/update assistant and thinking render tests for marker and active-theme behavior
-- [ ] run `go test ./...` - must pass before task 3
+- [x] update `components/messages/user.go` so user messages use `❯` only on the first line
+- [x] update user continuation lines to align under message content without repeating the marker
+- [x] migrate assistant marker styling in `components/messages/assistant.go` to the style set while keeping `◆`
+- [x] migrate thinking marker styling in `components/messages/thinking.go` to the style set while keeping `∴ Thinking…`
+- [x] normalize human status copy touched by these components to sentence case and unicode ellipsis where ongoing
+- [x] write/update user message tests for single-line, multi-line, and skill-invocation rendering
+- [x] write/update assistant and thinking render tests for marker and active-theme behavior
+- [x] run `go test ./...` - must pass before task 3
 
 ### Task 3: Migrate tool panel grammar
 - [ ] update `components/messages/tool.go` to use style-set tool glyphs: pending `○`, success `✓`, error `×`, interrupted `■`, running spinner unchanged
