@@ -1,12 +1,22 @@
 package messages
 
-import "github.com/weave-agent/weave/sdk"
+import (
+	"sync"
+
+	"github.com/weave-agent/weave/sdk"
+)
 
 // messageRenderers holds custom renderers registered by TUI extensions.
-var messageRenderers = make(map[string]sdk.MessageRenderer)
+var (
+	messageRenderersMu sync.RWMutex
+	messageRenderers   = make(map[string]sdk.MessageRenderer)
+)
 
 // SetMessageRenderer registers a custom renderer for a message type.
 func SetMessageRenderer(msgType string, renderer sdk.MessageRenderer) {
+	messageRenderersMu.Lock()
+	defer messageRenderersMu.Unlock()
+
 	if renderer == nil {
 		delete(messageRenderers, msgType)
 		return
@@ -17,12 +27,19 @@ func SetMessageRenderer(msgType string, renderer sdk.MessageRenderer) {
 
 // GetMessageRenderer returns a registered renderer for the given message type.
 func GetMessageRenderer(msgType string) (sdk.MessageRenderer, bool) {
+	messageRenderersMu.RLock()
+	defer messageRenderersMu.RUnlock()
+
 	r, ok := messageRenderers[msgType]
+
 	return r, ok
 }
 
 // ResetMessageRenderers clears all registered message renderers (for testing).
 func ResetMessageRenderers() {
+	messageRenderersMu.Lock()
+	defer messageRenderersMu.Unlock()
+
 	messageRenderers = make(map[string]sdk.MessageRenderer)
 }
 

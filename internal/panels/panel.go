@@ -246,6 +246,9 @@ func (pm *PanelManager) UpdateDrawer(id string, msg tea.Msg) (tea.Cmd, bool) {
 
 	// Copy the drawer to avoid holding the lock during Update,
 	// which prevents deadlock if the drawer calls back into PanelManager.
+	// Keep the entry pointer so non-comparable drawer implementations do not
+	// panic during stale-update checks.
+	originalEntry := entry
 	drawer := entry.Drawer
 
 	pm.mu.RUnlock()
@@ -253,7 +256,7 @@ func (pm *PanelManager) UpdateDrawer(id string, msg tea.Msg) (tea.Cmd, bool) {
 	newDrawer, cmd := drawer.Update(msg)
 
 	pm.mu.Lock()
-	if e, stillOk := pm.panels[id]; stillOk && e.Drawer == drawer {
+	if e, stillOk := pm.panels[id]; stillOk && e == originalEntry {
 		e.Drawer = newDrawer
 	}
 	pm.mu.Unlock()
@@ -265,14 +268,18 @@ func (pm *PanelManager) UpdateDrawer(id string, msg tea.Msg) (tea.Cmd, bool) {
 // Returns true if the panel was drawn.
 func (pm *PanelManager) DrawPanel(id string, scr uv.Screen, area uv.Rectangle) bool {
 	pm.mu.RLock()
-	defer pm.mu.RUnlock()
 
 	entry, ok := pm.panels[id]
 	if !ok || !entry.Visible || entry.Drawer == nil {
+		pm.mu.RUnlock()
 		return false
 	}
 
-	entry.Drawer.Draw(scr, area)
+	drawer := entry.Drawer
+
+	pm.mu.RUnlock()
+
+	drawer.Draw(scr, area)
 
 	return true
 }

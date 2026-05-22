@@ -2,6 +2,7 @@ package panels
 
 import (
 	"testing"
+	"time"
 
 	"github.com/weave-agent/weave-tui/internal/contract"
 
@@ -18,11 +19,16 @@ type mockPanelDrawer struct {
 	drawCount   int
 	lastArea    uv.Rectangle
 	lastMsg     tea.Msg
+	onDraw      func()
 }
 
 func (m *mockPanelDrawer) Draw(_ uv.Screen, area uv.Rectangle) {
 	m.drawCount++
+
 	m.lastArea = area
+	if m.onDraw != nil {
+		m.onDraw()
+	}
 }
 
 func (m *mockPanelDrawer) Update(msg tea.Msg) (contract.PanelDrawer, tea.Cmd) {
@@ -32,6 +38,16 @@ func (m *mockPanelDrawer) Update(msg tea.Msg) (contract.PanelDrawer, tea.Cmd) {
 	return m, nil
 }
 func (m *mockPanelDrawer) Handles(_ tea.Msg) bool { return true }
+
+type nonComparablePanelDrawer []string
+
+func (d nonComparablePanelDrawer) Draw(_ uv.Screen, _ uv.Rectangle) {}
+
+func (d nonComparablePanelDrawer) Update(_ tea.Msg) (contract.PanelDrawer, tea.Cmd) {
+	return d, nil
+}
+
+func (d nonComparablePanelDrawer) Handles(_ tea.Msg) bool { return true }
 
 func TestPanelManager_Register(t *testing.T) {
 	pm := NewPanelManager()
@@ -267,6 +283,43 @@ func TestPanelManager_ActivePanelPlacement(t *testing.T) {
 func TestPanelManager_ActivePanelPlacement_Default(t *testing.T) {
 	pm := NewPanelManager()
 	assert.Equal(t, contract.AsOverlay, pm.ActivePanelPlacement())
+}
+
+func TestPanelManager_UpdateDrawer_AllowsNonComparableDrawer(t *testing.T) {
+	pm := NewPanelManager()
+	pm.Register(contract.PanelConfig{ID: "p1"}, nonComparablePanelDrawer{"state"})
+
+	require.NotPanics(t, func() {
+		cmd, handled := pm.UpdateDrawer("p1", "message")
+		assert.True(t, handled)
+		assert.Nil(t, cmd)
+	})
+}
+
+func TestPanelManager_DrawPanel_AllowsDrawerToMutatePanels(t *testing.T) {
+	pm := NewPanelManager()
+	drawer := &mockPanelDrawer{
+		onDraw: func() {
+			pm.Hide("p1")
+		},
+	}
+
+	pm.Register(contract.PanelConfig{ID: "p1"}, drawer)
+	pm.Show("p1")
+
+	done := make(chan bool, 1)
+	go func() {
+		done <- pm.DrawPanel("p1", nil, uv.Rectangle{})
+	}()
+
+	select {
+	case drawn := <-done:
+		assert.True(t, drawn)
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("DrawPanel deadlocked while drawer mutated panels")
+	}
+
+	assert.False(t, pm.PanelVisible("p1"))
 }
 
 func TestPanelPlacement_Constants(t *testing.T) {
