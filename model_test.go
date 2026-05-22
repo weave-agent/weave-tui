@@ -677,7 +677,7 @@ func TestModel_ToolInterruptedMsg_MarksPanel(t *testing.T) {
 	tp, ok := items[1].(*messages.ToolPanel)
 	require.True(t, ok)
 	assert.Equal(t, messages.ToolInterrupted, tp.State())
-	assert.Contains(t, tp.View(80), "(interrupted)")
+	assert.Contains(t, tp.View(80), "Interrupted")
 }
 
 func TestModel_ToolResultMsg_PreservesInterrupted(t *testing.T) {
@@ -706,7 +706,7 @@ func TestModel_ToolResultMsg_PreservesInterrupted(t *testing.T) {
 	tp, ok := items[1].(*messages.ToolPanel)
 	require.True(t, ok)
 	assert.Equal(t, messages.ToolInterrupted, tp.State())
-	assert.Contains(t, tp.View(80), "(interrupted)")
+	assert.Contains(t, tp.View(80), "Interrupted")
 }
 
 func TestModel_ToolStartMsg_CreatesPanelIfMissing(t *testing.T) {
@@ -778,7 +778,7 @@ func TestModel_ToolInterruptedMsg_CreatesPanelIfMissing(t *testing.T) {
 	tp, ok := items[0].(*messages.ToolPanel)
 	require.True(t, ok)
 	assert.Equal(t, messages.ToolInterrupted, tp.State())
-	assert.Contains(t, tp.View(80), "(interrupted)")
+	assert.Contains(t, tp.View(80), "Interrupted")
 }
 
 func TestModel_ToolProgressMsg_CreatesPanelIfMissing(t *testing.T) {
@@ -938,7 +938,7 @@ func TestModel_ToolInterrupted_WithProgress(t *testing.T) {
 	assert.Equal(t, messages.ToolInterrupted, tp.State())
 	view := tp.View(80)
 	assert.Contains(t, view, "partial result")
-	assert.Contains(t, view, "(interrupted)")
+	assert.Contains(t, view, "Interrupted")
 }
 
 func TestModel_AdvanceToolSpinners(t *testing.T) {
@@ -1981,7 +1981,7 @@ func TestModel_EscapeDuringToolRunning_PanelBecomesInterrupted(t *testing.T) {
 	items = m.chat.Items()
 	tp, _ = items[1].(*messages.ToolPanel)
 	assert.Equal(t, messages.ToolInterrupted, tp.State())
-	assert.Contains(t, tp.View(80), "(interrupted)")
+	assert.Contains(t, tp.View(80), "Interrupted")
 }
 
 func TestModel_AgentEndMsg_WithError(t *testing.T) {
@@ -2053,7 +2053,7 @@ func TestModel_AgentEndMsg_InterruptsRunningTools(t *testing.T) {
 	tp, ok := items[0].(*messages.ToolPanel)
 	require.True(t, ok)
 	assert.Equal(t, messages.ToolInterrupted, tp.State())
-	assert.Contains(t, tp.View(80), "(interrupted)")
+	assert.Contains(t, tp.View(80), "Interrupted")
 	assert.Empty(t, m.pendingToolCalls)
 	assert.Empty(t, m.pendingToolOrder)
 	assert.Empty(t, m.toolPanels)

@@ -93,14 +93,14 @@
 - [x] run `go test ./...` - must pass before task 3
 
 ### Task 3: Migrate tool panel grammar
-- [ ] update `components/messages/tool.go` to use style-set tool glyphs: pending `○`, success `✓`, error `×`, interrupted `■`, running spinner unchanged
-- [ ] keep tool panels as minimal horizontal-rule blocks, not full cards
-- [ ] reduce tool header/body spacing to one blank line maximum
-- [ ] normalize tool status copy to human labels such as `Running…`, `Interrupted`, and `No output`
-- [ ] migrate tool border/body coloring to style-set helpers using the active theme
-- [ ] write/update tool panel tests for pending, running, success, error, interrupted, collapsed output, and spacing
-- [ ] write/update tests proving tool rendering uses the provided theme path where applicable
-- [ ] run `go test ./...` - must pass before task 4
+- [x] update `components/messages/tool.go` to use style-set tool glyphs: pending `○`, success `✓`, error `×`, interrupted `■`, running spinner unchanged
+- [x] keep tool panels as minimal horizontal-rule blocks, not full cards
+- [x] reduce tool header/body spacing to one blank line maximum
+- [x] normalize tool status copy to human labels such as `Running…`, `Interrupted`, and `No output`
+- [x] migrate tool border/body coloring to style-set helpers using the active theme
+- [x] write/update tool panel tests for pending, running, success, error, interrupted, collapsed output, and spacing
+- [x] write/update tests proving tool rendering uses the provided theme path where applicable
+- [x] run `go test ./...` - must pass before task 4
 
 ### Task 4: Add status banner grammar for notifications
 - [ ] introduce a status banner/pill representation for UI notifications in the model layer

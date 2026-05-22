@@ -8,6 +8,9 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 )
 
 func TestToolPanel_NewPanel_Pending(t *testing.T) {
@@ -43,8 +46,8 @@ func TestToolPanel_View_Pending(t *testing.T) {
 	p := NewToolPanel("tc1", "bash", "ls -la")
 	view := p.View(80)
 	assert.Contains(t, view, "bash")
-	// Pending shows "running..." inside bordered card
-	assert.Contains(t, view, "running...")
+	// Pending shows "Running…" inside bordered card
+	assert.Contains(t, view, "Running…")
 }
 
 func TestToolPanel_View_Success(t *testing.T) {
@@ -68,7 +71,7 @@ func TestToolPanel_View_NoOutput(t *testing.T) {
 	p := NewToolPanel("tc1", "bash", "ls")
 	p.SetResult("", false)
 	view := p.View(80)
-	assert.Contains(t, view, "no output")
+	assert.Contains(t, view, "No output")
 }
 
 func TestToolPanel_View_WithArgs(t *testing.T) {
@@ -167,7 +170,7 @@ func TestToolPanel_Draw_Pending(t *testing.T) {
 	p.Draw(canvas, canvas.Bounds())
 	output := uv.TrimSpace(canvas.Render())
 	assert.Contains(t, output, "bash")
-	assert.Contains(t, output, "running...")
+	assert.Contains(t, output, "Running…")
 }
 
 func TestToolPanel_Draw_Success(t *testing.T) {
@@ -202,11 +205,11 @@ func TestToolPanel_StateEmojis(t *testing.T) {
 		state     ToolState
 		wantEmoji string
 	}{
-		{"pending", ToolPending, "⏳"},
+		{"pending", ToolPending, "○"},
 		{"running", ToolRunning, "⠋"},
 		{"success", ToolSuccess, "✓"},
-		{"error", ToolError, "✗"},
-		{"interrupted", ToolInterrupted, "⏹"},
+		{"error", ToolError, "×"},
+		{"interrupted", ToolInterrupted, "■"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -218,9 +221,9 @@ func TestToolPanel_StateEmojis(t *testing.T) {
 func TestToolPanel_View_PendingHasRunningText(t *testing.T) {
 	p := NewToolPanel("tc1", "bash", "ls -la")
 	view := p.View(80)
-	assert.Contains(t, view, "⏳")
+	assert.Contains(t, view, "○")
 	assert.Contains(t, view, "bash")
-	assert.Contains(t, view, "running...")
+	assert.Contains(t, view, "Running…")
 }
 
 func TestToolPanel_View_SuccessHasCheckmark(t *testing.T) {
@@ -235,7 +238,7 @@ func TestToolPanel_View_ErrorHasXMark(t *testing.T) {
 	p := NewToolPanel("tc1", "bash", "ls")
 	p.SetResult("permission denied", true)
 	view := p.View(80)
-	assert.Contains(t, view, "✗")
+	assert.Contains(t, view, "×")
 	assert.Contains(t, view, "bash")
 }
 
@@ -300,7 +303,7 @@ func TestToolPanel_SetInterrupted(t *testing.T) {
 	assert.Equal(t, ToolInterrupted, p.State())
 
 	view := p.View(80)
-	assert.Contains(t, view, "(interrupted)")
+	assert.Contains(t, view, "Interrupted")
 	assert.Contains(t, view, "bash")
 }
 
@@ -312,7 +315,7 @@ func TestToolPanel_InterruptedWithProgress(t *testing.T) {
 
 	view := p.View(80)
 	assert.Contains(t, view, "some partial output")
-	assert.Contains(t, view, "(interrupted)")
+	assert.Contains(t, view, "Interrupted")
 }
 
 func TestToolPanel_AdvanceSpinner(t *testing.T) {
@@ -347,8 +350,8 @@ func TestToolPanel_View_RunningShowsSpinner(t *testing.T) {
 	view := p.View(80)
 	// Should contain one of the spinner frames
 	assert.Contains(t, view, "bash")
-	// Running tool with no progress still shows "running..."
-	assert.Contains(t, view, "running...")
+	// Running tool with no progress still shows "Running…"
+	assert.Contains(t, view, "Running…")
 }
 
 func TestToolPanel_View_RunningWithProgress(t *testing.T) {
@@ -380,8 +383,8 @@ func TestToolPanel_View_Interrupted(t *testing.T) {
 	p.SetInterrupted()
 
 	view := p.View(80)
-	assert.Contains(t, view, "⏹")
-	assert.Contains(t, view, "(interrupted)")
+	assert.Contains(t, view, "■")
+	assert.Contains(t, view, "Interrupted")
 }
 
 func TestToolPanel_CompleteLifecycle(t *testing.T) {
@@ -428,7 +431,7 @@ func TestToolPanel_Draw_Interrupted(t *testing.T) {
 	canvas := uv.NewScreenBuffer(80, 10)
 	p.Draw(canvas, canvas.Bounds())
 	output := uv.TrimSpace(canvas.Render())
-	assert.Contains(t, output, "(interrupted)")
+	assert.Contains(t, output, "Interrupted")
 }
 
 func TestFormatArgs(t *testing.T) {
@@ -480,4 +483,118 @@ func TestToolPanel_View_DoesNotTruncateArgs(t *testing.T) {
 	view := p.View(240)
 
 	assert.Contains(t, view, command)
+}
+
+// --- Theme usage ---
+
+func TestToolPanel_SetStyles_UsesCustomTheme(t *testing.T) {
+	custom := &palette.Theme{
+		AccentDim: "99",
+		Muted:     "88",
+		Error:     "77",
+		Success:   "66",
+		Border:    "55",
+	}
+
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetStyles(styles.New(custom))
+
+	view := p.View(80)
+	// Pending glyph should be styled with AccentDim (99)
+	assert.Contains(t, view, "○")
+	// Border should use AccentDim for pending state
+	assertCustomColorInString(t, view, "99")
+}
+
+func TestToolPanel_CustomTheme_ErrorState(t *testing.T) {
+	custom := &palette.Theme{
+		Error:   "42",
+		Border:  "40",
+		Success: "41",
+	}
+
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetStyles(styles.New(custom))
+	p.SetResult("fail", true)
+	p.flashUntil = time.Time{} // clear flash to see settled color
+
+	view := p.View(80)
+	// Error glyph should be styled with Error color (42)
+	assert.Contains(t, view, "×")
+	assertCustomColorInString(t, view, "42")
+}
+
+func TestToolPanel_CustomTheme_SuccessState(t *testing.T) {
+	custom := &palette.Theme{
+		Success: "33",
+		Border:  "34",
+	}
+
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetStyles(styles.New(custom))
+	p.SetResult("ok", false)
+	p.flashUntil = time.Time{} // clear flash to see settled color
+
+	view := p.View(80)
+	assert.Contains(t, view, "✓")
+	// Settled success border uses Border color
+	assertCustomColorInString(t, view, "34")
+}
+
+func TestToolPanel_CustomTheme_InterruptedState(t *testing.T) {
+	custom := &palette.Theme{
+		Muted: "55",
+	}
+
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetStyles(styles.New(custom))
+	p.SetInterrupted()
+	p.flashUntil = time.Time{} // clear flash
+
+	view := p.View(80)
+	assert.Contains(t, view, "■")
+	assertCustomColorInString(t, view, "55")
+}
+
+// --- Spacing ---
+
+func TestToolPanel_View_HeaderBodySpacing(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetResult("output line", false)
+	view := p.View(80)
+
+	// Header and body should be separated by exactly one blank line
+	// (two newlines between header content and body content)
+	lines := strings.Split(view, "\n")
+
+	// Find the header line (contains "bash") and the body line (contains "output")
+	var headerIdx, bodyIdx int
+	for i, line := range lines {
+		if strings.Contains(line, "bash") {
+			headerIdx = i
+		}
+		if strings.Contains(line, "output line") {
+			bodyIdx = i
+		}
+	}
+
+	require.Greater(t, bodyIdx, headerIdx, "body should come after header")
+	assert.Equal(t, 2, bodyIdx-headerIdx, "header and body should be separated by exactly one blank line")
+}
+
+func TestToolPanel_View_NoBodyWhenEmpty(t *testing.T) {
+	p := NewToolPanel("tc1", "bash", "ls")
+	p.SetResult("", false)
+	view := p.View(80)
+
+	// With no output, the body should show "No output" which is still a body
+	assert.Contains(t, view, "No output")
+}
+
+func assertCustomColorInString(t *testing.T, s, colorCode string) {
+	t.Helper()
+	fgParam := "38;5;" + colorCode
+	bgParam := "48;5;" + colorCode
+	assert.True(t, strings.Contains(s, fgParam) || strings.Contains(s, bgParam),
+		"expected rendered output to contain ANSI color parameter for %s", colorCode)
 }

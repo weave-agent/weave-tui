@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 	"github.com/weave-agent/weave/sdk"
 
 	"charm.land/lipgloss/v2"
@@ -42,6 +43,7 @@ type ToolPanel struct {
 	flashUntil           time.Time
 	needsPostFlashRender bool
 	spinnerFrame         int
+	styles               *styles.Styles
 }
 
 // NewToolPanel creates a new tool panel in pending state.
@@ -52,7 +54,13 @@ func NewToolPanel(toolID, toolName, args string) *ToolPanel {
 		args:     strings.TrimSpace(args),
 		state:    ToolPending,
 		expanded: false,
+		styles:   styles.New(palette.DefaultTheme()),
 	}
+}
+
+// SetStyles sets the style set used for rendering.
+func (p *ToolPanel) SetStyles(s *styles.Styles) {
+	p.styles = s
 }
 
 // ToolID returns the tool call ID.
@@ -158,8 +166,7 @@ func (p *ToolPanel) View(width int) string {
 		p.needsPostFlashRender = false
 	}
 
-	theme := palette.DefaultTheme()
-	borderColor := borderColorForState(p.state, p.flashUntil, theme)
+	borderColor := p.borderColorForState()
 
 	lineStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
@@ -188,23 +195,41 @@ func (p *ToolPanel) Draw(scr uv.Screen, area uv.Rectangle) {
 }
 
 func (p *ToolPanel) renderHeader() string {
-	stateLabel := stateLabelForState(p.state)
-	if p.state == ToolRunning {
-		stateLabel = spinnerFrameChar(p.spinnerFrame)
-	}
+	stateIndicator := p.renderStateIndicator()
 
 	if p.args != "" {
 		formatted := formatArgs(p.args)
 		if formatted != "" {
-			return fmt.Sprintf(" %s %s(%s)", stateLabel, p.toolName, formatted)
+			return fmt.Sprintf(" %s %s(%s)", stateIndicator, p.toolName, formatted)
 		}
 	}
 
-	return fmt.Sprintf(" %s %s", stateLabel, p.toolName)
+	return fmt.Sprintf(" %s %s", stateIndicator, p.toolName)
+}
+
+func (p *ToolPanel) renderStateIndicator() string {
+	if p.state == ToolRunning {
+		return spinnerFrameChar(p.spinnerFrame)
+	}
+
+	glyph := stateLabelForState(p.state)
+	switch p.state {
+	case ToolPending:
+		return p.styles.AccentDim().Render(glyph)
+	case ToolSuccess:
+		return p.styles.Success().Render(glyph)
+	case ToolError:
+		return p.styles.Error().Render(glyph)
+	case ToolInterrupted:
+		return p.styles.Muted().Render(glyph)
+	default:
+		return glyph
+	}
 }
 
 func (p *ToolPanel) renderBody(width int) string {
-	theme := palette.DefaultTheme()
+	mutedStyle := p.styles.Muted()
+	errorStyle := p.styles.Error()
 
 	// Show live progress content for running tools
 	if p.state == ToolRunning && p.progress != "" {
@@ -213,28 +238,25 @@ func (p *ToolPanel) renderBody(width int) string {
 			visible := lines[:maxCollapsedLines]
 			hidden := len(lines) - maxCollapsedLines
 			body := strings.Join(visible, "\n")
-			dim := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Muted))
 
-			return dim.Render(body) + fmt.Sprintf("\n... %d more lines (collapsed)", hidden)
+			return mutedStyle.Render(body) + fmt.Sprintf("\n... %d more lines (collapsed)", hidden)
 		}
-		dim := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Muted))
 
-		return dim.Render(p.progress)
+		return mutedStyle.Render(p.progress)
 	}
 
 	if p.output == "" {
-		dim := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Muted))
 		switch p.state {
 		case ToolPending, ToolRunning:
-			return dim.Render("running...")
+			return mutedStyle.Render("Running…")
 		case ToolInterrupted:
 			if p.progress != "" {
-				return dim.Render(p.progress + "\n(interrupted)")
+				return mutedStyle.Render(p.progress + "\nInterrupted")
 			}
 
-			return dim.Render("(interrupted)")
+			return mutedStyle.Render("Interrupted")
 		default:
-			return dim.Render("(no output)")
+			return mutedStyle.Render("No output")
 		}
 	}
 
@@ -256,7 +278,7 @@ func (p *ToolPanel) renderBody(width int) string {
 
 		body := strings.Join(visible, "\n")
 		if p.state == ToolError {
-			body = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Error)).Render(body)
+			body = errorStyle.Render(body)
 		}
 
 		return body + fmt.Sprintf("\n... %d more lines (collapsed)", hidden)
@@ -264,37 +286,37 @@ func (p *ToolPanel) renderBody(width int) string {
 
 	body := strings.Join(lines, "\n")
 	if p.state == ToolError {
-		body = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Error)).Render(body)
+		body = errorStyle.Render(body)
 	}
 
 	return body
 }
 
-func borderColorForState(state ToolState, flashUntil time.Time, theme *palette.Theme) string {
-	if time.Now().Before(flashUntil) {
-		switch state {
+func (p *ToolPanel) borderColorForState() string {
+	if time.Now().Before(p.flashUntil) {
+		switch p.state {
 		case ToolPending, ToolRunning:
-			return theme.AccentDim
+			return p.styles.ToolPendingColor()
 		case ToolSuccess:
-			return theme.Success
+			return p.styles.ToolSuccessFlashedColor()
 		case ToolError:
-			return theme.Error
+			return p.styles.ToolErrorColor()
 		case ToolInterrupted:
-			return theme.Muted
+			return p.styles.ToolInterruptedColor()
 		}
 	}
 
-	switch state {
+	switch p.state {
 	case ToolPending, ToolRunning:
-		return theme.AccentDim
+		return p.styles.ToolPendingColor()
 	case ToolSuccess:
-		return theme.Border
+		return p.styles.ToolSuccessColor()
 	case ToolError:
-		return theme.Error
+		return p.styles.ToolErrorColor()
 	case ToolInterrupted:
-		return theme.Muted
+		return p.styles.ToolInterruptedColor()
 	default:
-		return theme.Border
+		return p.styles.ToolSuccessColor()
 	}
 }
 
@@ -303,15 +325,15 @@ var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "�
 func stateLabelForState(state ToolState) string {
 	switch state {
 	case ToolPending:
-		return "⏳"
+		return styles.ToolPending
 	case ToolRunning:
 		return "⠋" // default spinner frame; use spinnerFrameChar for animation
 	case ToolSuccess:
-		return "✓"
+		return styles.ToolSuccess
 	case ToolError:
-		return "✗"
+		return styles.ToolError
 	case ToolInterrupted:
-		return "⏹"
+		return styles.ToolInterrupted
 	default:
 		return "?"
 	}
