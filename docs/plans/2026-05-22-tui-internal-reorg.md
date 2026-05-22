@@ -150,11 +150,11 @@
 - [x] run `go test ./...` - must pass before next task
 
 ### Task 13: Update documentation
-- [ ] update `README.md` to document root-only public API and note that rendering internals are private
-- [ ] update `CLAUDE.md` if package layout guidance changes for future agents
-- [ ] document the intended internal package ownership map if useful for maintainers
-- [ ] run documentation-adjacent checks if available
-- [ ] run `go test ./...` - must pass before next task
+- [x] update `README.md` to document root-only public API and note that rendering internals are private
+- [x] update `CLAUDE.md` if package layout guidance changes for future agents
+- [x] document the intended internal package ownership map if useful for maintainers
+- [x] run documentation-adjacent checks if available
+- [x] run `go test ./...` - must pass before next task
 
 ### Task 14: Verify acceptance criteria
 - [ ] verify root `package tui` exposes only the minimal extension-author API

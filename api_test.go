@@ -1,6 +1,7 @@
 package tui_test
 
 import (
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -195,6 +196,24 @@ func TestPackageVisibility_RenderingSupportIsInternal(t *testing.T) {
 	} {
 		assert.True(t, pkgSet[pkg], "%s should be available internally", pkg)
 	}
+}
+
+func TestDocumentation_PublicAPIBoundary(t *testing.T) {
+	readme, err := os.ReadFile("README.md")
+	require.NoError(t, err)
+
+	claude, err := os.ReadFile("CLAUDE.md")
+	require.NoError(t, err)
+
+	readmeDoc := string(readme)
+	assert.Contains(t, readmeDoc, "The root package is the only supported Go import path")
+	assert.Contains(t, readmeDoc, "Rendering internals are private")
+	assert.Contains(t, readmeDoc, "internal/contract")
+
+	claudeDoc := string(claude)
+	assert.Contains(t, claudeDoc, "The root import path, `github.com/weave-agent/weave-tui`, is the only supported Go import path")
+	assert.Contains(t, claudeDoc, "Internal packages must not import the root package")
+	assert.Contains(t, claudeDoc, "`internal/contract`: canonical public API shapes")
 }
 
 // publicExt is a minimal TUIExtension implementation for testing.
