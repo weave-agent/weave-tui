@@ -143,7 +143,7 @@ func pushPopupDialog(m Model, req *overlayRequest) (Model, tea.Cmd) {
 			items[i] = overlays.SelectorItem{Title: title}
 		}
 
-		sel := overlays.NewSelectorModel(req.title, items)
+		sel := overlays.NewSelectorModel(req.title, items).SetStyles(m.styles)
 		sel = sel.SetSize(dialogWidth, dialogHeight)
 		sel = sel.Show()
 

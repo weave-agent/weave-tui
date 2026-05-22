@@ -4,6 +4,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/weave-agent/weave-tui/components/overlays"
 	"github.com/weave-agent/weave-tui/palette"
@@ -1033,9 +1034,8 @@ func TestModel_OutdatedNotificationAddsBanner(t *testing.T) {
 	m = updated.(Model)
 
 	assert.Empty(t, m.chat.Items())
-	assert.Contains(t, m.bannerMsg, "Extension Updates Available")
-	assert.Contains(t, m.bannerMsg, "mcp, diff-viewer")
 	assert.Contains(t, m.bannerMsg, "weave update")
+	assert.Contains(t, m.bannerMsg, "mcp, diff-viewer")
 	assert.Equal(t, sdk.NotifyInfo, m.bannerLevel)
 	assert.False(t, m.showLanding)
 }
@@ -1076,15 +1076,29 @@ func TestModel_OutdatedNotificationSingleExtension(t *testing.T) {
 
 func TestFormatOutdatedBanner(t *testing.T) {
 	banner := formatOutdatedBanner([]string{"mcp", "diff-viewer"})
-	assert.Contains(t, banner, "Extension Updates Available")
-	assert.Contains(t, banner, "mcp, diff-viewer")
 	assert.Contains(t, banner, "weave update")
-	assert.Contains(t, banner, "weave update <name>")
+	assert.Contains(t, banner, "mcp, diff-viewer")
+	assert.LessOrEqual(t, utf8.RuneCountInString(banner), 75, "banner should fit in 80-column terminal with marker and padding")
 }
 
 func TestFormatOutdatedBanner_Single(t *testing.T) {
 	banner := formatOutdatedBanner([]string{"mcp"})
-	assert.Contains(t, banner, "mcp has a newer version available.")
+	assert.Contains(t, banner, "weave update <name>")
+	assert.Contains(t, banner, "mcp")
+	assert.LessOrEqual(t, utf8.RuneCountInString(banner), 75, "banner should fit in 80-column terminal with marker and padding")
+}
+
+func TestFormatOutdatedBanner_Truncation(t *testing.T) {
+	longNames := []string{
+		"very-long-extension-name-one",
+		"very-long-extension-name-two",
+		"very-long-extension-name-three",
+		"very-long-extension-name-four",
+	}
+	banner := formatOutdatedBanner(longNames)
+	assert.Contains(t, banner, "weave update")
+	assert.LessOrEqual(t, utf8.RuneCountInString(banner), 75, "banner should fit in 80-column terminal with marker and padding")
+	assert.Contains(t, banner, "…")
 }
 
 // --- Task 6: Theme support tests ---

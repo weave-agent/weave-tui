@@ -284,6 +284,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 	m.footer = m.footer.SetReasoning(modelReasoning(cur))
 	m.footer = m.footer.SetThinkingLevel(string(m.thinkingLevel))
 	m.editor = m.editor.SetBorderColor(palette.ThinkingBorderColor(m.thinkingLevel))
+	m.editor = m.editor.SetStyles(m.styles)
 
 	if m.noConfigured {
 		m.statusMsg = "No providers configured. Use /providers to set an API key."
@@ -957,6 +958,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			borderColor = palette.ThinkingBorderColor(m.thinkingLevel)
 		}
 
+		m.editor = m.editor.SetStyles(m.styles)
 		m.editor = m.editor.SetBorderColor(borderColor)
 		m.editor = m.editor.SetPulseColors(accent, accentBright)
 		m.spinner = m.spinner.SetTheme(m.theme)
@@ -1006,6 +1008,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.theme = msg.theme
 		}
 		m.styles = styles.New(m.theme)
+		m.editor = m.editor.SetStyles(m.styles)
 
 		return m, nil
 
@@ -1932,17 +1935,26 @@ func (m Model) onOutdatedExtensions(msg OutdatedNotificationMsg) (tea.Model, tea
 	return m, m.bannerTimer
 }
 
-// formatOutdatedBanner formats outdated extension names into a notification message.
+// formatOutdatedBanner formats outdated extension names into a compact single-line
+// notification message that fits within an 80-column terminal after marker and padding.
+// The actionable command is placed first so it is never clipped by long name lists.
 func formatOutdatedBanner(names []string) string {
-	hint := "Run `weave update` to update all, or `weave update <name>`"
-
-	if len(names) == 1 {
-		return fmt.Sprintf("Extension Updates Available\n%s has a newer version available.\n%s", names[0], hint)
-	}
+	const maxLen = 75 // usable width after marker, space, and left padding
 
 	nameList := strings.Join(names, ", ")
 
-	return fmt.Sprintf("Extension Updates Available\n%s have newer versions available.\n%s", nameList, hint)
+	var text string
+	if len(names) == 1 {
+		text = fmt.Sprintf("`weave update <name>`: %s", nameList)
+	} else {
+		text = fmt.Sprintf("`weave update`: %s", nameList)
+	}
+
+	runes := []rune(text)
+	if len(runes) > maxLen {
+		return string(runes[:maxLen-1]) + "…"
+	}
+	return text
 }
 
 // onSubmit handles editor submit — routes slash commands or publishes prompt/followup.
@@ -2078,7 +2090,7 @@ func (m Model) onSessionListResult(msg SessionListResultMsg) (tea.Model, tea.Cmd
 	}
 
 	m.pendingSessions = msg.Sessions
-	sel := overlays.NewSelectorModel("Resume Session", items)
+	sel := overlays.NewSelectorModel("Resume Session", items).SetStyles(m.styles)
 	sel = sel.SetSize(m.width, m.height).Show()
 	m.dialogStack = m.dialogStack.Push(overlays.NewSelectorDialog(dialogSessionSelect, sel))
 
@@ -2116,7 +2128,7 @@ func (m Model) onModelListResult(msg ModelListResultMsg) (tea.Model, tea.Cmd) {
 	}
 
 	m.pendingModels = msg.Models
-	sel := overlays.NewSelectorModel("Select Model", items)
+	sel := overlays.NewSelectorModel("Select Model", items).SetStyles(m.styles)
 	sel = sel.SetSize(m.width, m.height).Show()
 	m.dialogStack = m.dialogStack.Push(overlays.NewSelectorDialog(dialogModelSelect, sel))
 
@@ -2230,7 +2242,7 @@ func (m Model) onProviderListResult(msg ProviderListResultMsg) (tea.Model, tea.C
 	}
 
 	m.pendingProviders = msg.Providers
-	sel := overlays.NewSelectorModel("Manage Provider Keys", items)
+	sel := overlays.NewSelectorModel("Manage Provider Keys", items).SetStyles(m.styles)
 	sel = sel.SetSize(m.width, m.height).Show()
 	m.dialogStack = m.dialogStack.Push(overlays.NewSelectorDialog(dialogProviderSelect, sel))
 
@@ -2264,7 +2276,7 @@ func (m Model) onLoginListResult(msg LoginListResultMsg) (tea.Model, tea.Cmd) {
 	}
 
 	m.pendingLoginProviders = msg.Providers
-	sel := overlays.NewSelectorModel("Login to Provider", items)
+	sel := overlays.NewSelectorModel("Login to Provider", items).SetStyles(m.styles)
 	sel = sel.SetSize(m.width, m.height).Show()
 	m.dialogStack = m.dialogStack.Push(overlays.NewSelectorDialog(dialogLoginSelect, sel))
 
@@ -2289,7 +2301,7 @@ func (m Model) onLogoutListResult(msg LogoutListResultMsg) (tea.Model, tea.Cmd) 
 	}
 
 	m.pendingLogoutProviders = msg.Providers
-	sel := overlays.NewSelectorModel("Logout from Provider", items)
+	sel := overlays.NewSelectorModel("Logout from Provider", items).SetStyles(m.styles)
 	sel = sel.SetSize(m.width, m.height).Show()
 	m.dialogStack = m.dialogStack.Push(overlays.NewSelectorDialog(dialogLogoutSelect, sel))
 

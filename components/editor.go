@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
@@ -160,6 +161,13 @@ func (m EditorModel) Focus() EditorModel {
 func (m EditorModel) Blur() EditorModel {
 	m.focused = false
 	m.ta.Blur()
+
+	return m
+}
+
+// SetStyles sets the style set for the editor and its completion model.
+func (m EditorModel) SetStyles(s *styles.Styles) EditorModel {
+	m.completion = m.completion.SetStyles(s)
 
 	return m
 }
