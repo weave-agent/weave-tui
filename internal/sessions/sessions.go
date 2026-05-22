@@ -1,4 +1,4 @@
-package tui
+package sessions
 
 import (
 	"bytes"
@@ -17,9 +17,18 @@ import (
 
 const entryTypeMessage = "message"
 
-// sessionDir returns the directory where session JSONL files are stored.
+// EntryData is the JSON payload of a message entry in a session file.
+type EntryData struct {
+	Role      string          `json:"role"`
+	Content   string          `json:"content"`
+	ToolCalls json.RawMessage `json:"tool_calls,omitempty"`
+	Thinking  string          `json:"thinking,omitempty"`
+	Tool      json.RawMessage `json:"tool,omitempty"`
+}
+
+// SessionDir returns the directory where session JSONL files are stored.
 // Checks WEAVE_JSONL_DIR env var, then falls back to ~/.weave/sessions.
-func sessionDir() (string, error) {
+func SessionDir() (string, error) {
 	if dir := os.Getenv("WEAVE_JSONL_DIR"); dir != "" {
 		return dir, nil
 	}
@@ -32,15 +41,15 @@ func sessionDir() (string, error) {
 	return filepath.Join(home, ".weave", "sessions"), nil
 }
 
-// resolveSessionDir loads the session directory from config (matching the jsonl store's
+// ResolveDir loads the session directory from config (matching the jsonl store's
 // resolution), falling back to env var and default.
-func resolveSessionDir(cfgPath string) string {
-	dir := resolveSessionDirFromConfig(cfgPath)
+func ResolveDir(cfgPath string) string {
+	dir := resolveDirFromConfig(cfgPath)
 	if dir != "" {
 		return dir
 	}
 
-	dir, err := sessionDir()
+	dir, err := SessionDir()
 	if err != nil {
 		return ""
 	}
@@ -48,7 +57,7 @@ func resolveSessionDir(cfgPath string) string {
 	return dir
 }
 
-func resolveSessionDirFromConfig(cfgPath string) string {
+func resolveDirFromConfig(cfgPath string) string {
 	if cfgPath == "" {
 		return ""
 	}
@@ -76,23 +85,23 @@ func resolveSessionDirFromConfig(cfgPath string) string {
 	return dir
 }
 
-// sessionHeader matches the first-line JSON of each JSONL session file.
-type sessionHeader struct {
+// header matches the first-line JSON of each JSONL session file.
+type header struct {
 	Type      string    `json:"type"`
 	ID        string    `json:"id"`
 	Timestamp time.Time `json:"timestamp"`
 	CWD       string    `json:"cwd"`
 }
 
-// listSessions reads session headers from the session directory.
+// List reads session headers from the session directory.
 // Returns sessions sorted by most recent first.
 // dirOverride, when non-empty, is used instead of the default session directory.
-func listSessions(dirOverride string) ([]tuievents.SessionEntry, error) {
+func List(dirOverride string) ([]tuievents.SessionEntry, error) {
 	dir := dirOverride
 	if dir == "" {
 		var err error
 
-		dir, err = sessionDir()
+		dir, err = SessionDir()
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +125,7 @@ func listSessions(dirOverride string) ([]tuievents.SessionEntry, error) {
 
 		path := filepath.Join(dir, e.Name())
 
-		header, err := readSessionHeader(path)
+		h, err := readHeader(path)
 		if err != nil {
 			continue
 		}
@@ -127,9 +136,9 @@ func listSessions(dirOverride string) ([]tuievents.SessionEntry, error) {
 		}
 
 		sessions = append(sessions, tuievents.SessionEntry{
-			ID:        header.ID,
-			CWD:       header.CWD,
-			CreatedAt: header.Timestamp,
+			ID:        h.ID,
+			CWD:       h.CWD,
+			CreatedAt: h.Timestamp,
 			UpdatedAt: fi.ModTime(),
 		})
 	}
@@ -141,7 +150,7 @@ func listSessions(dirOverride string) ([]tuievents.SessionEntry, error) {
 	return sessions, nil
 }
 
-func readSessionHeader(path string) (*sessionHeader, error) {
+func readHeader(path string) (*header, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("open session header: %w", err)
@@ -151,38 +160,29 @@ func readSessionHeader(path string) (*sessionHeader, error) {
 
 	dec := json.NewDecoder(f)
 
-	var header sessionHeader
+	var h header
 
-	if err := dec.Decode(&header); err != nil {
+	if err := dec.Decode(&h); err != nil {
 		return nil, fmt.Errorf("parse header: %w", err)
 	}
 
-	return &header, nil
+	return &h, nil
 }
 
-// sessionEntryData is the JSON payload of a message entry.
-type sessionEntryData struct {
-	Role      string          `json:"role"`
-	Content   string          `json:"content"`
-	ToolCalls json.RawMessage `json:"tool_calls,omitempty"`
-	Thinking  string          `json:"thinking,omitempty"`
-	Tool      json.RawMessage `json:"tool,omitempty"`
-}
-
-// loadSessionEntries reads all message entries from a session file.
+// LoadEntries reads all message entries from a session file.
 // dirOverride, when non-empty, is used instead of the default session directory.
-func loadSessionEntries(dirOverride, sessionID string) ([]sessionEntryData, error) {
+func LoadEntries(dirOverride, sessionID string) ([]EntryData, error) {
 	dir := dirOverride
 	if dir == "" {
 		var err error
 
-		dir, err = sessionDir()
+		dir, err = SessionDir()
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if !isValidSessionID(sessionID) {
+	if !isValidID(sessionID) {
 		return nil, fmt.Errorf("invalid session ID: %s", sessionID)
 	}
 
@@ -193,12 +193,12 @@ func loadSessionEntries(dirOverride, sessionID string) ([]sessionEntryData, erro
 		return nil, fmt.Errorf("read session: %w", err)
 	}
 
-	lines := splitSessionLines(data)
+	lines := splitLines(data)
 	if len(lines) <= 1 {
-		return []sessionEntryData{}, nil
+		return []EntryData{}, nil
 	}
 
-	var entries []sessionEntryData
+	var entries []EntryData
 
 	for _, line := range lines[1:] { // skip header
 		var raw struct {
@@ -214,7 +214,7 @@ func loadSessionEntries(dirOverride, sessionID string) ([]sessionEntryData, erro
 			continue
 		}
 
-		var d sessionEntryData
+		var d EntryData
 		if err := json.Unmarshal(raw.Data, &d); err != nil {
 			continue
 		}
@@ -225,8 +225,8 @@ func loadSessionEntries(dirOverride, sessionID string) ([]sessionEntryData, erro
 	return entries, nil
 }
 
-// shortenCWD replaces the home directory prefix with ~.
-func shortenCWD(cwd string) string {
+// ShortenCWD replaces the home directory prefix with ~.
+func ShortenCWD(cwd string) string {
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {
 		return cwd
@@ -235,15 +235,15 @@ func shortenCWD(cwd string) string {
 	return strings.Replace(cwd, home, "~", 1)
 }
 
-// listSessionsCmd returns a tea.Cmd that reads session headers and returns tuievents.SessionListResultMsg.
-func listSessionsCmd(dirOverride string) tea.Cmd {
+// ListCmd returns a tea.Cmd that reads session headers and returns SessionListResultMsg.
+func ListCmd(dirOverride string) tea.Cmd {
 	return func() tea.Msg {
-		sessions, err := listSessions(dirOverride)
+		sessions, err := List(dirOverride)
 		return tuievents.SessionListResultMsg{Sessions: sessions, Err: err}
 	}
 }
 
-func isValidSessionID(id string) bool {
+func isValidID(id string) bool {
 	if id == "" {
 		return false
 	}
@@ -257,7 +257,7 @@ func isValidSessionID(id string) bool {
 	return true
 }
 
-func splitSessionLines(data []byte) []string {
+func splitLines(data []byte) []string {
 	var lines []string
 
 	for line := range bytes.SplitSeq(data, []byte{'\n'}) {

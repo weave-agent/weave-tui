@@ -3,6 +3,7 @@ package tui
 import (
 	tuicommands "github.com/weave-agent/weave-tui/internal/commands"
 	tuikeybindings "github.com/weave-agent/weave-tui/internal/keybindings"
+	tuisessions "github.com/weave-agent/weave-tui/internal/sessions"
 	"github.com/weave-agent/weave/sdk"
 
 	tea "charm.land/bubbletea/v2"
@@ -43,7 +44,7 @@ const (
 
 func NewCommandRegistry(bus sdk.Bus, sessionDir string) *tuicommands.CommandRegistry {
 	return tuicommands.NewCommandRegistry(bus, sessionDir, tuicommands.RuntimeCommands{
-		ListSessions: listSessionsCmd,
+		ListSessions: tuisessions.ListCmd,
 		Login:        loginCmd,
 		Logout:       logoutCmd,
 	})

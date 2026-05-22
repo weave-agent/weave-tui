@@ -15,6 +15,7 @@ import (
 	"github.com/weave-agent/weave/sdk"
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
 
+	tuiauth "github.com/weave-agent/weave-tui/internal/auth"
 	tuibridge "github.com/weave-agent/weave-tui/internal/bridge"
 	tuicommands "github.com/weave-agent/weave-tui/internal/commands"
 	"github.com/weave-agent/weave-tui/internal/components"
@@ -27,6 +28,8 @@ import (
 	tuilayout "github.com/weave-agent/weave-tui/internal/layout"
 	"github.com/weave-agent/weave-tui/internal/palette"
 	"github.com/weave-agent/weave-tui/internal/panels"
+	tuiproviders "github.com/weave-agent/weave-tui/internal/providers"
+	tuisessions "github.com/weave-agent/weave-tui/internal/sessions"
 	"github.com/weave-agent/weave-tui/internal/styles"
 
 	"charm.land/bubbles/v2/spinner"
@@ -208,10 +211,10 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		cfgPath = cfg.FilePath()
 	}
 
-	sdir := resolveSessionDir(cfgPath)
+	sdir := tuisessions.ResolveDir(cfgPath)
 
 	commands := tuicommands.NewCommandRegistry(bus, sdir, tuicommands.RuntimeCommands{
-		ListSessions: listSessionsCmd,
+		ListSessions: tuisessions.ListCmd,
 		Login:        loginCmd,
 		Logout:       logoutCmd,
 	})
@@ -244,8 +247,8 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		editor = editor.SetMaxHeight(tuiCfg.EditorMaxLines)
 	}
 
-	models := listModels()
-	cur := currentModel(models, ps)
+	models := tuiproviders.ListModels()
+	cur := tuiproviders.CurrentModel(models, ps)
 
 	bindings := tuikeybindings.NewBindingRegistry()
 
@@ -281,7 +284,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		layout:            tuilayout.NewLayoutEngine(),
 		currentModel:      cur,
 		sessionDir:        sdir,
-		thinkingLevel:     initialThinkingLevel(ps),
+		thinkingLevel:     tuiproviders.InitialThinkingLevel(ps),
 		noConfigured:      len(models) == 0,
 		showHints:         true,
 		showLanding:       true,
@@ -296,7 +299,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		editingAttachment: -1,
 	}
 	m.footer = m.footer.SetModel(cur.Model, cur.Provider)
-	m.footer = m.footer.SetReasoning(modelReasoning(cur))
+	m.footer = m.footer.SetReasoning(tuiproviders.ModelReasoning(cur))
 	m.footer = m.footer.SetThinkingLevel(string(m.thinkingLevel))
 	m.editor = m.editor.SetBorderColor(palette.ThinkingBorderColor(m.thinkingLevel))
 	m.editor = m.editor.SetStyles(m.styles)
@@ -398,7 +401,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		return m, completeOAuthFlowCmd(m.oauthCtx, authURLMsg.Handle, authURLMsg.Provider, authURLMsg.Gen)
+		return m, tuiauth.CompleteOAuthFlowCmd(m.oauthCtx, authURLMsg.Handle, authURLMsg.Provider, authURLMsg.Gen)
 	}
 
 	// Login flow completion must be handled even when the login dialog is open.
@@ -1417,13 +1420,13 @@ func (m Model) dispatchBinding(action tuikeybindings.BindingAction) (tea.Model, 
 	case tuikeybindings.ActionModelSelect:
 		return m, listModelsCmd()
 	case tuikeybindings.ActionModelCycle:
-		models := listModels()
+		models := tuiproviders.ListModels()
 		if len(models) <= 1 {
 			m.showStatus("Only one model available")
 			return m, m.statusTimer
 		}
 
-		next := cycleModel(models, m.currentModel)
+		next := tuiproviders.CycleModel(models, m.currentModel)
 
 		return m, func() tea.Msg { return tuievents.ModelChangedMsg{Entry: next} }
 
@@ -2102,7 +2105,7 @@ func (m Model) onSessionListResult(msg tuievents.SessionListResultMsg) (tea.Mode
 	items := make([]overlays.SelectorItem, len(msg.Sessions))
 	for i, s := range msg.Sessions {
 		items[i] = overlays.SelectorItem{
-			Title:    shortenCWD(s.CWD),
+			Title:    tuisessions.ShortenCWD(s.CWD),
 			Subtitle: s.UpdatedAt.Format("2006-01-02 15:04"),
 		}
 	}
@@ -2158,7 +2161,7 @@ func (m Model) onModelChanged(msg tuievents.ModelChangedMsg) (tea.Model, tea.Cmd
 	m.prevThinkingLevel = m.thinkingLevel
 	m.currentModel = msg.Entry
 	m.footer = m.footer.SetModel(msg.Entry.Model, msg.Entry.Provider)
-	m.footer = m.footer.SetReasoning(modelReasoning(msg.Entry))
+	m.footer = m.footer.SetReasoning(tuiproviders.ModelReasoning(msg.Entry))
 
 	thinkingChanged := false
 
@@ -2189,7 +2192,7 @@ func (m Model) onModelChanged(msg tuievents.ModelChangedMsg) (tea.Model, tea.Cmd
 		}
 
 		if m.cfg != nil {
-			cmds = append(cmds, saveSettingsCmd(m.ps, m.currentModel, m.thinkingLevel))
+			cmds = append(cmds, tuiproviders.SaveSettingsCmd(m.ps, m.currentModel, m.thinkingLevel))
 		}
 
 		cmds = append(cmds, m.statusTimer)
@@ -2220,7 +2223,7 @@ func (m Model) contextLimit() int {
 func (m Model) onModelChangeFailed(msg tuievents.ModelChangeFailedMsg) (tea.Model, tea.Cmd) {
 	m.currentModel = m.prevModel
 	m.footer = m.footer.SetModel(m.prevModel.Model, m.prevModel.Provider)
-	m.footer = m.footer.SetReasoning(modelReasoning(m.prevModel))
+	m.footer = m.footer.SetReasoning(tuiproviders.ModelReasoning(m.prevModel))
 
 	m.thinkingLevel = m.prevThinkingLevel
 	m.footer = m.footer.SetThinkingLevel(string(m.thinkingLevel))
@@ -2404,13 +2407,13 @@ func (m Model) onKeyInputDialogDone(result overlays.DialogResult, pendingCmd tea
 
 	// If we were in noConfigured state, re-evaluate now that a key exists.
 	if m.noConfigured {
-		models := listModels()
+		models := tuiproviders.ListModels()
 		if len(models) > 0 {
 			m.noConfigured = false
-			cur := currentModel(models, m.ps)
+			cur := tuiproviders.CurrentModel(models, m.ps)
 			m.currentModel = cur
 			m.footer = m.footer.SetModel(cur.Model, cur.Provider)
-			m.footer = m.footer.SetReasoning(modelReasoning(cur))
+			m.footer = m.footer.SetReasoning(tuiproviders.ModelReasoning(cur))
 		}
 	}
 
@@ -2500,7 +2503,7 @@ func (m Model) startOAuthLogin(selected tuievents.LoginProviderEntry, pendingCmd
 			interval = 5
 		}
 
-		return m, tea.Batch(pendingCmd, pollDeviceCodeCmd(ctx, selected.ID, resp.DeviceCode, interval, oauthProvider.TokenURL, oauthProvider.ClientID, m.oauthGen))
+		return m, tea.Batch(pendingCmd, tuiauth.PollDeviceCodeCmd(ctx, selected.ID, resp.DeviceCode, interval, oauthProvider.TokenURL, oauthProvider.ClientID, m.oauthGen))
 	}
 
 	// Authorization code flow: show dialog and run callback + browser flow.
@@ -2508,7 +2511,7 @@ func (m Model) startOAuthLogin(selected tuievents.LoginProviderEntry, pendingCmd
 	loginDlg = loginDlg.SetSize(m.width, m.height).Show()
 	m.dialogStack = m.dialogStack.Push(overlays.NewLoginDialog(dialogLoginOAuth, loginDlg))
 
-	return m, tea.Batch(pendingCmd, runOAuthFlowCmd(ctx, oauthProvider, m.oauthGen))
+	return m, tea.Batch(pendingCmd, tuiauth.RunOAuthFlowCmd(ctx, oauthProvider, m.oauthGen))
 }
 
 func (m Model) onLogoutDialogDone(result overlays.DialogResult, pendingCmd tea.Cmd) (tea.Model, tea.Cmd) {
@@ -2546,15 +2549,15 @@ func (m Model) onLogoutDialogDone(result overlays.DialogResult, pendingCmd tea.C
 	// Re-evaluate noConfigured state and switch to the next available provider.
 	oldModel := m.currentModel
 
-	models := listModels()
+	models := tuiproviders.ListModels()
 	if len(models) == 0 {
 		m.noConfigured = true
 	} else {
 		m.noConfigured = false
-		cur := currentModel(models, m.ps)
+		cur := tuiproviders.CurrentModel(models, m.ps)
 		m.currentModel = cur
 		m.footer = m.footer.SetModel(cur.Model, cur.Provider)
-		m.footer = m.footer.SetReasoning(modelReasoning(cur))
+		m.footer = m.footer.SetReasoning(tuiproviders.ModelReasoning(cur))
 	}
 
 	if m.bus != nil && !m.noConfigured && m.currentModel != oldModel {
@@ -2705,7 +2708,7 @@ func (m Model) onModelDialogDone(result overlays.DialogResult, pendingCmd tea.Cm
 }
 
 func (m *Model) rebuildChatFromSession(sessionID string) {
-	entries, err := loadSessionEntries(m.sessionDir, sessionID)
+	entries, err := tuisessions.LoadEntries(m.sessionDir, sessionID)
 	if err != nil {
 		m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
 		am := messages.NewAssistantMessage()
@@ -2918,7 +2921,7 @@ func (m Model) applyThinkingLevel(level sdkmodel.ThinkingLevel) (tea.Model, tea.
 		cmds = append(cmds, tuibridge.PublishThinkingChange(m.bus, level))
 
 		if m.cfg != nil {
-			cmds = append(cmds, saveSettingsCmd(m.ps, m.currentModel, level))
+			cmds = append(cmds, tuiproviders.SaveSettingsCmd(m.ps, m.currentModel, level))
 		}
 	}
 

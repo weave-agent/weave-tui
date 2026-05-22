@@ -120,12 +120,12 @@
 - [x] run `go test ./...` - must pass before next task
 
 ### Task 9: Move sessions, auth, and provider/model selection implementation
-- [ ] move session listing/resume helpers to `internal/sessions`
-- [ ] move login/logout provider selection and login flow helpers to `internal/auth`
-- [ ] move provider/model selection helpers to `internal/providers`
-- [ ] update command/model/UI callers to use the new internal packages
-- [ ] move affected tests with their packages and update imports
-- [ ] run `go test ./...` - must pass before next task
+- [x] move session listing/resume helpers to `internal/sessions`
+- [x] move login/logout provider selection and login flow helpers to `internal/auth`
+- [x] move provider/model selection helpers to `internal/providers`
+- [x] update command/model/UI callers to use the new internal packages
+- [x] move affected tests with their packages and update imports
+- [x] run `go test ./...` - must pass before next task
 
 ### Task 10: Move root Bubble Tea model and UI implementation
 - [ ] move root Bubble Tea `Model`, focus state, landing screen, overlays orchestration, and attachments panel code to `internal/model`

@@ -14,6 +14,7 @@ import (
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
 	tuievents "github.com/weave-agent/weave-tui/internal/events"
+	tuiproviders "github.com/weave-agent/weave-tui/internal/providers"
 
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
@@ -38,14 +39,14 @@ func TestCycleModel(t *testing.T) {
 	}
 
 	// Cycle forward
-	next := cycleModel(entries, entries[0])
+	next := tuiproviders.CycleModel(entries, entries[0])
 	assert.Equal(t, "openai", next.Provider)
 
-	next = cycleModel(entries, entries[1])
+	next = tuiproviders.CycleModel(entries, entries[1])
 	assert.Equal(t, "zai", next.Provider)
 
 	// Wrap around
-	next = cycleModel(entries, entries[2])
+	next = tuiproviders.CycleModel(entries, entries[2])
 	assert.Equal(t, "anthropic", next.Provider)
 }
 
@@ -53,13 +54,13 @@ func TestCycleModel_SingleEntry(t *testing.T) {
 	entries := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 	}
-	next := cycleModel(entries, entries[0])
+	next := tuiproviders.CycleModel(entries, entries[0])
 	assert.Equal(t, "anthropic", next.Provider)
 }
 
 func TestCycleModel_Empty(t *testing.T) {
 	cur := tuievents.ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
-	next := cycleModel(nil, cur)
+	next := tuiproviders.CycleModel(nil, cur)
 	assert.Equal(t, cur, next)
 }
 
@@ -68,10 +69,10 @@ func TestCurrentModel(t *testing.T) {
 		{Provider: "openai", Model: "gpt-5.5"},
 		{Provider: "zai", Model: "glm-5.1"},
 	}
-	cur := currentModel(entries, nil)
+	cur := tuiproviders.CurrentModel(entries, nil)
 	assert.Equal(t, "openai", cur.Provider)
 
-	cur = currentModel(nil, nil)
+	cur = tuiproviders.CurrentModel(nil, nil)
 	assert.Empty(t, cur.Provider)
 }
 
@@ -83,7 +84,7 @@ func TestCurrentModel_EnvProvider(t *testing.T) {
 
 	t.Setenv("WEAVE_PROVIDER", "openai")
 
-	cur := currentModel(entries, nil)
+	cur := tuiproviders.CurrentModel(entries, nil)
 	assert.Equal(t, "openai", cur.Provider)
 	assert.Equal(t, "gpt-5.5", cur.Model)
 }
@@ -95,7 +96,7 @@ func TestCurrentModel_EnvProviderNotInEntries(t *testing.T) {
 
 	t.Setenv("WEAVE_PROVIDER", "anthropic")
 
-	cur := currentModel(entries, nil)
+	cur := tuiproviders.CurrentModel(entries, nil)
 	// Falls back to first entry when env provider not found
 	assert.Equal(t, "openai", cur.Provider)
 }
@@ -119,7 +120,7 @@ func TestCurrentModel_PreferencesProviderOnly(t *testing.T) {
 		},
 	}
 
-	cur := currentModel(entries, mockCfg)
+	cur := tuiproviders.CurrentModel(entries, mockCfg)
 	assert.Equal(t, "openai", cur.Provider)
 	assert.Equal(t, "gpt-5.5", cur.Model)
 }
@@ -140,7 +141,7 @@ func TestCurrentModel_PreferencesProviderOnly_NoRegistryFallback(t *testing.T) {
 		},
 	}
 
-	cur := currentModel(entries, mockCfg)
+	cur := tuiproviders.CurrentModel(entries, mockCfg)
 	assert.Equal(t, "openai", cur.Provider)
 	assert.Equal(t, "gpt-5.5", cur.Model)
 }
@@ -508,7 +509,7 @@ func TestListModelsWithRegistry(t *testing.T) {
 	defer sdk.ResetProviderRegistry()
 	defer sdkmodel.ResetAuthRegistry()
 
-	entries := listModels()
+	entries := tuiproviders.ListModels()
 	assert.NotEmpty(t, entries, "should return models from registry")
 
 	// Should include models from all registered providers
@@ -531,7 +532,7 @@ func TestListModelsEmpty(t *testing.T) {
 	defer sdk.ResetProviderRegistry()
 	defer sdkmodel.ResetAuthRegistry()
 
-	entries := listModels()
+	entries := tuiproviders.ListModels()
 	assert.Nil(t, entries)
 }
 
@@ -557,7 +558,7 @@ func TestListModelsIgnoresEnvOverrides(t *testing.T) {
 	defer sdk.ResetProviderRegistry()
 	defer sdkmodel.ResetAuthRegistry()
 
-	entries := listModels()
+	entries := tuiproviders.ListModels()
 
 	// Should show registry entries as-is
 	anthropicCount := 0
@@ -762,7 +763,7 @@ func TestCurrentModel_LayeredSettings(t *testing.T) {
 		},
 	}
 
-	cur := currentModel(entries, mockCfg)
+	cur := tuiproviders.CurrentModel(entries, mockCfg)
 	assert.Equal(t, "openai", cur.Provider)
 	assert.Equal(t, "gpt-5.5", cur.Model)
 }
@@ -783,7 +784,7 @@ func TestCurrentModel_EnvOverridesSettings(t *testing.T) {
 		},
 	}
 
-	cur := currentModel(entries, mockCfg)
+	cur := tuiproviders.CurrentModel(entries, mockCfg)
 	assert.Equal(t, "openai", cur.Provider, "WEAVE_PROVIDER should override settings")
 	assert.Equal(t, "gpt-5.5", cur.Model)
 }
@@ -795,7 +796,7 @@ func TestInitialThinkingLevel_LayeredSettings(t *testing.T) {
 		},
 	}
 
-	level := initialThinkingLevel(mockCfg)
+	level := tuiproviders.InitialThinkingLevel(mockCfg)
 	assert.Equal(t, sdkmodel.ThinkingHigh, level)
 }
 
@@ -806,12 +807,16 @@ func TestInitialThinkingLevel_InvalidPreference(t *testing.T) {
 		},
 	}
 
-	level := initialThinkingLevel(mockCfg)
+	level := tuiproviders.InitialThinkingLevel(mockCfg)
 	assert.Equal(t, sdkmodel.ThinkingMedium, level)
 }
 
 func TestSaveSettings_CallsSavePreferences(t *testing.T) {
-	var capturedPrefs preferences
+	var capturedPrefs struct {
+		Provider      string `json:"provider,omitempty"`
+		Model         string `json:"model,omitempty"`
+		ThinkingLevel string `json:"thinking_level,omitempty"`
+	}
 
 	mockCfg := &mockConfig{
 		savePreferences: func(target any) error {
@@ -828,7 +833,7 @@ func TestSaveSettings_CallsSavePreferences(t *testing.T) {
 		},
 	}
 
-	saveSettings(mockCfg, tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}, sdkmodel.ThinkingHigh)
+	tuiproviders.SaveSettings(mockCfg, tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}, sdkmodel.ThinkingHigh)
 
 	assert.Equal(t, "openai", capturedPrefs.Provider)
 	assert.Equal(t, "gpt-5.5", capturedPrefs.Model)
@@ -863,7 +868,7 @@ func TestSaveSettings_PreservesUIFields(t *testing.T) {
 	}
 
 	// Save model change
-	saveSettings(mockCfg, tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}, sdkmodel.ThinkingHigh)
+	tuiproviders.SaveSettings(mockCfg, tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}, sdkmodel.ThinkingHigh)
 
 	// Verify model fields updated
 	assert.Equal(t, "openai", stored["provider"])
@@ -890,7 +895,7 @@ func TestNewModel_DefaultEditorHeightWhenNoSettings(t *testing.T) {
 func TestSaveSettings_NilConfig(t *testing.T) {
 	// Should not panic with nil config
 	assert.NotPanics(t, func() {
-		saveSettings(nil, tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}, sdkmodel.ThinkingHigh)
+		tuiproviders.SaveSettings(nil, tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}, sdkmodel.ThinkingHigh)
 	})
 }
 

@@ -1,4 +1,4 @@
-package tui
+package sessions
 
 import (
 	"encoding/json"
@@ -14,25 +14,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestListSessions_EmptyDir(t *testing.T) {
+func TestList_EmptyDir(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("WEAVE_JSONL_DIR", dir)
 
-	sessions, err := listSessions("")
+	sessions, err := List("")
 	require.NoError(t, err)
 	assert.Empty(t, sessions)
 }
 
-func TestListSessions_NoDir(t *testing.T) {
+func TestList_NoDir(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "nonexistent")
 	t.Setenv("WEAVE_JSONL_DIR", dir)
 
-	sessions, err := listSessions("")
+	sessions, err := List("")
 	require.NoError(t, err)
 	assert.Empty(t, sessions)
 }
 
-func TestListSessions_ReadsHeaders(t *testing.T) {
+func TestList_ReadsHeaders(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("WEAVE_JSONL_DIR", dir)
 
@@ -41,11 +41,10 @@ func TestListSessions_ReadsHeaders(t *testing.T) {
 	writeSessionFile(t, dir, "bbb11122233344455566677788899900", "/project/beta", now.Add(-time.Hour))
 	writeSessionFile(t, dir, "aaa11122233344455566677788899900", "/project/alpha", now)
 
-	sessions, err := listSessions("")
+	sessions, err := List("")
 	require.NoError(t, err)
 	require.Len(t, sessions, 2)
 
-	// Sorted by most recent first
 	assert.Equal(t, "aaa11122233344455566677788899900", sessions[0].ID)
 	assert.Equal(t, "/project/alpha", sessions[0].CWD)
 	assert.Equal(t, now, sessions[0].CreatedAt)
@@ -54,36 +53,33 @@ func TestListSessions_ReadsHeaders(t *testing.T) {
 	assert.Equal(t, "/project/beta", sessions[1].CWD)
 }
 
-func TestListSessions_SkipsNonJSONL(t *testing.T) {
+func TestList_SkipsNonJSONL(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("WEAVE_JSONL_DIR", dir)
 
 	writeSessionFile(t, dir, "aaa11122233344455566677788899900", "/project", time.Now())
 
-	// Non-JSONL file should be skipped
 	err := os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("hello"), 0o644)
 	require.NoError(t, err)
 
-	// Invalid JSONL (no header) should be skipped
 	err = os.WriteFile(filepath.Join(dir, "bad.jsonl"), []byte("not json\n"), 0o644)
 	require.NoError(t, err)
 
-	sessions, err := listSessions("")
+	sessions, err := List("")
 	require.NoError(t, err)
 	require.Len(t, sessions, 1)
 	assert.Equal(t, "aaa11122233344455566677788899900", sessions[0].ID)
 }
 
-func TestLoadSessionEntries(t *testing.T) {
+func TestLoadEntries(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("WEAVE_JSONL_DIR", dir)
 
 	sessionID := "aaa11122233344455566677788899900"
 	now := time.Now().UTC()
 
-	// Write header + message entries
-	header := sessionHeader{Type: "session", ID: sessionID, Timestamp: now, CWD: "/test"}
-	headerJSON, _ := json.Marshal(header)
+	h := header{Type: "session", ID: sessionID, Timestamp: now, CWD: "/test"}
+	headerJSON, _ := json.Marshal(h)
 
 	entry1 := map[string]any{
 		"type": "message",
@@ -106,9 +102,9 @@ func TestLoadSessionEntries(t *testing.T) {
 	err := os.WriteFile(filepath.Join(dir, sessionID+".jsonl"), []byte(content), 0o644)
 	require.NoError(t, err)
 
-	entries, err := loadSessionEntries("", sessionID)
+	entries, err := LoadEntries("", sessionID)
 	require.NoError(t, err)
-	require.Len(t, entries, 2) // summary entry skipped
+	require.Len(t, entries, 2)
 
 	assert.Equal(t, "user", entries[0].Role)
 	assert.Equal(t, "hello", entries[0].Content)
@@ -116,31 +112,31 @@ func TestLoadSessionEntries(t *testing.T) {
 	assert.Equal(t, "hi there", entries[1].Content)
 }
 
-func TestLoadSessionEntries_NotFound(t *testing.T) {
+func TestLoadEntries_NotFound(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("WEAVE_JSONL_DIR", dir)
 
-	_, err := loadSessionEntries("", "nonexistent0000000000000000000")
+	_, err := LoadEntries("", "nonexistent0000000000000000000")
 	assert.Error(t, err)
 }
 
-func TestLoadSessionEntries_EmptySession(t *testing.T) {
+func TestLoadEntries_EmptySession(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("WEAVE_JSONL_DIR", dir)
 
 	sessionID := "aaa11122233344455566677788899900"
-	header := sessionHeader{Type: "session", ID: sessionID, Timestamp: time.Now().UTC(), CWD: "/test"}
-	headerJSON, _ := json.Marshal(header)
+	h := header{Type: "session", ID: sessionID, Timestamp: time.Now().UTC(), CWD: "/test"}
+	headerJSON, _ := json.Marshal(h)
 
 	err := os.WriteFile(filepath.Join(dir, sessionID+".jsonl"), []byte(string(headerJSON)+"\n"), 0o644)
 	require.NoError(t, err)
 
-	entries, err := loadSessionEntries("", sessionID)
+	entries, err := LoadEntries("", sessionID)
 	require.NoError(t, err)
 	assert.Empty(t, entries)
 }
 
-func TestLoadSessionEntries_PathTraversalRejected(t *testing.T) {
+func TestLoadEntries_PathTraversalRejected(t *testing.T) {
 	tests := []struct {
 		name      string
 		sessionID string
@@ -153,7 +149,7 @@ func TestLoadSessionEntries_PathTraversalRejected(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := loadSessionEntries("", tt.sessionID)
+			_, err := LoadEntries("", tt.sessionID)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "invalid session ID")
 		})
@@ -176,18 +172,18 @@ func TestShortenCWD(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, shortenCWD(tt.cwd))
+			assert.Equal(t, tt.want, ShortenCWD(tt.cwd))
 		})
 	}
 }
 
-func TestListSessionsCmd(t *testing.T) {
+func TestListCmd(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("WEAVE_JSONL_DIR", dir)
 
 	writeSessionFile(t, dir, "aaa11122233344455566677788899900", "/test", time.Now())
 
-	cmd := listSessionsCmd("")
+	cmd := ListCmd("")
 	msg := cmd()
 
 	result, ok := msg.(tuievents.SessionListResultMsg)
@@ -201,16 +197,25 @@ func TestSessionDir_EnvOverride(t *testing.T) {
 	custom := "/tmp/weave-test-sessions"
 	t.Setenv("WEAVE_JSONL_DIR", custom)
 
-	dir, err := sessionDir()
+	dir, err := SessionDir()
 	require.NoError(t, err)
 	assert.Equal(t, custom, dir)
+}
+
+func TestResolveDir_ConfigOverride(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	data := []byte(fmt.Sprintf(`{"jsonl":{"dir":%q}}`, dir))
+	require.NoError(t, os.WriteFile(configPath, data, 0o644))
+
+	assert.Equal(t, dir, ResolveDir(configPath))
 }
 
 func writeSessionFile(t *testing.T, dir, sessionID, cwd string, ts time.Time) {
 	t.Helper()
 
-	header := sessionHeader{Type: "session", ID: sessionID, Timestamp: ts, CWD: cwd}
-	headerJSON, err := json.Marshal(header)
+	h := header{Type: "session", ID: sessionID, Timestamp: ts, CWD: cwd}
+	headerJSON, err := json.Marshal(h)
 	require.NoError(t, err)
 
 	path := filepath.Join(dir, sessionID+".jsonl")
