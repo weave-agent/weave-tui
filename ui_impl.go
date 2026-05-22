@@ -435,7 +435,7 @@ func (u *TUIImpl) RegisterTheme(name string, theme ThemeDef) error {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
-	u.themeRegistry[name] = theme.toPaletteTheme()
+	u.themeRegistry[name] = toPaletteTheme(theme)
 
 	return nil
 }

@@ -61,12 +61,12 @@
 ## Implementation Steps
 
 ### Task 1: Establish public contract package and root facade
-- [ ] create `internal/contract` with `TUIExtension`, `TUIExtAPI`, panel API types, renderer API types, autocomplete API types, key event type, and theme definition
-- [ ] update root `tui_ext_api.go` or replacement `api.go` to expose aliases for the minimal supported API only
-- [ ] keep `TUIConfig` in root or alias it from an internal config package if needed by registration schema
-- [ ] remove root exposure of implementation-only API from facade files
-- [ ] add/update root public API tests using `package tui_test` for registration and type usability
-- [ ] run `go test ./...` - must pass before next task
+- [x] create `internal/contract` with `TUIExtension`, `TUIExtAPI`, panel API types, renderer API types, autocomplete API types, key event type, and theme definition
+- [x] update root `tui_ext_api.go` or replacement `api.go` to expose aliases for the minimal supported API only
+- [x] keep `TUIConfig` in root or alias it from an internal config package if needed by registration schema
+- [x] remove root exposure of implementation-only API from facade files
+- [x] add/update root public API tests using `package tui_test` for registration and type usability
+- [x] run `go test ./...` - must pass before next task
 
 ### Task 2: Move extension registry behind an internal boundary
 - [ ] move TUI extension registry implementation to an internal package such as `internal/extensionregistry`

@@ -8,33 +8,6 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 )
 
-// PanelPlacement determines where a panel is rendered relative to the editor.
-type PanelPlacement int
-
-const (
-	AsOverlay PanelPlacement = iota
-	AboveEditor
-	BelowEditor
-	TrayOnly
-)
-
-// PanelConfig configures a panel.
-type PanelConfig struct {
-	ID        string
-	Placement PanelPlacement
-	Blocking  bool // true = modal, false = non-blocking
-	Width     int
-	Height    int
-	Title     string
-}
-
-// PanelDrawer is the interface for panel content rendering and interaction.
-type PanelDrawer interface {
-	Draw(scr uv.Screen, area uv.Rectangle)
-	Update(msg tea.Msg) (PanelDrawer, tea.Cmd)
-	Handles(msg tea.Msg) bool
-}
-
 // panelEntry holds a registered panel's state.
 type panelEntry struct {
 	Config  PanelConfig
