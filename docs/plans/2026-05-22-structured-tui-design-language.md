@@ -74,13 +74,13 @@
 ## Implementation Steps
 
 ### Task 1: Add style-set foundation
-- [ ] add a small style package or root-level style module that creates `styles.New(theme)` from `palette.Theme`
-- [ ] define fixed design grammar constants for `❯`, `◆`, `∴`, `○`, `✓`, `×`, and `■`
-- [ ] add reusable style helpers for role markers, muted text, pills, selected rows, tool state colors, and overlay boxes
-- [ ] ensure custom themes are treated as color-token changes only; glyphs, spacing, border shapes, and layout grammar stay fixed in code
-- [ ] write tests for style-set defaults and glyph constants
-- [ ] write tests proving style helpers use the provided theme rather than `palette.DefaultTheme()`
-- [ ] run `go test ./...` - must pass before task 2
+- [x] add a small style package or root-level style module that creates `styles.New(theme)` from `palette.Theme`
+- [x] define fixed design grammar constants for `❯`, `◆`, `∴`, `○`, `✓`, `×`, and `■`
+- [x] add reusable style helpers for role markers, muted text, pills, selected rows, tool state colors, and overlay boxes
+- [x] ensure custom themes are treated as color-token changes only; glyphs, spacing, border shapes, and layout grammar stay fixed in code
+- [x] write tests for style-set defaults and glyph constants
+- [x] write tests proving style helpers use the provided theme rather than `palette.DefaultTheme()`
+- [x] run `go test ./...` - must pass before task 2
 
 ### Task 2: Migrate transcript role primitives
 - [ ] update `components/messages/user.go` so user messages use `❯` only on the first line
