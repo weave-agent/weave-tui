@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/weave-agent/weave-tui/components"
+	"github.com/weave-agent/weave-tui/internal/components"
 	"github.com/weave-agent/weave-tui/internal/palette"
 )
 

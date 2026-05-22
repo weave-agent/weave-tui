@@ -11,8 +11,8 @@ import (
 	"github.com/weave-agent/weave/sdk"
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
 
-	"github.com/weave-agent/weave-tui/components/messages"
-	"github.com/weave-agent/weave-tui/components/overlays"
+	"github.com/weave-agent/weave-tui/internal/components/messages"
+	"github.com/weave-agent/weave-tui/internal/components/overlays"
 
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"

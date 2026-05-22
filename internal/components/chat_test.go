@@ -3,7 +3,7 @@ package components
 import (
 	"testing"
 
-	"github.com/weave-agent/weave-tui/components/messages"
+	"github.com/weave-agent/weave-tui/internal/components/messages"
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/weave-agent/weave-tui/components/attachments"
+	"github.com/weave-agent/weave-tui/internal/components/attachments"
 	"github.com/weave-agent/weave-tui/internal/palette"
 	"github.com/weave-agent/weave-tui/internal/styles"
 

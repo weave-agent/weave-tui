@@ -10,7 +10,7 @@ import (
 
 	"github.com/weave-agent/weave/bus"
 
-	"github.com/weave-agent/weave-tui/components/messages"
+	"github.com/weave-agent/weave-tui/internal/components/messages"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"

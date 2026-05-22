@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/weave-agent/weave-tui/components/overlays"
+	"github.com/weave-agent/weave-tui/internal/components/overlays"
 	"github.com/weave-agent/weave-tui/internal/palette"
 
 	tea "charm.land/bubbletea/v2"

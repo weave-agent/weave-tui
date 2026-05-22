@@ -5,8 +5,8 @@ import (
 
 	"github.com/weave-agent/weave/sdk"
 
-	"github.com/weave-agent/weave-tui/components/messages"
-	"github.com/weave-agent/weave-tui/components/overlays"
+	"github.com/weave-agent/weave-tui/internal/components/messages"
+	"github.com/weave-agent/weave-tui/internal/components/overlays"
 	"github.com/weave-agent/weave-tui/internal/palette"
 
 	tea "charm.land/bubbletea/v2"

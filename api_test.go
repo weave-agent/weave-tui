@@ -133,6 +133,10 @@ func TestPackageVisibility_RenderingSupportIsInternal(t *testing.T) {
 	}
 
 	for _, pkg := range []string{
+		"github.com/weave-agent/weave-tui/components",
+		"github.com/weave-agent/weave-tui/components/attachments",
+		"github.com/weave-agent/weave-tui/components/messages",
+		"github.com/weave-agent/weave-tui/components/overlays",
 		"github.com/weave-agent/weave-tui/palette",
 		"github.com/weave-agent/weave-tui/styles",
 		"github.com/weave-agent/weave-tui/xchroma",
@@ -141,6 +145,10 @@ func TestPackageVisibility_RenderingSupportIsInternal(t *testing.T) {
 	}
 
 	for _, pkg := range []string{
+		"github.com/weave-agent/weave-tui/internal/components",
+		"github.com/weave-agent/weave-tui/internal/components/attachments",
+		"github.com/weave-agent/weave-tui/internal/components/messages",
+		"github.com/weave-agent/weave-tui/internal/components/overlays",
 		"github.com/weave-agent/weave-tui/internal/palette",
 		"github.com/weave-agent/weave-tui/internal/styles",
 		"github.com/weave-agent/weave-tui/internal/xchroma",

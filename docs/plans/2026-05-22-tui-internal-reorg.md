@@ -84,12 +84,12 @@
 - [x] run `go test ./...` - must pass before next task
 
 ### Task 4: Internalize UI component packages
-- [ ] move `components/` to `internal/components/` and update imports
-- [ ] move `components/attachments/` to `internal/components/attachments/` and update imports
-- [ ] move `components/messages/` to `internal/components/messages/` and update imports
-- [ ] move `components/overlays/` to `internal/components/overlays/` and update imports
-- [ ] move component tests with their implementation packages and update imports
-- [ ] run `go test ./...` - must pass before next task
+- [x] move `components/` to `internal/components/` and update imports
+- [x] move `components/attachments/` to `internal/components/attachments/` and update imports
+- [x] move `components/messages/` to `internal/components/messages/` and update imports
+- [x] move `components/overlays/` to `internal/components/overlays/` and update imports
+- [x] move component tests with their implementation packages and update imports
+- [x] run `go test ./...` - must pass before next task
 
 ### Task 5: Create internal event message package
 - [ ] create `internal/events` for Bubble Tea message structs currently exposed from `bridge.go` and related root files

@@ -17,10 +17,10 @@ import (
 	"github.com/weave-agent/weave/sdk"
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
 
-	"github.com/weave-agent/weave-tui/components"
-	"github.com/weave-agent/weave-tui/components/attachments"
-	"github.com/weave-agent/weave-tui/components/messages"
-	"github.com/weave-agent/weave-tui/components/overlays"
+	"github.com/weave-agent/weave-tui/internal/components"
+	"github.com/weave-agent/weave-tui/internal/components/attachments"
+	"github.com/weave-agent/weave-tui/internal/components/messages"
+	"github.com/weave-agent/weave-tui/internal/components/overlays"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
