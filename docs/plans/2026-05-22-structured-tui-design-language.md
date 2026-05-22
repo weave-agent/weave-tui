@@ -122,14 +122,14 @@
 - [x] run `go test ./...` - must pass before task 6
 
 ### Task 6: Unify focus and selection states
-- [ ] migrate `components/completion.go` selected rows to the shared selected-row style helper
-- [ ] migrate `components/overlays/selector.go` selected rows to the same list-selection grammar
-- [ ] keep panel tray tabs bracketed when focused and migrate colors to the style set
-- [ ] keep editor/input focus expressed through accent border; do not replace it with row-style selection
-- [ ] keep footer/model status as accent foreground only, not a selected control treatment
-- [ ] write/update completion tests for selected row rendering and truncation
-- [ ] write/update selector and panel tray tests for focus grammar
-- [ ] run `go test ./...` - must pass before task 7
+- [x] migrate `components/completion.go` selected rows to the shared selected-row style helper
+- [x] migrate `components/overlays/selector.go` selected rows to the same list-selection grammar
+- [x] keep panel tray tabs bracketed when focused and migrate colors to the style set
+- [x] keep editor/input focus expressed through accent border; do not replace it with row-style selection
+- [x] keep footer/model status as accent foreground only, not a selected control treatment
+- [x] write/update completion tests for selected row rendering and truncation
+- [x] write/update selector and panel tray tests for focus grammar
+- [x] run `go test ./...` - must pass before task 7
 
 ### Task 7: Remove direct default-theme usage from migrated render paths
 - [ ] audit migrated components for remaining `palette.DefaultTheme()` calls inside render methods

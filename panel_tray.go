@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
@@ -96,8 +97,9 @@ func (pt PanelTray) Draw(scr uv.Screen, area uv.Rectangle, theme *palette.Theme)
 		return
 	}
 
-	rowStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color(theme.BackgroundTint))
+	s := styles.New(theme)
+
+	rowStyle := s.BackgroundTint()
 	uv.NewStyledString(rowStyle.Render(strings.Repeat(" ", area.Dx()))).Draw(scr, area)
 
 	var parts []string
@@ -110,24 +112,12 @@ func (pt PanelTray) Draw(scr uv.Screen, area uv.Rectangle, theme *palette.Theme)
 
 		if i == pt.activeIdx {
 			if pt.focused {
-				parts = append(parts, lipgloss.NewStyle().
-					Foreground(lipgloss.Color(theme.AccentBright)).
-					Background(lipgloss.Color(theme.BackgroundTint)).
-					Padding(0, 1).
-					Render("["+title+"]"))
+				parts = append(parts, s.FocusedTab().Render("["+title+"]"))
 			} else {
-				parts = append(parts, lipgloss.NewStyle().
-					Foreground(lipgloss.Color(theme.Accent)).
-					Background(lipgloss.Color(theme.BackgroundTint)).
-					Padding(0, 1).
-					Render(title))
+				parts = append(parts, s.ActiveTab().Render(title))
 			}
 		} else {
-			parts = append(parts, lipgloss.NewStyle().
-				Foreground(lipgloss.Color(theme.Muted)).
-				Background(lipgloss.Color(theme.BackgroundTint)).
-				Padding(0, 1).
-				Render(title))
+			parts = append(parts, s.InactiveTab().Render(title))
 		}
 	}
 

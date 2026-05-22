@@ -7,6 +7,9 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 )
 
 func TestFuzzyMatch(t *testing.T) {
@@ -303,4 +306,47 @@ func TestSelectorView_SelectedItemContrast(t *testing.T) {
 	// First item is selected by default
 	view := m.View()
 	assert.Contains(t, view, "> First")
+}
+
+func TestSelectorSetStyles(t *testing.T) {
+	m := NewSelectorModel("Test", []SelectorItem{{Title: "A"}})
+	custom := &palette.Theme{
+		Accent:     "#ff0000",
+		Foreground: "#00ff00",
+	}
+	s := styles.New(custom)
+
+	m = m.SetStyles(s)
+	assert.Equal(t, s, m.styles)
+}
+
+func TestSelectorView_CustomThemeSelectedRow(t *testing.T) {
+	items := []SelectorItem{
+		{Title: "First"},
+		{Title: "Second"},
+	}
+	custom := &palette.Theme{
+		Accent:     "#ff0000",
+		Foreground: "#00ff00",
+	}
+	m := NewSelectorModel("Test", items).Show().SetSize(60, 20).SetStyles(styles.New(custom))
+
+	view := m.View()
+	assert.Contains(t, view, "> First")
+	// Selected row should use custom accent background and foreground
+	assert.Contains(t, view, "48;2;255;0;0") // custom accent background
+	assert.Contains(t, view, "38;2;0;255;0") // custom foreground
+	// Should be bold
+	assert.Contains(t, view, "\x1b[1;")
+}
+
+func TestSelectorView_SelectedItemWithSubtitle(t *testing.T) {
+	items := []SelectorItem{
+		{Title: "model-a", Subtitle: "Claude Sonnet"},
+		{Title: "model-b", Subtitle: "GPT-4o"},
+	}
+	m := NewSelectorModel("Model", items).Show().SetSize(60, 20)
+	view := m.View()
+	assert.Contains(t, view, "> model-a")
+	assert.Contains(t, view, "Claude Sonnet")
 }

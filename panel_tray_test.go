@@ -205,3 +205,62 @@ func TestPanelTray_Draw_NoTitleFallsBackToID(t *testing.T) {
 	rendered := canvas.Render()
 	assert.Contains(t, rendered, "my-panel")
 }
+
+func TestPanelTray_Draw_FocusedTabBracketed(t *testing.T) {
+	pt := NewPanelTray()
+	pt = pt.SetTabs([]PanelTab{
+		{ID: "p1", Title: "Files"},
+		{ID: "p2", Title: "Git"},
+	}, 0)
+	pt = pt.SetFocused(true)
+
+	canvas := uv.NewScreenBuffer(80, 24)
+	area := uv.Rect(0, 0, 80, 1)
+	pt.Draw(canvas, area, palette.DefaultTheme())
+
+	rendered := canvas.Render()
+	// Focused active tab should be bracketed
+	assert.Contains(t, rendered, "[Files]")
+	// Inactive tab should not be bracketed
+	assert.Contains(t, rendered, "Git")
+	assert.NotContains(t, rendered, "[Git]")
+}
+
+func TestPanelTray_Draw_UnfocusedTabNotBracketed(t *testing.T) {
+	pt := NewPanelTray()
+	pt = pt.SetTabs([]PanelTab{
+		{ID: "p1", Title: "Files"},
+	}, 0)
+	pt = pt.SetFocused(false)
+
+	canvas := uv.NewScreenBuffer(80, 24)
+	area := uv.Rect(0, 0, 80, 1)
+	pt.Draw(canvas, area, palette.DefaultTheme())
+
+	rendered := canvas.Render()
+	// Active but unfocused tab should not be bracketed
+	assert.Contains(t, rendered, "Files")
+	assert.NotContains(t, rendered, "[Files]")
+}
+
+func TestPanelTray_Draw_CustomTheme(t *testing.T) {
+	pt := NewPanelTray()
+	pt = pt.SetTabs([]PanelTab{
+		{ID: "p1", Title: "Files"},
+	}, 0)
+	pt = pt.SetFocused(true)
+
+	custom := &palette.Theme{
+		AccentBright:   "#ff0000",
+		BackgroundTint: "#111111",
+	}
+
+	canvas := uv.NewScreenBuffer(80, 24)
+	area := uv.Rect(0, 0, 80, 1)
+	pt.Draw(canvas, area, custom)
+
+	rendered := canvas.Render()
+	assert.Contains(t, rendered, "[Files]")
+	// Should use custom accent bright color for focused tab
+	assert.Contains(t, rendered, "\x1b[38;2;255;0;0m")
+}

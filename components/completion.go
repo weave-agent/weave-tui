@@ -5,6 +5,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
@@ -39,6 +40,7 @@ type CompletionModel struct {
 	width        int
 	maxVisible   int
 	kind         CompletionKind
+	styles       *styles.Styles
 }
 
 // NewCompletionModel creates a new completion model with sensible defaults.
@@ -47,6 +49,19 @@ func NewCompletionModel() CompletionModel {
 		width:      50,
 		maxVisible: 8,
 	}
+}
+
+// SetStyles sets the style set for rendering.
+func (m CompletionModel) SetStyles(s *styles.Styles) CompletionModel {
+	m.styles = s
+	return m
+}
+
+func (m CompletionModel) themeStyles() *styles.Styles {
+	if m.styles != nil {
+		return m.styles
+	}
+	return styles.New(palette.DefaultTheme())
 }
 
 // Show makes the completion visible with the given items and kind.
@@ -181,11 +196,11 @@ func (m CompletionModel) View() string {
 		return ""
 	}
 
-	theme := palette.DefaultTheme()
+	s := m.themeStyles()
 
 	borderStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color(theme.Border))
+		BorderForeground(lipgloss.Color(s.Theme().Border))
 
 	innerWidth := m.width - 2 // account for left/right border
 	visibleCount := min(len(m.filtered)-m.scrollOffset, m.maxVisible)
@@ -194,7 +209,7 @@ func (m CompletionModel) View() string {
 
 	for i := range visibleCount {
 		item := m.filtered[m.scrollOffset+i]
-		line := m.renderLine(item, m.scrollOffset+i == m.cursor, innerWidth, theme)
+		line := m.renderLine(item, m.scrollOffset+i == m.cursor, innerWidth, s)
 		lines = append(lines, line)
 	}
 
@@ -212,7 +227,7 @@ func (m CompletionModel) Draw(scr uv.Screen, area uv.Rectangle) {
 	uv.NewStyledString(m.View()).Draw(scr, area)
 }
 
-func (m CompletionModel) renderLine(item CompletionItem, selected bool, width int, theme *palette.Theme) string {
+func (m CompletionModel) renderLine(item CompletionItem, selected bool, width int, s *styles.Styles) string {
 	if selected {
 		text := item.Label
 		if item.Description != "" {
@@ -224,13 +239,7 @@ func (m CompletionModel) renderLine(item CompletionItem, selected bool, width in
 			text = string(runes[:width-1]) + "…"
 		}
 
-		style := lipgloss.NewStyle().
-			Bold(true).
-			Background(lipgloss.Color(theme.Accent)).
-			Foreground(lipgloss.Color(theme.Foreground)).
-			Width(width)
-
-		return style.Render(text)
+		return s.SelectedRow().Width(width).Render(text)
 	}
 
 	label := item.Label
@@ -263,7 +272,7 @@ func (m CompletionModel) renderLine(item CompletionItem, selected bool, width in
 	if desc != "" {
 		descWidth = 2 + utf8.RuneCountInString(desc)
 		descStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(theme.Muted)).
+			Foreground(lipgloss.Color(s.Theme().Muted)).
 			Width(descWidth)
 		result += descStyle.Render("  " + desc)
 	}

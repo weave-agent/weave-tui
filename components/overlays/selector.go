@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -41,6 +42,7 @@ type SelectorModel struct {
 	width   int
 	height  int
 	visible bool
+	styles  *styles.Styles
 }
 
 // NewSelectorModel creates a new selector model.
@@ -50,6 +52,19 @@ func NewSelectorModel(title string, items []SelectorItem) SelectorModel {
 		items:  items,
 		cursor: 0,
 	}
+}
+
+// SetStyles sets the style set for rendering.
+func (m SelectorModel) SetStyles(s *styles.Styles) SelectorModel {
+	m.styles = s
+	return m
+}
+
+func (m SelectorModel) themeStyles() *styles.Styles {
+	if m.styles != nil {
+		return m.styles
+	}
+	return styles.New(palette.DefaultTheme())
 }
 
 // Visible returns whether the selector is shown.
@@ -211,7 +226,8 @@ func (m SelectorModel) View() string {
 		return ""
 	}
 
-	theme := palette.DefaultTheme()
+	s := m.themeStyles()
+	theme := s.Theme()
 	filtered := m.filteredItems()
 
 	boxWidth := min(60, m.width-4)
@@ -245,9 +261,7 @@ func (m SelectorModel) View() string {
 		headerRendered = titleStyle.Render(headerText)
 	}
 
-	selectedStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(theme.Foreground)).
-		Background(lipgloss.Color(theme.Accent))
+	selectedStyle := s.SelectedRow()
 
 	normalStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.MutedBright))

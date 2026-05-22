@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/styles"
 )
 
 func TestNewCompletionModel(t *testing.T) {
@@ -372,7 +373,7 @@ func TestCompletionRenderLineWithDescription(t *testing.T) {
 	m := NewCompletionModel()
 	item := CompletionItem{Label: "/help", Description: "Show help text", Value: "/help "}
 
-	line := m.renderLine(item, false, 40, palette.DefaultTheme())
+	line := m.renderLine(item, false, 40, styles.New(palette.DefaultTheme()))
 	assert.NotEmpty(t, line)
 	// Should contain the label
 	assert.Contains(t, line, "/help")
@@ -382,7 +383,7 @@ func TestCompletionRenderLineSelected(t *testing.T) {
 	m := NewCompletionModel()
 	item := CompletionItem{Label: "/help", Value: "/help "}
 
-	line := m.renderLine(item, true, 40, palette.DefaultTheme())
+	line := m.renderLine(item, true, 40, styles.New(palette.DefaultTheme()))
 	assert.NotEmpty(t, line)
 	assert.Contains(t, line, "/help")
 }
@@ -391,7 +392,7 @@ func TestCompletionRenderLineTruncation(t *testing.T) {
 	m := NewCompletionModel()
 	item := CompletionItem{Label: "/very-long-command-name", Description: "a very long description here", Value: "/very-long-command-name "}
 
-	line := m.renderLine(item, false, 20, palette.DefaultTheme())
+	line := m.renderLine(item, false, 20, styles.New(palette.DefaultTheme()))
 	assert.NotEmpty(t, line)
 	// Should contain label start
 	assert.Contains(t, line, "/very")
@@ -473,4 +474,84 @@ func TestCompletionWrapResetsScroll(t *testing.T) {
 
 	assert.Equal(t, 0, m.cursor)
 	assert.Equal(t, 0, m.scrollOffset)
+}
+
+func TestCompletionSetStyles(t *testing.T) {
+	m := NewCompletionModel()
+	custom := &palette.Theme{
+		Accent:     "#ff0000",
+		Foreground: "#00ff00",
+		Border:     "#0000ff",
+		Muted:      "#888888",
+		Background: "#111111",
+	}
+	s := styles.New(custom)
+
+	m = m.SetStyles(s)
+	assert.Equal(t, s, m.styles)
+}
+
+func TestCompletionView_CustomThemeSelectedRow(t *testing.T) {
+	m := NewCompletionModel()
+	m = m.Show(CompletionSlash, []CompletionItem{
+		{Label: "/help", Description: "Show help", Value: "/help "},
+	})
+
+	custom := &palette.Theme{
+		Accent:     "#ff0000",
+		Foreground: "#00ff00",
+		Border:     "#0000ff",
+		Muted:      "#888888",
+		Background: "#111111",
+	}
+	m = m.SetStyles(styles.New(custom))
+
+	view := m.View()
+	assert.Contains(t, view, "/help")
+	// Selected row should use custom accent/foreground colors
+	assert.Contains(t, view, "\x1b[1;")      // bold
+	assert.Contains(t, view, "48;2;255;0;0") // custom accent background
+	assert.Contains(t, view, "38;2;0;255;0") // custom foreground
+}
+
+func TestCompletionRenderLineSelectedTruncation(t *testing.T) {
+	m := NewCompletionModel()
+	item := CompletionItem{Label: "/very-long-command-name", Description: "a very long description here", Value: "/very-long-command-name "}
+
+	line := m.renderLine(item, true, 20, styles.New(palette.DefaultTheme()))
+	assert.NotEmpty(t, line)
+	// Should contain truncated label with ellipsis
+	assert.Contains(t, line, "/very-long-command")
+	assert.Contains(t, line, "…")
+}
+
+func TestCompletionRenderLineSelectedCustomTheme(t *testing.T) {
+	m := NewCompletionModel()
+	item := CompletionItem{Label: "/help", Value: "/help "}
+
+	custom := &palette.Theme{
+		Accent:     "#ff0000",
+		Foreground: "#00ff00",
+	}
+	line := m.renderLine(item, true, 40, styles.New(custom))
+	assert.Contains(t, line, "/help")
+	// Should use custom accent background
+	assert.Contains(t, line, "48;2;255;0;0")
+	// Should use custom foreground
+	assert.Contains(t, line, "38;2;0;255;0")
+	// Should be bold
+	assert.Contains(t, line, "\x1b[1;")
+}
+
+func TestCompletionRenderLineUnselectedCustomTheme(t *testing.T) {
+	m := NewCompletionModel()
+	item := CompletionItem{Label: "/help", Description: "Show help", Value: "/help "}
+
+	custom := &palette.Theme{
+		Muted: "#888888",
+	}
+	line := m.renderLine(item, false, 40, styles.New(custom))
+	assert.Contains(t, line, "/help")
+	// Description should use custom muted color
+	assert.Contains(t, line, "\x1b[38;2;136;136;136m")
 }
