@@ -28,9 +28,19 @@ type TUI struct {
 	tuiCfg contract.TUIConfig
 
 	mu      sync.Mutex
-	program *tea.Program
+	program appProgram
 	done    chan struct{}
 	ui      *tuiui.TUIImpl
+}
+
+type appProgram interface {
+	tuibridge.Sender
+	Run() (tea.Model, error)
+	Quit()
+}
+
+var newProgram = func(model tea.Model) appProgram {
+	return tea.NewProgram(model)
 }
 
 // NewExtension creates the SDK extension and registers its UI implementation.
@@ -96,7 +106,7 @@ func (t *TUI) Subscribe(bus sdk.Bus) error {
 	model := tuimodel.NewModelWithConfig(bus, t.cfg, t.ps, t.ui, t.tuiCfg)
 
 	t.mu.Lock()
-	t.program = tea.NewProgram(model)
+	t.program = newProgram(model)
 	t.mu.Unlock()
 
 	// Register UI extensions before setting the program so that

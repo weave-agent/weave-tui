@@ -50,6 +50,8 @@ The root package intentionally exposes a small extension-author API:
 
 Rendering internals are private. Packages such as components, messages, overlays, attachments, palette, styles, and xchroma now live under `internal/` and are implementation details of this module. External extensions should use the root API plus the weave SDK interfaces for custom renderers, panels, header/footer components, autocomplete providers, and themes.
 
+Breaking change / migration: former accidental APIs and import paths are no longer supported. Downstream code should not import or reference `TUI`, `NewTUI`, `ErrNoTTY`, `GetTUIExtensions`, `components/...`, `palette`, `styles`, or `xchroma`. Use only the root `github.com/weave-agent/weave-tui` package and the supported root hooks listed above, such as `PanelDrawer`, `TUIComponent`, `RichToolRenderer`, `RegisterMessageRenderer`, and `RegisterTheme`.
+
 ## Maintainer package map
 
 - `.`: public API facade, TUI extension registration, and config aliases only
@@ -86,7 +88,11 @@ echo 'replace github.com/weave-agent/weave => /path/to/local/weave' >> go.mod
 
 go test ./...
 go doc .
+golangci-lint run ./...
+golangci-lint fmt ./...
 ```
+
+The checked-in golangci-lint configuration also owns formatting through `gofumpt` and `goimports`.
 
 ## License
 

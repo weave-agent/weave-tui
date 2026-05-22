@@ -168,6 +168,9 @@ func TestShortenCWD(t *testing.T) {
 		{"home prefix", home + "/projects/myapp", "~/projects/myapp"},
 		{"no home prefix", "/opt/projects", "/opt/projects"},
 		{"exact home", home, "~"},
+		{"home string prefix only", home + "-other/projects", home + "-other/projects"},
+		{"home embedded later", "/tmp" + home + "/projects", "/tmp" + home + "/projects"},
+		{"home sibling path", filepath.Dir(home) + "/" + filepath.Base(home) + "-other", filepath.Dir(home) + "/" + filepath.Base(home) + "-other"},
 	}
 
 	for _, tt := range tests {

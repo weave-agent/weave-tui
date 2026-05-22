@@ -55,6 +55,43 @@ func TestBuildLoginProviders_IncludesRegisteredProviders(t *testing.T) {
 	assert.False(t, providers[0].HasAuth)
 }
 
+func TestBuildLoginProviders_IncludesModelRegistryProviders(t *testing.T) {
+	resetAuthTestRegistries(t)
+
+	sdkmodel.RegisterModel(sdkmodel.ModelDef{
+		ID:       "test-model",
+		Provider: "model-only-provider",
+	})
+
+	providers := BuildLoginProviders()
+	require.Len(t, providers, 1)
+	assert.Equal(t, "Model-only-provider", providers[0].Name)
+	assert.Equal(t, "model-only-provider", providers[0].ID)
+	assert.False(t, providers[0].IsOAuth)
+	assert.False(t, providers[0].HasAuth)
+}
+
+func TestBuildLoginProviders_DeduplicatesProviderSources(t *testing.T) {
+	resetAuthTestRegistries(t)
+
+	sdk.RegisterOAuthProvider(sdk.OAuthProvider{ID: "duplicate-provider", Name: "Duplicate OAuth"})
+	sdk.RegisterProvider[struct{}, struct{}]("duplicate-provider", func(_ sdk.Config, _, _ struct{}) (sdk.Provider, error) {
+		return nil, errors.New("test provider not implemented")
+	})
+	sdkmodel.RegisterModel(sdkmodel.ModelDef{
+		ID:       "duplicate-model",
+		Provider: "duplicate-provider",
+	})
+	sdkmodel.SetProviderAuth("duplicate-provider", true)
+
+	providers := BuildLoginProviders()
+	require.Len(t, providers, 1)
+	assert.Equal(t, "Duplicate OAuth", providers[0].Name)
+	assert.Equal(t, "duplicate-provider", providers[0].ID)
+	assert.True(t, providers[0].IsOAuth)
+	assert.True(t, providers[0].HasAuth)
+}
+
 func TestBuildLoginProviders_SortsByName(t *testing.T) {
 	resetAuthTestRegistries(t)
 
@@ -88,6 +125,25 @@ func TestBuildLogoutProviders_IncludesAuthenticatedProviders(t *testing.T) {
 	assert.Equal(t, "Authed-provider", providers[0].Name)
 }
 
+func TestBuildLogoutProviders_IncludesOAuthAndModelRegistryProviders(t *testing.T) {
+	resetAuthTestRegistries(t)
+
+	sdk.RegisterOAuthProvider(sdk.OAuthProvider{ID: "oauth-logout", Name: "OAuth Logout"})
+	sdkmodel.RegisterModel(sdkmodel.ModelDef{
+		ID:       "test-model",
+		Provider: "model-logout",
+	})
+	sdkmodel.SetProviderAuth("oauth-logout", true)
+	sdkmodel.SetProviderAuth("model-logout", true)
+
+	providers := BuildLogoutProviders()
+	require.Len(t, providers, 2)
+	assert.Equal(t, "model-logout", providers[0].ID)
+	assert.Equal(t, "Model-logout", providers[0].Name)
+	assert.Equal(t, "oauth-logout", providers[1].ID)
+	assert.Equal(t, "OAuth Logout", providers[1].Name)
+}
+
 func TestDisplayNameForProvider(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -104,6 +160,21 @@ func TestDisplayNameForProvider(t *testing.T) {
 			assert.Equal(t, tt.expected, DisplayNameForProvider(tt.input))
 		})
 	}
+}
+
+func TestRunOAuthFlowCmd_StartError(t *testing.T) {
+	cmd := RunOAuthFlowCmd(context.Background(), sdk.OAuthProvider{
+		ID:          "bad-oauth",
+		RedirectURI: "://bad",
+	}, 3)
+
+	msg := cmd()
+	result, ok := msg.(tuievents.LoginFlowResultMsg)
+	require.True(t, ok)
+	assert.Equal(t, "bad-oauth", result.Provider)
+	assert.Equal(t, 3, result.Gen)
+	require.Error(t, result.Error)
+	assert.Contains(t, result.Error.Error(), "start callback server")
 }
 
 func TestPollDeviceCodeCmd_Success(t *testing.T) {

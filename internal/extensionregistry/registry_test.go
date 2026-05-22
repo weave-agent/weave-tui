@@ -1,6 +1,9 @@
 package extensionregistry
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,6 +22,39 @@ type stubTUIExtension struct {
 type stubTUIExtConfig struct {
 	Enabled bool `json:"enabled"`
 }
+
+type configBackedPreferenceStore struct {
+	sdk.NoopConfig
+	extensionConfig any
+	extensionErr    error
+}
+
+func (c *configBackedPreferenceStore) ExtensionConfig(scope, name string, target any) error {
+	if c.extensionErr != nil {
+		return c.extensionErr
+	}
+
+	if scope != "ui_extensions" || name == "" || c.extensionConfig == nil {
+		return nil
+	}
+
+	data, err := json.Marshal(c.extensionConfig)
+	if err != nil {
+		return fmt.Errorf("marshal extension config: %w", err)
+	}
+
+	if err := json.Unmarshal(data, target); err != nil {
+		return fmt.Errorf("unmarshal extension config: %w", err)
+	}
+
+	return nil
+}
+
+func (c *configBackedPreferenceStore) Preferences(any) error { return nil }
+
+func (c *configBackedPreferenceStore) SavePreferences(any) error { return nil }
+
+func (c *configBackedPreferenceStore) SaveProviderKey(_, _ string) error { return nil }
 
 func (e *stubTUIExtension) Name() string                     { return e.name }
 func (e *stubTUIExtension) RegisterTUI(_ contract.TUIExtAPI) { e.registered = true }
@@ -53,6 +89,51 @@ func TestRegisterWithConfig(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "config-ext", ext.Name())
 	assert.False(t, receivedCfg.Enabled)
+}
+
+func TestRegisterLoadsConfiguredValuesAndReadOnlyInputs(t *testing.T) {
+	Reset()
+	t.Cleanup(Reset)
+
+	var receivedCfg stubTUIExtConfig
+
+	var (
+		configIsWriter bool
+		prefsAreWriter bool
+	)
+
+	Register("configured-ext", func(cfg sdk.Config, prefs sdk.PreferenceReader, cfgValue stubTUIExtConfig) (contract.TUIExtension, error) {
+		receivedCfg = cfgValue
+		_, configIsWriter = cfg.(sdk.PreferenceWriter)
+		_, prefsAreWriter = prefs.(sdk.PreferenceWriter)
+
+		return &stubTUIExtension{name: "configured-ext", config: cfgValue}, nil
+	})
+
+	ext, err := Get("configured-ext", &configBackedPreferenceStore{
+		extensionConfig: stubTUIExtConfig{Enabled: true},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "configured-ext", ext.Name())
+	assert.True(t, receivedCfg.Enabled)
+	assert.False(t, configIsWriter)
+	assert.False(t, prefsAreWriter)
+}
+
+func TestRegisterReturnsExtensionConfigError(t *testing.T) {
+	Reset()
+	t.Cleanup(Reset)
+
+	configErr := errors.New("bad extension config")
+
+	Register("bad-config-ext", func(_ sdk.Config, _ sdk.PreferenceReader, _ stubTUIExtConfig) (contract.TUIExtension, error) {
+		return &stubTUIExtension{name: "bad-config-ext"}, nil
+	})
+
+	_, err := Get("bad-config-ext", &configBackedPreferenceStore{extensionErr: configErr})
+	require.Error(t, err)
+	require.ErrorIs(t, err, configErr)
+	assert.Contains(t, err.Error(), "load tui extension config")
 }
 
 func TestRegisterDuplicateWarns(t *testing.T) {

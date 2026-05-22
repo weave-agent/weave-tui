@@ -232,7 +232,18 @@ func ShortenCWD(cwd string) string {
 		return cwd
 	}
 
-	return strings.Replace(cwd, home, "~", 1)
+	home = filepath.Clean(home)
+
+	cleanCWD := filepath.Clean(cwd)
+	if cleanCWD == home {
+		return "~"
+	}
+
+	if strings.HasPrefix(cleanCWD, home+string(os.PathSeparator)) {
+		return "~" + strings.TrimPrefix(cleanCWD, home)
+	}
+
+	return cwd
 }
 
 // ListCmd returns a tea.Cmd that reads session headers and returns SessionListResultMsg.

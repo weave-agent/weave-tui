@@ -17,7 +17,8 @@ The root package is a public facade for downstream extension authors. It registe
 - Run a single subtest: `go test . -run 'TestName/SubtestName'`
 - Inspect public root API: `go doc .`
 - Inspect exported package list: `go list ./...`
-- Check formatting before committing: `gofmt -w <files>`
+- Run linter: `golangci-lint run ./...`
+- Format before committing: `golangci-lint fmt ./...`
 
 For local development against a local weave SDK checkout, the README suggests adding a temporary `replace` directive in `go.mod`:
 

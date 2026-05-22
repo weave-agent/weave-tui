@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -5771,6 +5772,147 @@ func TestModel_OnLoginFlowResult_Success(t *testing.T) {
 	payload, ok := evt.Payload.(map[string]string)
 	require.True(t, ok)
 	assert.Equal(t, "openai", payload["provider"])
+}
+
+func TestModel_UpdateLoginAuthURLIgnoresStaleGeneration(t *testing.T) {
+	m := newModelNoLanding()
+	m.width = 80
+	m.height = 24
+	m.oauthGen = 2
+	m.oauthCancel = func() {}
+	loginModel := overlays.NewLoginModel("OpenAI", "https://old.example/auth")
+	loginModel = loginModel.SetSize(80, 24).Show()
+	m.dialogStack = m.dialogStack.Push(overlays.NewLoginDialog(dialogLoginOAuth, loginModel))
+
+	model, cmd := m.Update(tuievents.LoginAuthURLMsg{
+		Provider: "openai",
+		URL:      "https://new.example/auth",
+		Gen:      1,
+	})
+	m2 := model.(Model)
+
+	assert.Nil(t, cmd)
+
+	top := m2.dialogStack.Peek()
+	require.NotNil(t, top)
+	loginDlg, ok := top.(*overlays.LoginDialog)
+	require.True(t, ok)
+	assert.NotContains(t, loginDlg.Model().View(), "https://new.example/auth")
+}
+
+func TestModel_UpdateLoginAuthURLUpdatesMatchingGeneration(t *testing.T) {
+	m := newModelNoLanding()
+	m.width = 80
+	m.height = 24
+	m.oauthGen = 2
+	m.oauthCtx = context.Background()
+	m.oauthCancel = func() {}
+	loginModel := overlays.NewLoginModel("OpenAI", "https://old.example/auth")
+	loginModel = loginModel.SetSize(80, 24).Show()
+	m.dialogStack = m.dialogStack.Push(overlays.NewLoginDialog(dialogLoginOAuth, loginModel))
+
+	model, cmd := m.Update(tuievents.LoginAuthURLMsg{
+		Provider: "openai",
+		URL:      "https://new.example/auth",
+		Gen:      2,
+	})
+	m2 := model.(Model)
+
+	require.NotNil(t, cmd)
+
+	top := m2.dialogStack.Peek()
+	require.NotNil(t, top)
+	loginDlg, ok := top.(*overlays.LoginDialog)
+	require.True(t, ok)
+	assert.Contains(t, loginDlg.Model().View(), "https://new.example/auth")
+}
+
+func TestModel_UpdateLoginFlowResultIgnoresCanceledAndStaleGenerations(t *testing.T) {
+	tests := []struct {
+		name        string
+		oauthGen    int
+		resultGen   int
+		setCancel   bool
+		cancelStill bool
+	}{
+		{name: "canceled", oauthGen: 4, resultGen: 4, setCancel: false},
+		{name: "stale", oauthGen: 4, resultGen: 3, setCancel: true, cancelStill: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := newModelNoLanding()
+			m.width = 80
+			m.height = 24
+			m.chat = m.chat.SetSize(80, m.chatHeight(24))
+			m.oauthGen = tt.oauthGen
+
+			if tt.setCancel {
+				m.oauthCancel = func() {}
+			}
+
+			model, cmd := m.Update(tuievents.LoginFlowResultMsg{
+				Provider: "openai",
+				Credential: sdk.OAuthCredential{
+					AccessToken: "at-stale",
+				},
+				Gen: tt.resultGen,
+			})
+			m2 := model.(Model)
+
+			assert.Nil(t, cmd)
+			assert.Empty(t, m2.chat.Items())
+
+			if tt.cancelStill {
+				assert.NotNil(t, m2.oauthCancel)
+			} else {
+				assert.Nil(t, m2.oauthCancel)
+			}
+		})
+	}
+}
+
+func TestModel_OnLoginFlowResult_EmptyAccessToken(t *testing.T) {
+	m := newModelNoLanding()
+	m.width = 80
+	m.height = 24
+	m.chat = m.chat.SetSize(80, m.chatHeight(24))
+
+	model, _ := m.onLoginFlowResult(tuievents.LoginFlowResultMsg{
+		Provider: "openai",
+	})
+	m2 := model.(Model)
+
+	items := m2.chat.Items()
+	require.Len(t, items, 1)
+	am, ok := items[0].(*messages.AssistantMessage)
+	require.True(t, ok)
+	assert.Contains(t, am.Content(), "received empty access token")
+}
+
+func TestModel_OnLoginFlowResult_SaveCredentialError(t *testing.T) {
+	homeFile := filepath.Join(t.TempDir(), "not-a-directory")
+	require.NoError(t, os.WriteFile(homeFile, []byte("file"), 0o600))
+	t.Setenv("HOME", homeFile)
+
+	m := newModelNoLanding()
+	m.width = 80
+	m.height = 24
+	m.chat = m.chat.SetSize(80, m.chatHeight(24))
+
+	model, _ := m.onLoginFlowResult(tuievents.LoginFlowResultMsg{
+		Provider: "openai",
+		Credential: sdk.OAuthCredential{
+			AccessToken: "at-test",
+		},
+	})
+	m2 := model.(Model)
+
+	items := m2.chat.Items()
+	require.Len(t, items, 1)
+	am, ok := items[0].(*messages.AssistantMessage)
+	require.True(t, ok)
+	assert.Contains(t, am.Content(), "Failed to save OAuth credentials")
 }
 
 func TestModel_HandleDialogForceCancel_OAuthLogin(t *testing.T) {

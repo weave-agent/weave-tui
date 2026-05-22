@@ -253,6 +253,93 @@ func TestTranslateEvent_ToolInterrupted_NilPayload(t *testing.T) {
 	assert.Empty(t, ti.Tool)
 }
 
+func TestTranslateEvent_ToolLifecycleTypedProgressPayloads(t *testing.T) {
+	payload := sdk.ToolProgress{
+		ToolCallID: "typed-id",
+		ToolName:   "typed-tool",
+		Content:    "typed content",
+		IsError:    true,
+	}
+
+	tests := []struct {
+		name   string
+		topic  string
+		assert func(t *testing.T, msg tea.Msg)
+	}{
+		{
+			name:  "start",
+			topic: topicToolStart,
+			assert: func(t *testing.T, msg tea.Msg) {
+				t.Helper()
+
+				toolMsg, ok := msg.(tuievents.ToolStartMsg)
+				require.True(t, ok)
+				assert.Equal(t, "typed-id", toolMsg.ToolID)
+				assert.Equal(t, "typed-tool", toolMsg.Tool)
+				assert.Empty(t, toolMsg.Input)
+			},
+		},
+		{
+			name:  "progress",
+			topic: topicToolProgress,
+			assert: func(t *testing.T, msg tea.Msg) {
+				t.Helper()
+
+				toolMsg, ok := msg.(tuievents.ToolProgressMsg)
+				require.True(t, ok)
+				assert.Equal(t, "typed-id", toolMsg.ToolID)
+				assert.Equal(t, "typed-tool", toolMsg.Tool)
+				assert.Equal(t, "typed content", toolMsg.Content)
+			},
+		},
+		{
+			name:  "complete",
+			topic: topicToolComplete,
+			assert: func(t *testing.T, msg tea.Msg) {
+				t.Helper()
+
+				toolMsg, ok := msg.(tuievents.ToolCompleteMsg)
+				require.True(t, ok)
+				assert.Equal(t, "typed-id", toolMsg.ToolID)
+				assert.Equal(t, "typed-tool", toolMsg.Tool)
+				assert.Equal(t, "typed content", toolMsg.Content)
+			},
+		},
+		{
+			name:  "error",
+			topic: topicToolError,
+			assert: func(t *testing.T, msg tea.Msg) {
+				t.Helper()
+
+				toolMsg, ok := msg.(tuievents.ToolErrorMsg)
+				require.True(t, ok)
+				assert.Equal(t, "typed-id", toolMsg.ToolID)
+				assert.Equal(t, "typed-tool", toolMsg.Tool)
+				assert.Equal(t, "typed content", toolMsg.Error)
+				assert.True(t, toolMsg.IsError)
+			},
+		},
+		{
+			name:  "interrupted",
+			topic: topicToolInterrupted,
+			assert: func(t *testing.T, msg tea.Msg) {
+				t.Helper()
+
+				toolMsg, ok := msg.(tuievents.ToolInterruptedMsg)
+				require.True(t, ok)
+				assert.Equal(t, "typed-id", toolMsg.ToolID)
+				assert.Equal(t, "typed-tool", toolMsg.Tool)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.assert(t, translateEvent(sdk.NewEvent(tt.topic, payload)))
+		})
+	}
+}
+
 func TestTranslateEvent_AgentEnd(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicEnd, "stream error: timeout"))
 	ae, ok := msg.(tuievents.AgentEndMsg)
