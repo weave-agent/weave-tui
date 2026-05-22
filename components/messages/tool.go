@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/weave-agent/weave-tui/palette"
 	"github.com/weave-agent/weave-tui/styles"
@@ -341,25 +340,6 @@ func stateLabelForState(state ToolState) string {
 
 func spinnerFrameChar(frame int) string {
 	return spinnerFrames[frame%len(spinnerFrames)]
-}
-
-func truncateArgs(args string, maxLen int) string {
-	if maxLen <= 0 {
-		return ""
-	}
-	if maxLen < 3 {
-		return strings.Repeat(".", maxLen)
-	}
-
-	args = strings.TrimSpace(args)
-	// Try to keep it on one line.
-	args = strings.ReplaceAll(args, "\n", " ")
-	if utf8.RuneCountInString(args) > maxLen {
-		runes := []rune(args)
-		return string(runes[:maxLen-3]) + "..."
-	}
-
-	return args
 }
 
 // formatArgs converts a JSON object string into compact key=value pairs.

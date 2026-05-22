@@ -31,8 +31,9 @@ Do not commit that temporary replacement unless intentionally updating module wi
 
 - `tui.go` is the extension entry point. It registers the extension with the weave SDK, owns the `tea.Program`, and wires SDK UI extensions before the program starts accepting messages.
 - `bridge.go` translates weave bus events into Bubble Tea messages. It also batches streaming `agent.message_update` deltas and tracks coarse agent state so the UI can update spinner/accent/pulse state. The `agentStateTracker` counts pending tool calls (`toolCount`) and transitions through `StateIdle`, `StateStreaming`, `StateToolRunning`, and `StateError`. It forwards `tool.start`, `tool.progress`, `tool.complete`, `tool.error`, and `tool.interrupted` events as Tea messages.
-- `model.go` contains the root Bubble Tea `Model`. It coordinates chat, editor, footer, overlays, provider/model state, command dispatch, keybindings, attachments, panels, and extension callbacks. It tracks in-flight tool panels (`toolPanels` map) and pending tool call order (`pendingToolCalls`, `pendingToolOrder`), and handles tool lifecycle messages (`ToolStartMsg`, `ToolProgressMsg`, `ToolCompleteMsg`, `ToolErrorMsg`, `ToolInterruptedMsg`).
+- `model.go` contains the root Bubble Tea `Model`. It coordinates chat, editor, footer, overlays, provider/model state, command dispatch, keybindings, attachments, panels, and extension callbacks. It tracks in-flight tool panels (`toolPanels` map) and pending tool call order (`pendingToolCalls`, `pendingToolOrder`), and handles tool lifecycle messages (`ToolStartMsg`, `ToolProgressMsg`, `ToolCompleteMsg`, `ToolErrorMsg`, `ToolInterruptedMsg`). The model manages a notification banner system that renders UI notifications as ephemeral pills in the status area rather than appending them to the transcript. Info and success banners auto-clear after 3 seconds; warning and error banners persist until the next user action (submit, paste, or editor content change) or explicit dismissal.
 - `layout.go` computes the terminal regions for header/main/pills/panel tray/panels/docked overlays/editor/footer using Ultraviolet's layout solver.
+- `landing.go` renders the pre-prompt boot/status screen showing model, provider, loaded extensions, and keybinding hints in a muted label/accent value layout.
 
 ### User input, commands, and keybindings
 
@@ -48,8 +49,17 @@ Do not commit that temporary replacement unless intentionally updating module wi
 - `components/messages/tool.go` renders `ToolPanel` chat items with a lifecycle state machine: pending, running (with spinner and live progress), success, error, and interrupted. Panels flash on state transitions and support expand/collapse.
 - `components/overlays/` contains reusable modal/dialog models for selectors, confirmation, input, editor, multiselect, OAuth login, and dialog stacking.
 - `components/attachments/` manages prompt attachments created from large pasted content or explicit attachment actions.
+- `styles/` provides a structured design grammar that maps `palette.Theme` tokens into product-specific render styles. It defines fixed glyph constants (user marker `❯`, assistant `◆`, thinking `∴`, tool pending `○`, success `✓`, error `×`, interrupted `■`) and reusable style helpers for role markers, text, accents, borders, selection rows, tabs, pills, tool states, overlays, and notification banners. Custom themes are treated as color-token changes only; glyphs, spacing, and layout grammar remain fixed in code. Components should use `styles.New(theme)` rather than calling `palette.DefaultTheme()` directly in render paths.
 - `palette/` defines themes and agent activity colors. `palette.State` tracks `StateIdle`, `StateStreaming`, `StateToolRunning`, and `StateError`. Agent state changes from the bridge adjust accent colors and editor border pulse behavior; `StateToolRunning` uses amber tones.
 - `xchroma/` contains Chroma formatting support used by message/tool rendering.
+
+### Focus and selection grammar
+
+Focus states follow type-specific grammar defined in the style set:
+- **List/completion rows**: accent background with bold foreground (`SelectedRow`)
+- **Panel tray tabs**: bracketed when focused (`FocusedTab`), accent foreground when active but unfocused, muted when inactive
+- **Editor/input**: accent border color (do not use row-style selection)
+- **Footer/model status**: accent foreground only
 
 ### Extension APIs
 

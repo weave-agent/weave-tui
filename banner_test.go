@@ -2,7 +2,6 @@ package tui
 
 import (
 	"testing"
-	"time"
 
 	"github.com/weave-agent/weave/sdk"
 
@@ -242,15 +241,4 @@ func executeCmd(t *testing.T, cmd tea.Cmd) tea.Msg {
 		}
 	}
 	return msg
-}
-
-// AdvanceCmdTicks advances time-based tea.Cmd functions by the given duration.
-func AdvanceCmdTicks(cmd tea.Cmd, duration time.Duration) tea.Msg {
-	if cmd == nil {
-		return nil
-	}
-
-	// Tea tick commands use time.After internally; we can't easily advance
-	// them in tests. Return the message directly for tick-based commands.
-	return cmd()
 }

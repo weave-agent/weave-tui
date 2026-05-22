@@ -132,25 +132,6 @@ func TestToolPanel_ShortOutputNotCollapsed(t *testing.T) {
 	assert.NotContains(t, view, "collapsed")
 }
 
-func TestTruncateArgs(t *testing.T) {
-	tests := []struct {
-		name   string
-		input  string
-		expect string
-	}{
-		{"empty", "", ""},
-		{"short", "ls -la", "ls -la"},
-		{"newlines", "line1\nline2\nline3", "line1 line2 line3"},
-		{"long", strings.Repeat("x", 150), strings.Repeat("x", 97) + "..."},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := truncateArgs(tt.input, 100)
-			assert.Equal(t, tt.expect, result)
-		})
-	}
-}
-
 func TestToolPanel_StateTransitions(t *testing.T) {
 	p := NewToolPanel("tc1", "bash", "ls")
 	require.Equal(t, ToolPending, p.State())

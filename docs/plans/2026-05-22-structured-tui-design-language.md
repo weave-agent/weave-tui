@@ -150,7 +150,7 @@
 
 ### Task 9: Update documentation if needed
 - [x] update README.md only if user-facing theme or UI behavior documentation is currently present and becomes inaccurate (no theme/UI docs in README — no update needed)
-- [x] update project docs only if the new style-set package needs explanation for extension authors or future maintainers (no project docs beyond plans — no update needed)
+- [x] update CLAUDE.md to document the new `styles/` package, notification banner system, landing screen behavior, and focus/selection grammar
 - [x] run `go test ./...` after documentation-adjacent changes if any Go files changed (no Go files changed; full suite passes)
 
 ## Technical Details
