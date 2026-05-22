@@ -1,4 +1,4 @@
-package tui
+package commands
 
 import (
 	"encoding/json"
@@ -50,13 +50,26 @@ type CommandRegistry struct {
 	mu         sync.Mutex
 	commands   map[string]CommandInfo
 	sessionDir string
+	runtime    RuntimeCommands
+}
+
+// RuntimeCommands supplies command implementations that still live in
+// other internalization targets during the staged package reorg.
+type RuntimeCommands struct {
+	ListSessions func(sessionDir string) tea.Cmd
+	Login        func() tea.Cmd
+	Logout       func() tea.Cmd
 }
 
 // NewCommandRegistry creates a registry with built-in commands.
-func NewCommandRegistry(bus sdk.Bus, sessionDir string) *CommandRegistry {
+func NewCommandRegistry(bus sdk.Bus, sessionDir string, runtime ...RuntimeCommands) *CommandRegistry {
 	r := &CommandRegistry{
 		commands:   make(map[string]CommandInfo),
 		sessionDir: sessionDir,
+	}
+
+	if len(runtime) > 0 {
+		r.runtime = runtime[0]
 	}
 
 	r.register("/new", "Start a new conversation", false, func(_ string) CommandResult {
@@ -93,7 +106,7 @@ func NewCommandRegistry(bus sdk.Bus, sessionDir string) *CommandRegistry {
 	})
 
 	r.register("/resume", "View a previous session", false, func(_ string) CommandResult {
-		return CommandResult{Command: listSessionsCmd(r.sessionDir)}
+		return CommandResult{Command: r.listSessionsCmd()}
 	})
 
 	r.register("/reload", "Rebuild extensions and restart", false, func(_ string) CommandResult {
@@ -101,11 +114,11 @@ func NewCommandRegistry(bus sdk.Bus, sessionDir string) *CommandRegistry {
 	})
 
 	r.register("/login", "Authenticate with a provider", false, func(_ string) CommandResult {
-		return CommandResult{Command: loginCmd()}
+		return CommandResult{Command: r.loginCmd()}
 	})
 
 	r.register("/logout", "Clear authentication for a provider", false, func(_ string) CommandResult {
-		return CommandResult{Command: logoutCmd()}
+		return CommandResult{Command: r.logoutCmd()}
 	})
 
 	return r
@@ -197,6 +210,41 @@ func (r *CommandRegistry) helpText() string {
 	return b.String()
 }
 
+func (r *CommandRegistry) listSessionsCmd() tea.Cmd {
+	if r.runtime.ListSessions == nil {
+		return unavailableCmd("/resume")
+	}
+
+	return r.runtime.ListSessions(r.sessionDir)
+}
+
+func (r *CommandRegistry) loginCmd() tea.Cmd {
+	if r.runtime.Login == nil {
+		return unavailableCmd("/login")
+	}
+
+	return r.runtime.Login()
+}
+
+func (r *CommandRegistry) logoutCmd() tea.Cmd {
+	if r.runtime.Logout == nil {
+		return unavailableCmd("/logout")
+	}
+
+	return r.runtime.Logout()
+}
+
+func unavailableCmd(name string) tea.Cmd {
+	return func() tea.Msg {
+		return tuievents.NotifyMsg{Message: name + ": not available"}
+	}
+}
+
+// ParseCommand splits "/name arg1 arg2" into ("/name", "arg1 arg2").
+func ParseCommand(input string) (string, string) {
+	return parseCommand(input)
+}
+
 // parseCommand splits "/name arg1 arg2" into ("/name", "arg1 arg2").
 func parseCommand(input string) (string, string) {
 	input = strings.TrimSpace(input)
@@ -205,8 +253,8 @@ func parseCommand(input string) (string, string) {
 	return name, strings.TrimSpace(args)
 }
 
-// reloadMsg is a tea.Msg that signals the program should reload.
-type reloadMsg struct {
+// ReloadMsg is a tea.Msg that signals the program should reload.
+type ReloadMsg struct {
 	launcherPath string
 	origArgs     []string
 	env          []string
@@ -252,7 +300,7 @@ func reloadCmd() tea.Cmd {
 			origArgs = []string{launcherPath}
 		}
 
-		return reloadMsg{
+		return ReloadMsg{
 			launcherPath: launcherPath,
 			origArgs:     origArgs,
 			env:          os.Environ(),
@@ -260,8 +308,8 @@ func reloadCmd() tea.Cmd {
 	}
 }
 
-// handleReload performs the actual syscall.Exec to replace the process.
-func handleReload(msg reloadMsg) error {
+// HandleReload performs the actual syscall.Exec to replace the process.
+func HandleReload(msg ReloadMsg) error {
 	return fmt.Errorf("exec: %w", syscall.Exec(msg.launcherPath, msg.origArgs, msg.env))
 }
 

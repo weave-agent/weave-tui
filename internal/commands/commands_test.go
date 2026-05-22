@@ -1,4 +1,4 @@
-package tui
+package commands
 
 import (
 	"encoding/json"
@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"github.com/weave-agent/weave/bus"
+	"github.com/weave-agent/weave/sdk"
 
-	"github.com/weave-agent/weave-tui/internal/components/messages"
+	tuibridge "github.com/weave-agent/weave-tui/internal/bridge"
 	tuievents "github.com/weave-agent/weave-tui/internal/events"
 
 	tea "charm.land/bubbletea/v2"
@@ -18,11 +19,44 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func subscribeToChan(b *bus.Bus, topic string) <-chan sdk.Event {
+	ch := make(chan sdk.Event, 64)
+
+	b.On(topic, func(ev sdk.Event) error {
+		select {
+		case ch <- ev:
+		default:
+		}
+
+		return nil
+	})
+
+	return ch
+}
+
+func newTestRegistry(b sdk.Bus) *CommandRegistry {
+	return NewCommandRegistry(b, "", RuntimeCommands{
+		ListSessions: func(_ string) tea.Cmd {
+			return func() tea.Msg { return tuievents.SessionListResultMsg{} }
+		},
+		Login: func() tea.Cmd {
+			return func() tea.Msg {
+				return tuievents.LoginListResultMsg{Providers: []tuievents.LoginProviderEntry{}}
+			}
+		},
+		Logout: func() tea.Cmd {
+			return func() tea.Msg {
+				return tuievents.LogoutListResultMsg{Providers: []tuievents.LogoutProviderEntry{}}
+			}
+		},
+	})
+}
+
 func TestCommandRegistry_BuiltinCommands(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	names := r.Names()
 	assert.Contains(t, names, "/new")
@@ -40,7 +74,7 @@ func TestCommandRegistry_DispatchNonCommand(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	handled, result := r.Dispatch("hello world")
 	assert.False(t, handled)
@@ -51,7 +85,7 @@ func TestCommandRegistry_DispatchQuit(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	handled, result := r.Dispatch("/quit")
 	require.True(t, handled)
@@ -63,7 +97,7 @@ func TestCommandRegistry_DispatchNew(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	handled, result := r.Dispatch("/new")
 	require.True(t, handled)
@@ -76,7 +110,7 @@ func TestCommandRegistry_DispatchClearAliasForNew(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	handled, result := r.Dispatch("/clear")
 	require.True(t, handled)
@@ -93,7 +127,7 @@ func TestCommandRegistry_DispatchHelp(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	handled, result := r.Dispatch("/help")
 	require.True(t, handled)
@@ -106,9 +140,9 @@ func TestCommandRegistry_DispatchCompact(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	ch := subscribeToChan(b, topicSteer)
+	ch := subscribeToChan(b, tuibridge.TopicSteer)
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	handled, result := r.Dispatch("/compact")
 	require.True(t, handled)
@@ -130,9 +164,9 @@ func TestCommandRegistry_DispatchCompactWithArgs(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	ch := subscribeToChan(b, topicSteer)
+	ch := subscribeToChan(b, tuibridge.TopicSteer)
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	handled, result := r.Dispatch("/compact focus on the auth refactor")
 	require.True(t, handled)
@@ -153,9 +187,9 @@ func TestCommandRegistry_DispatchNameWithArgs(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	ch := subscribeToChan(b, topicSteer)
+	ch := subscribeToChan(b, tuibridge.TopicSteer)
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	handled, result := r.Dispatch("/name my session")
 	require.True(t, handled)
@@ -172,7 +206,7 @@ func TestCommandRegistry_DispatchUnknownCommand(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	handled, result := r.Dispatch("/unknown")
 	require.True(t, handled)
@@ -183,7 +217,7 @@ func TestCommandRegistry_DispatchCommandWithArgs(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	// /name with args should work
 	handled, result := r.Dispatch("/name test")
@@ -200,7 +234,7 @@ func TestCommandRegistry_NamesSorted(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	names := r.Names()
 	for i := 1; i < len(names); i++ {
@@ -212,7 +246,7 @@ func TestCommandRegistry_Lookup(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	info, ok := r.Lookup("/quit")
 	require.True(t, ok)
@@ -227,7 +261,7 @@ func TestCommandRegistry_Register(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	called := false
 
@@ -251,7 +285,7 @@ func TestCommandRegistry_AcceptsFilesDefaultsToFalse(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	// All built-in commands should have AcceptsFiles = false
 	for _, name := range r.Names() {
@@ -298,7 +332,7 @@ func TestCommandRegistry_HelpListsAll(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	r.Register("/testcmd", "a test", false, func(_ string) CommandResult { return CommandResult{} })
 
@@ -307,196 +341,11 @@ func TestCommandRegistry_HelpListsAll(t *testing.T) {
 	assert.Contains(t, help, "a test")
 }
 
-func TestModel_SlashCommandQuit(t *testing.T) {
-	m := newModel(nil, nil, nil, nil)
-	m.width = 80
-	m.height = 10
-	m.chat = m.chat.SetSize(80, 10)
-
-	model, cmd := m.onSubmit("/quit")
-	require.NotNil(t, cmd)
-	assert.Empty(t, m.chat.Items())
-
-	// Verify quit command
-	msg := cmd()
-	_, ok := msg.(tea.QuitMsg)
-	assert.True(t, ok)
-
-	_ = model
-}
-
-func TestModel_SlashCommandNewClearsChat(t *testing.T) {
-	m := newModel(nil, nil, nil, nil)
-	m.width = 80
-	m.height = 10
-	m.chat = m.chat.SetSize(80, 10)
-
-	// Add some messages first
-	m.AddUserMessage("hello")
-	m.prompted = true
-
-	model, _ := m.onSubmit("/new")
-	m2 := model.(Model)
-
-	assert.Empty(t, m2.chat.Items())
-	assert.False(t, m2.prompted)
-	assert.Empty(t, m2.toolPanels)
-}
-
-func TestModel_SlashCommandNewPublishesAgentReset(t *testing.T) {
-	b := bus.New()
-	defer func() { _ = b.Close() }()
-
-	ch := subscribeToChan(b, "agent.reset")
-
-	m := newModel(b, nil, nil, nil)
-	m.width = 80
-	m.height = 10
-	m.chat = m.chat.SetSize(80, 10)
-	m.prompted = true
-
-	_, _ = m.onSubmit("/new")
-
-	evt := <-ch
-	assert.Equal(t, "agent.reset", evt.Topic)
-}
-
-func TestModel_SlashCommandClear(t *testing.T) {
-	m := newModel(nil, nil, nil, nil)
-	m.width = 80
-	m.height = 10
-	m.chat = m.chat.SetSize(80, 10)
-
-	m.AddUserMessage("hello")
-	m.prompted = true
-
-	model, _ := m.onSubmit("/clear")
-	m2 := model.(Model)
-
-	assert.Empty(t, m2.chat.Items())
-	assert.False(t, m2.prompted)
-}
-
-func TestModel_SlashCommandHelpShowsMessage(t *testing.T) {
-	m := newModelNoLanding()
-	m.width = 80
-	m.height = 10
-	m.chat = m.chat.SetSize(80, 10)
-
-	model, _ := m.onSubmit("/help")
-	m2 := model.(Model)
-
-	items := m2.chat.Items()
-	require.Len(t, items, 1)
-
-	am, ok := items[0].(*messages.AssistantMessage)
-	require.True(t, ok)
-	assert.Contains(t, am.Content(), "Available commands")
-
-	// Verify the message renders with the role indicator
-	view := am.View(80)
-	assert.Contains(t, view, "◆")
-}
-
-func TestModel_RegularSubmitPublishesPrompt(t *testing.T) {
-	b := bus.New()
-	defer func() { _ = b.Close() }()
-
-	ch := subscribeToChan(b, topicPrompt)
-
-	m := newModel(b, nil, nil, nil)
-	m.width = 80
-	m.height = 10
-	m.chat = m.chat.SetSize(80, 10)
-
-	model, cmd := m.onSubmit("hello world")
-	require.NotNil(t, cmd)
-
-	// onSubmit returns a spinner tick cmd to start the render loop
-	msg := cmd()
-	assert.NotNil(t, msg)
-
-	evt := <-ch
-	assert.Equal(t, "hello world", evt.Payload)
-
-	m2 := model.(Model)
-	assert.True(t, m2.prompted)
-}
-
-func TestModel_RegularSubmitFollowup(t *testing.T) {
-	b := bus.New()
-	defer func() { _ = b.Close() }()
-
-	ch := subscribeToChan(b, topicFollowup)
-
-	m := newModel(b, nil, nil, nil)
-	m.width = 80
-	m.height = 10
-	m.chat = m.chat.SetSize(80, 10)
-	m.prompted = true
-
-	model, cmd := m.onSubmit("follow up text")
-	require.NotNil(t, cmd)
-
-	// onSubmit returns a spinner tick cmd to start the render loop
-	msg := cmd()
-	assert.NotNil(t, msg)
-
-	evt := <-ch
-	assert.Equal(t, "follow up text", evt.Payload)
-
-	m2 := model.(Model)
-	assert.True(t, m2.prompted)
-}
-
-func TestModel_UnknownCommandShowsError(t *testing.T) {
-	m := newModelNoLanding()
-	m.width = 80
-	m.height = 10
-	m.chat = m.chat.SetSize(80, 10)
-
-	model, _ := m.onSubmit("/bogus")
-	m2 := model.(Model)
-
-	items := m2.chat.Items()
-	require.Len(t, items, 1)
-
-	am, ok := items[0].(*messages.AssistantMessage)
-	require.True(t, ok)
-	assert.Contains(t, am.Content(), "unknown command: /bogus")
-
-	// Verify the message renders with the role indicator
-	view := am.View(80)
-	assert.Contains(t, view, "◆")
-}
-
-func TestModel_ThinkingCommandRegistered(t *testing.T) {
-	m := newModel(nil, nil, nil, nil)
-	_, ok := m.commands.Lookup("/thinking")
-	assert.True(t, ok, "/thinking command should be registered")
-}
-
-func TestModel_ThinkingCommandInHelp(t *testing.T) {
-	m := newModel(nil, nil, nil, nil)
-	m.width = 80
-	m.height = 10
-	m.chat = m.chat.SetSize(80, 10)
-
-	model, _ := m.onSubmit("/help")
-	m2 := model.(Model)
-
-	items := m2.chat.Items()
-	require.Len(t, items, 1)
-	am, ok := items[0].(*messages.AssistantMessage)
-	require.True(t, ok)
-	assert.Contains(t, am.Content(), "/thinking")
-}
-
 func TestCommandRegistry_ReloadRegistered(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	names := r.Names()
 	assert.Contains(t, names, "/reload")
@@ -539,8 +388,8 @@ func TestReloadCmd_RemovesCacheDir(t *testing.T) {
 	cmd := reloadCmd()
 	msg := cmd()
 
-	reload, ok := msg.(reloadMsg)
-	require.True(t, ok, "expected reloadMsg")
+	reload, ok := msg.(ReloadMsg)
+	require.True(t, ok, "expected ReloadMsg")
 	assert.Equal(t, "/usr/local/bin/weave", reload.launcherPath)
 	assert.Equal(t, []string{"weave", "arg1"}, reload.origArgs)
 
@@ -564,7 +413,7 @@ func TestReloadCmd_MissingOrigArgs(t *testing.T) {
 	cmd := reloadCmd()
 	msg := cmd()
 
-	reload, ok := msg.(reloadMsg)
+	reload, ok := msg.(ReloadMsg)
 	require.True(t, ok)
 	assert.Equal(t, []string{"/usr/bin/weave"}, reload.origArgs)
 }
@@ -577,7 +426,7 @@ func TestReloadCmd_EmptyBuildHash(t *testing.T) {
 	cmd := reloadCmd()
 	msg := cmd()
 
-	reload, ok := msg.(reloadMsg)
+	reload, ok := msg.(ReloadMsg)
 	require.True(t, ok)
 	assert.Equal(t, "/usr/bin/weave", reload.launcherPath)
 }
@@ -639,7 +488,7 @@ func TestCommandRegistry_DispatchLogin(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	handled, result := r.Dispatch("/login")
 	require.True(t, handled)
@@ -655,7 +504,7 @@ func TestCommandRegistry_DispatchLogout(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	handled, result := r.Dispatch("/logout")
 	require.True(t, handled)
@@ -671,7 +520,7 @@ func TestCommandRegistry_LoginLogoutInHelp(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	help := r.helpText()
 	assert.Contains(t, help, "/login")
@@ -682,7 +531,7 @@ func TestCommandRegistry_DispatchKeybindHelp(t *testing.T) {
 	b := bus.New()
 	defer func() { _ = b.Close() }()
 
-	r := NewCommandRegistry(b, "")
+	r := newTestRegistry(b)
 
 	handled, result := r.Dispatch("/keybind-help")
 	require.True(t, handled)

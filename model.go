@@ -16,12 +16,14 @@ import (
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
 
 	tuibridge "github.com/weave-agent/weave-tui/internal/bridge"
+	tuicommands "github.com/weave-agent/weave-tui/internal/commands"
 	"github.com/weave-agent/weave-tui/internal/components"
 	"github.com/weave-agent/weave-tui/internal/components/attachments"
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
 	tuievents "github.com/weave-agent/weave-tui/internal/events"
 	"github.com/weave-agent/weave-tui/internal/extensionregistry"
+	tuikeybindings "github.com/weave-agent/weave-tui/internal/keybindings"
 	tuilayout "github.com/weave-agent/weave-tui/internal/layout"
 	"github.com/weave-agent/weave-tui/internal/palette"
 	"github.com/weave-agent/weave-tui/internal/panels"
@@ -95,8 +97,8 @@ type Model struct {
 	// UI can distinguish the currently-running tool from queued calls.
 	pendingToolCalls map[string]string
 	pendingToolOrder []string
-	commands         *CommandRegistry
-	bindings         *BindingRegistry
+	commands         *tuicommands.CommandRegistry
+	bindings         *tuikeybindings.BindingRegistry
 	ui               *TUIImpl
 	layout           tuilayout.LayoutEngine
 
@@ -208,26 +210,30 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 
 	sdir := resolveSessionDir(cfgPath)
 
-	commands := NewCommandRegistry(bus, sdir)
-	commands.register("/model", "Select or change model", false, func(_ string) CommandResult {
-		return CommandResult{Command: listModelsCmd()}
+	commands := tuicommands.NewCommandRegistry(bus, sdir, tuicommands.RuntimeCommands{
+		ListSessions: listSessionsCmd,
+		Login:        loginCmd,
+		Logout:       logoutCmd,
+	})
+	commands.Register("/model", "Select or change model", false, func(_ string) tuicommands.CommandResult {
+		return tuicommands.CommandResult{Command: listModelsCmd()}
 	})
 
-	commands.register("/providers", "Manage provider API keys", false, func(_ string) CommandResult {
-		return CommandResult{Command: listProvidersCmd()}
+	commands.Register("/providers", "Manage provider API keys", false, func(_ string) tuicommands.CommandResult {
+		return tuicommands.CommandResult{Command: listProvidersCmd()}
 	})
 
-	commands.register("/thinking", "Set thinking level (off/minimal/low/medium/high/xhigh)", false, func(args string) CommandResult {
+	commands.Register("/thinking", "Set thinking level (off/minimal/low/medium/high/xhigh)", false, func(args string) tuicommands.CommandResult {
 		if args == "" {
-			return CommandResult{Notify: "Usage: /thinking <off|minimal|low|medium|high|xhigh>"}
+			return tuicommands.CommandResult{Notify: "Usage: /thinking <off|minimal|low|medium|high|xhigh>"}
 		}
 
 		level, err := sdkmodel.ParseThinkingLevel(args)
 		if err != nil {
-			return CommandResult{Notify: err.Error()}
+			return tuicommands.CommandResult{Notify: err.Error()}
 		}
 
-		return CommandResult{Command: func() tea.Msg {
+		return tuicommands.CommandResult{Command: func() tea.Msg {
 			return tuievents.ThinkingLevelSetMsg{Level: level}
 		}}
 	})
@@ -241,10 +247,10 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 	models := listModels()
 	cur := currentModel(models, ps)
 
-	bindings := NewBindingRegistry()
+	bindings := tuikeybindings.NewBindingRegistry()
 
 	if cfg != nil && cfg.FilePath() != "" {
-		if kbPath := loadKeybindings(cfg.FilePath()); kbPath != "" {
+		if kbPath := tuikeybindings.LoadKeybindings(cfg.FilePath()); kbPath != "" {
 			_ = bindings.LoadUserConfig(kbPath)
 		}
 	}
@@ -464,7 +470,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		// Clear any active text selection on key press, unless the key
 		// triggers the copy action (which needs to read the selection first).
-		if action, ok := m.bindings.Resolve(keyString(msg)); !ok || action != ActionCopySelection {
+		if action, ok := m.bindings.Resolve(tuikeybindings.KeyString(msg)); !ok || action != tuikeybindings.ActionCopySelection {
 			m.chat = m.chat.ClearSelection()
 			m.editor = m.editor.ClearSelection()
 		}
@@ -604,7 +610,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Try keybinding resolver
-		if action, ok := m.bindings.Resolve(keyString(msg)); ok {
+		if action, ok := m.bindings.Resolve(tuikeybindings.KeyString(msg)); ok {
 			return m.dispatchBinding(action)
 		}
 
@@ -898,8 +904,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tuievents.ShutdownMsg:
 		return m, tea.Quit
 
-	case reloadMsg:
-		if err := handleReload(msg); err != nil {
+	case tuicommands.ReloadMsg:
+		if err := tuicommands.HandleReload(msg); err != nil {
 			return m, func() tea.Msg { return tuievents.NotifyMsg{Message: "/reload failed: " + err.Error()} }
 		}
 
@@ -1404,13 +1410,13 @@ func (m Model) handleEscape() (tea.Model, tea.Cmd) {
 // dispatchBinding handles a resolved keybinding action.
 //
 //nolint:gocyclo // central keybinding dispatch
-func (m Model) dispatchBinding(action BindingAction) (tea.Model, tea.Cmd) {
+func (m Model) dispatchBinding(action tuikeybindings.BindingAction) (tea.Model, tea.Cmd) {
 	switch action {
-	case ActionExit:
+	case tuikeybindings.ActionExit:
 		return m, tea.Quit
-	case ActionModelSelect:
+	case tuikeybindings.ActionModelSelect:
 		return m, listModelsCmd()
-	case ActionModelCycle:
+	case tuikeybindings.ActionModelCycle:
 		models := listModels()
 		if len(models) <= 1 {
 			m.showStatus("Only one model available")
@@ -1422,19 +1428,19 @@ func (m Model) dispatchBinding(action BindingAction) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg { return tuievents.ModelChangedMsg{Entry: next} }
 
 	// Editor navigation
-	case ActionCursorLineStart:
+	case tuikeybindings.ActionCursorLineStart:
 		m.editor = m.editor.CursorLineStart()
 		return m, nil
-	case ActionCursorLineEnd:
+	case tuikeybindings.ActionCursorLineEnd:
 		m.editor = m.editor.CursorLineEnd()
 		return m, nil
-	case ActionCursorWordLeft:
+	case tuikeybindings.ActionCursorWordLeft:
 		m.editor = m.editor.CursorWordLeft()
 		return m, nil
-	case ActionCursorWordRight:
+	case tuikeybindings.ActionCursorWordRight:
 		m.editor = m.editor.CursorWordRight()
 		return m, nil
-	case ActionEditorNewline:
+	case tuikeybindings.ActionEditorNewline:
 		var cmd tea.Cmd
 
 		m.editor, cmd = m.editor.InsertNewline()
@@ -1442,45 +1448,45 @@ func (m Model) dispatchBinding(action BindingAction) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	// Chat scroll
-	case ActionScrollUp:
+	case tuikeybindings.ActionScrollUp:
 		m.chat = m.chat.ScrollUp(m.chatHeight(m.height))
 		return m, nil
-	case ActionScrollDown:
+	case tuikeybindings.ActionScrollDown:
 		m.chat = m.chat.ScrollDown(m.chatHeight(m.height))
 		return m, nil
-	case ActionScrollToBottom:
+	case tuikeybindings.ActionScrollToBottom:
 		m.chat = m.chat.JumpToBottom()
 		return m, nil
 
 	// Editor deletion
-	case ActionDeleteWordBackward:
+	case tuikeybindings.ActionDeleteWordBackward:
 		m.editor = m.editor.DeleteWordBackward()
 		return m, nil
-	case ActionDeleteWordForward:
+	case tuikeybindings.ActionDeleteWordForward:
 		m.editor = m.editor.DeleteWordForward()
 		return m, nil
-	case ActionDeleteToLineStart:
+	case tuikeybindings.ActionDeleteToLineStart:
 		m.editor = m.editor.DeleteToLineStart()
 		return m, nil
-	case ActionDeleteToLineEnd:
+	case tuikeybindings.ActionDeleteToLineEnd:
 		m.editor = m.editor.DeleteToLineEnd()
 		return m, nil
 
 	// App control
-	case ActionSuspend:
+	case tuikeybindings.ActionSuspend:
 		return m, func() tea.Msg { return tea.SuspendMsg{} }
-	case ActionExternalEditor:
+	case tuikeybindings.ActionExternalEditor:
 		return m.openExternalEditor()
 
 	// Display
-	case ActionToggleToolOutput:
+	case tuikeybindings.ActionToggleToolOutput:
 		m.toggleLastToolOutput()
 		return m, nil
-	case ActionThinkingCycle:
+	case tuikeybindings.ActionThinkingCycle:
 		return m.cycleThinkingLevel()
 
 	// Session
-	case ActionNewSession:
+	case tuikeybindings.ActionNewSession:
 		m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
 		m.toolPanels = make(map[string]*messages.ToolPanel)
 		m.pendingToolCalls = make(map[string]string)
@@ -1504,7 +1510,7 @@ func (m Model) dispatchBinding(action BindingAction) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	// Panels
-	case ActionPanelPicker:
+	case tuikeybindings.ActionPanelPicker:
 		if m.panelTray.Len() > 0 {
 			m.focus = FocusTray
 			m.panelTray = m.panelTray.SetFocused(true)
@@ -1515,11 +1521,11 @@ func (m Model) dispatchBinding(action BindingAction) (tea.Model, tea.Cmd) {
 		return m, m.statusTimer
 
 	// Sandbox
-	case ActionSandboxCycle:
+	case tuikeybindings.ActionSandboxCycle:
 		return m.cycleSandboxMode()
 
 	// Copy selection
-	case ActionCopySelection:
+	case tuikeybindings.ActionCopySelection:
 		if m.chat.HasSelection() {
 			text := m.chat.ExtractSelection()
 			if text != "" {
@@ -1544,8 +1550,8 @@ func (m Model) dispatchBinding(action BindingAction) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) showKeybindingsHelp() Model {
-	dialog := newKeybindingsHelpDialog(dialogKeybindingsHelp, m.bindings.AllBindings())
-	dialog.SetSize(m.width, m.height)
+	dialog := tuikeybindings.NewHelpDialog(tuikeybindings.DialogKeybindingsHelp, m.bindings.AllBindings())
+	dialog = dialog.SetSize(m.width, m.height)
 	m.dialogStack = m.dialogStack.Push(dialog)
 
 	return m
@@ -1980,7 +1986,7 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 
 	// Try slash command dispatch first.
 	if handled, result := m.commands.Dispatch(text); handled { //nolint:nestif // command dispatch has multiple optional outcomes
-		cmdName, cmdArgs := parseCommand(text)
+		cmdName, cmdArgs := tuicommands.ParseCommand(text)
 		if skillName, ok := strings.CutPrefix(cmdName, "/skill:"); ok {
 			xmlContent := fmt.Sprintf("<skill name=%q>\n</skill>", skillName)
 			if cmdArgs != "" {
@@ -3085,7 +3091,7 @@ func bannerMarkerForLevel(level sdk.NotifyLevel) string {
 // cycleSandboxMode requests the sandbox extension to advance to the next mode.
 func (m Model) cycleSandboxMode() (tea.Model, tea.Cmd) {
 	if m.bus != nil {
-		m.bus.Publish(sdk.NewEvent(string(ActionSandboxCycle), nil))
+		m.bus.Publish(sdk.NewEvent(string(tuikeybindings.ActionSandboxCycle), nil))
 	}
 
 	return m, nil

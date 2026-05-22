@@ -1,4 +1,4 @@
-package tui
+package keybindings
 
 import (
 	"errors"
@@ -11,9 +11,13 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
+	"github.com/mattn/go-runewidth"
 )
 
 const dialogKeybindingsHelp = "keybindings-help"
+
+// DialogKeybindingsHelp is the dialog ID for the keybindings help overlay.
+const DialogKeybindingsHelp = dialogKeybindingsHelp
 
 type keybindingsHelpDialog struct {
 	id       string
@@ -27,6 +31,11 @@ type keybindingsHelpDialog struct {
 
 func newKeybindingsHelpDialog(id string, bindings []Binding) *keybindingsHelpDialog {
 	return &keybindingsHelpDialog{id: id, bindings: bindings}
+}
+
+// NewHelpDialog creates the keybindings help overlay dialog.
+func NewHelpDialog(id string, bindings []Binding) overlays.Dialog {
+	return newKeybindingsHelpDialog(id, bindings)
 }
 
 func (d *keybindingsHelpDialog) ID() string { return d.id }
@@ -175,4 +184,44 @@ func (d *keybindingsHelpDialog) maxScroll() int {
 
 func (d *keybindingsHelpDialog) scrollPosition(rowCount, pageSize int) string {
 	return strconv.Itoa(min(rowCount, d.scroll+pageSize)) + "/" + strconv.Itoa(rowCount)
+}
+
+func truncateDisplayWidth(s string, maxWidth int) string {
+	if lipgloss.Width(s) <= maxWidth {
+		return s
+	}
+
+	var b strings.Builder
+
+	w := 0
+	inEsc := false
+
+	for _, r := range s {
+		if inEsc {
+			b.WriteRune(r)
+
+			if r == 'm' {
+				inEsc = false
+			}
+
+			continue
+		}
+
+		if r == '\x1b' {
+			inEsc = true
+			b.WriteRune(r)
+
+			continue
+		}
+
+		rw := runewidth.RuneWidth(r)
+		if w+rw > maxWidth {
+			break
+		}
+
+		w += rw
+		b.WriteRune(r)
+	}
+
+	return b.String()
 }

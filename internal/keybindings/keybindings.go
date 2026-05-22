@@ -1,4 +1,4 @@
-package tui
+package keybindings
 
 import (
 	"fmt"
@@ -254,6 +254,11 @@ func keyString(msg tea.KeyPressMsg) string {
 	return msg.Keystroke()
 }
 
+// KeyString converts a tea.KeyPressMsg to the keystroke representation used in bindings.
+func KeyString(msg tea.KeyPressMsg) string {
+	return keyString(msg)
+}
+
 // loadKeybindings finds and loads the user keybindings config.
 // Searches from the config file's directory up through .weave/ directories.
 func loadKeybindings(configPath string) string {
@@ -284,4 +289,9 @@ func loadKeybindings(configPath string) string {
 	}
 
 	return ""
+}
+
+// LoadKeybindings finds and loads the user keybindings config.
+func LoadKeybindings(configPath string) string {
+	return loadKeybindings(configPath)
 }

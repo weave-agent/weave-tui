@@ -11,8 +11,10 @@ import (
 	"github.com/weave-agent/weave/sdk"
 
 	tuibridge "github.com/weave-agent/weave-tui/internal/bridge"
+	tuicommands "github.com/weave-agent/weave-tui/internal/commands"
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	tuievents "github.com/weave-agent/weave-tui/internal/events"
+	tuikeybindings "github.com/weave-agent/weave-tui/internal/keybindings"
 	"github.com/weave-agent/weave-tui/internal/palette"
 	"github.com/weave-agent/weave-tui/internal/panels"
 
@@ -35,8 +37,8 @@ type pendingStatus struct {
 // registries and overlay components.
 type TUIImpl struct {
 	program   tuibridge.Sender
-	commands  *CommandRegistry
-	bindings  *BindingRegistry
+	commands  *tuicommands.CommandRegistry
+	bindings  *tuikeybindings.BindingRegistry
 	renderers map[string]sdk.ToolRenderer
 
 	mu              sync.Mutex
@@ -63,7 +65,7 @@ type TUIImpl struct {
 
 // NewTUIImpl creates a UI implementation backed by the given registries.
 // The program is set later via SetProgram once the tea.Program is running.
-func NewTUIImpl(commands *CommandRegistry, bindings *BindingRegistry) *TUIImpl {
+func NewTUIImpl(commands *tuicommands.CommandRegistry, bindings *tuikeybindings.BindingRegistry) *TUIImpl {
 	return &TUIImpl{
 		commands:  commands,
 		bindings:  bindings,
@@ -97,7 +99,7 @@ func (u *TUIImpl) SetSize(width, height int) {
 
 // SetRegistries sets the command and binding registries under lock.
 // Any commands registered before the registry was available are flushed.
-func (u *TUIImpl) SetRegistries(commands *CommandRegistry, bindings *BindingRegistry) {
+func (u *TUIImpl) SetRegistries(commands *tuicommands.CommandRegistry, bindings *tuikeybindings.BindingRegistry) {
 	u.mu.Lock()
 	pending := u.pending
 	u.pending = nil
@@ -255,20 +257,20 @@ func (u *TUIImpl) RegisterCommand(name string, handler func(args string) error) 
 	u.registerCommand(commands, name, handler)
 }
 
-func (u *TUIImpl) registerCommand(commands *CommandRegistry, name string, handler func(args string) error) {
+func (u *TUIImpl) registerCommand(commands *tuicommands.CommandRegistry, name string, handler func(args string) error) {
 	displayName := strings.TrimPrefix(name, "/")
 
-	commands.Register(name, "", false, func(args string) CommandResult {
+	commands.Register(name, "", false, func(args string) tuicommands.CommandResult {
 		err := handler(args)
 		if err != nil {
-			return CommandResult{Notify: fmt.Sprintf("/%s: error: %v", displayName, err)}
+			return tuicommands.CommandResult{Notify: fmt.Sprintf("/%s: error: %v", displayName, err)}
 		}
 
 		if strings.HasPrefix(name, "/skill:") {
-			return CommandResult{}
+			return tuicommands.CommandResult{}
 		}
 
-		return CommandResult{Notify: "/" + displayName + ": ok"}
+		return tuicommands.CommandResult{Notify: "/" + displayName + ": ok"}
 	})
 
 	u.mu.Lock()
@@ -298,7 +300,7 @@ func (u *TUIImpl) RegisterKeybinding(kb sdk.Keybinding) {
 		return
 	}
 
-	bindings.Register(BindingAction(kb.Name), kb.Keys, kb.Description)
+	bindings.Register(tuikeybindings.BindingAction(kb.Name), kb.Keys, kb.Description)
 }
 
 // GetRenderer returns a registered tool renderer, if any.

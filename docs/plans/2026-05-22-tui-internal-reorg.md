@@ -113,11 +113,11 @@
 - [x] run `go test ./...` - must pass before next task
 
 ### Task 8: Move commands and keybindings implementation
-- [ ] move slash command registry and built-ins to `internal/commands`
-- [ ] move keybinding registry, keybinding loading, and keybinding help dialog to `internal/keybindings`
-- [ ] update model/UI callers to use internal commands and keybindings packages
-- [ ] move command and keybinding tests with their packages and update imports
-- [ ] run `go test ./...` - must pass before next task
+- [x] move slash command registry and built-ins to `internal/commands`
+- [x] move keybinding registry, keybinding loading, and keybinding help dialog to `internal/keybindings`
+- [x] update model/UI callers to use internal commands and keybindings packages
+- [x] move command and keybinding tests with their packages and update imports
+- [x] run `go test ./...` - must pass before next task
 
 ### Task 9: Move sessions, auth, and provider/model selection implementation
 - [ ] move session listing/resume helpers to `internal/sessions`
