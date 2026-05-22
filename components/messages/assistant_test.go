@@ -415,3 +415,59 @@ func TestAssistantMessage_View_Finalized_NoFadeColor(t *testing.T) {
 	// Finalized messages should NOT have fade styling — they render at full brightness
 	assert.NotContains(t, view, palette.DefaultTheme().ForegroundDim)
 }
+
+// --- Task 7: Verify custom theme usage in render paths ---
+
+func TestAssistantMessage_FadeColor_UsesCustomTheme(t *testing.T) {
+	custom := &palette.Theme{
+		Foreground:    "200",
+		ForegroundDim: "100",
+		MutedBright:   "150",
+	}
+	m := NewAssistantMessage()
+	m.SetStyles(styles.New(custom))
+
+	// New message: should use custom ForegroundDim
+	assert.Equal(t, "100", m.fadeColor(), "new message should use custom ForegroundDim")
+
+	// After 60ms: should use custom MutedBright
+	m.createdAt = time.Now().Add(-60 * time.Millisecond)
+	assert.Equal(t, "150", m.fadeColor(), "after 60ms should use custom MutedBright")
+
+	// After 200ms: should use custom Foreground
+	m.createdAt = time.Now().Add(-200 * time.Millisecond)
+	assert.Equal(t, "200", m.fadeColor(), "after 150ms should use custom Foreground")
+}
+
+func TestAssistantMessage_View_Streaming_UsesCustomFadeColor(t *testing.T) {
+	custom := &palette.Theme{
+		ForegroundDim: "111",
+		Foreground:    "222",
+	}
+	m := NewAssistantMessage()
+	m.SetStyles(styles.New(custom))
+	m.Append("hello")
+	// Force createdAt to the future so fade color is always custom ForegroundDim
+	m.createdAt = time.Now().Add(time.Hour)
+	view := m.View(80)
+	// The fade style should wrap the content with the custom ForegroundDim color
+	assert.Contains(t, view, "111", "streaming view should use custom theme fade color")
+}
+
+func TestAssistantMessage_View_CustomTheme_MarkerAndFade(t *testing.T) {
+	custom := &palette.Theme{
+		Muted:         "55",
+		ForegroundDim: "66",
+		Foreground:    "77",
+	}
+	m := NewAssistantMessage()
+	m.SetStyles(styles.New(custom))
+	m.Append("streaming text")
+	m.createdAt = time.Now().Add(time.Hour)
+
+	view := m.View(80)
+	// Marker uses custom Muted color
+	assert.Contains(t, view, "55", "marker should use custom muted color")
+	// Fade uses custom ForegroundDim
+	assert.Contains(t, view, "66", "fade should use custom ForegroundDim")
+}

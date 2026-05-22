@@ -132,11 +132,11 @@
 - [x] run `go test ./...` - must pass before task 7
 
 ### Task 7: Remove direct default-theme usage from migrated render paths
-- [ ] audit migrated components for remaining `palette.DefaultTheme()` calls inside render methods
-- [ ] replace direct default-theme calls with active theme/style-set usage where the component is part of the structured design language
-- [ ] keep `palette.DefaultTheme()` only at construction/default boundaries where an active theme is legitimately unavailable
-- [ ] write/update tests that pass a non-default theme and verify visible render differences
-- [ ] run `go test ./...` - must pass before task 8
+- [x] audit migrated components for remaining `palette.DefaultTheme()` calls inside render methods
+- [x] replace direct default-theme calls with active theme/style-set usage where the component is part of the structured design language
+- [x] keep `palette.DefaultTheme()` only at construction/default boundaries where an active theme is legitimately unavailable
+- [x] write/update tests that pass a non-default theme and verify visible render differences
+- [x] run `go test ./...` - must pass before task 8
 
 ### Task 8: Verify acceptance criteria
 - [ ] verify user messages render with `❯` on the first line only
