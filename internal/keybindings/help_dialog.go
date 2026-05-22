@@ -209,6 +209,7 @@ func truncateDisplayWidth(s string, maxWidth int) string {
 
 		if r == '\x1b' {
 			inEsc = true
+
 			b.WriteRune(r)
 
 			continue
@@ -220,6 +221,7 @@ func truncateDisplayWidth(s string, maxWidth int) string {
 		}
 
 		w += rw
+
 		b.WriteRune(r)
 	}
 

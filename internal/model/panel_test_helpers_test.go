@@ -6,7 +6,6 @@ import (
 )
 
 type mockPanelDrawer struct {
-	id          string
 	updateCount int
 	drawCount   int
 	lastArea    uv.Rectangle

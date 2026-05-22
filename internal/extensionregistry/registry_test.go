@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/weave-agent/weave/sdk"
 
 	"github.com/weave-agent/weave-tui/internal/contract"
-	"github.com/weave-agent/weave/sdk"
 )
 
 type stubTUIExtension struct {

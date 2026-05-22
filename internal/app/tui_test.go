@@ -16,6 +16,7 @@ func forceTerminal(t *testing.T, ok bool) {
 
 	old := terminalCheck
 	terminalCheck = func() bool { return ok }
+
 	t.Cleanup(func() {
 		terminalCheck = old
 	})

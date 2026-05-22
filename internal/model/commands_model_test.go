@@ -3,12 +3,12 @@ package model
 import (
 	"testing"
 
-	"github.com/weave-agent/weave-tui/internal/components/messages"
-	"github.com/weave-agent/weave/bus"
-
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/weave-agent/weave/bus"
+
+	"github.com/weave-agent/weave-tui/internal/components/messages"
 )
 
 func TestModel_SlashCommandQuit(t *testing.T) {

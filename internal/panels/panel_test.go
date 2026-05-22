@@ -33,15 +33,6 @@ func (m *mockPanelDrawer) Update(msg tea.Msg) (contract.PanelDrawer, tea.Cmd) {
 }
 func (m *mockPanelDrawer) Handles(_ tea.Msg) bool { return true }
 
-type selectivePanelDrawer struct {
-	mockPanelDrawer
-}
-
-func (m *selectivePanelDrawer) Handles(msg tea.Msg) bool {
-	key, ok := msg.(tea.KeyPressMsg)
-	return ok && key.Code == 'h'
-}
-
 func TestPanelManager_Register(t *testing.T) {
 	pm := NewPanelManager()
 	assert.NotNil(t, pm.panels)

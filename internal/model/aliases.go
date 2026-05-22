@@ -13,21 +13,23 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-type TUIConfig = contract.TUIConfig
-type PanelConfig = contract.PanelConfig
-type PanelDrawer = contract.PanelDrawer
-type TUIComponent = contract.TUIComponent
-type KeyEvent = contract.KeyEvent
-type AutocompleteProvider = contract.AutocompleteProvider
-type AutocompleteContext = contract.AutocompleteContext
-type AutocompleteSuggestion = contract.AutocompleteSuggestion
-type ThemeDef = contract.ThemeDef
-type TUIImpl = tuiui.TUIImpl
-type CommandResult = tuicommands.CommandResult
-type CommandRegistry = tuicommands.CommandRegistry
-type Binding = tuikeybindings.Binding
-type BindingAction = tuikeybindings.BindingAction
-type BindingRegistry = tuikeybindings.BindingRegistry
+type (
+	TUIConfig              = contract.TUIConfig
+	PanelConfig            = contract.PanelConfig
+	PanelDrawer            = contract.PanelDrawer
+	TUIComponent           = contract.TUIComponent
+	KeyEvent               = contract.KeyEvent
+	AutocompleteProvider   = contract.AutocompleteProvider
+	AutocompleteContext    = contract.AutocompleteContext
+	AutocompleteSuggestion = contract.AutocompleteSuggestion
+	ThemeDef               = contract.ThemeDef
+	TUIImpl                = tuiui.TUIImpl
+	CommandResult          = tuicommands.CommandResult
+	CommandRegistry        = tuicommands.CommandRegistry
+	Binding                = tuikeybindings.Binding
+	BindingAction          = tuikeybindings.BindingAction
+	BindingRegistry        = tuikeybindings.BindingRegistry
+)
 
 const (
 	AsOverlay   = contract.AsOverlay
@@ -63,9 +65,11 @@ const (
 	ActionCopySelection      = tuikeybindings.ActionCopySelection
 )
 
-type overlayRequestKind = tuievents.OverlayRequestKind
-type overlayRequest = tuievents.OverlayRequest
-type overlayResponse = tuievents.OverlayResponse
+type (
+	overlayRequestKind = tuievents.OverlayRequestKind
+	overlayRequest     = tuievents.OverlayRequest
+	overlayResponse    = tuievents.OverlayResponse
+)
 
 const (
 	requestSelect      = tuievents.RequestSelect
@@ -75,17 +79,19 @@ const (
 	requestMultiSelect = tuievents.RequestMultiSelect
 )
 
-type popupPendingMsg = tuievents.PopupPendingMsg
-type extStatusMsg = tuievents.ExtStatusMsg
-type slashCommandsUpdatedMsg = tuievents.SlashCommandsUpdatedMsg
-type themeChangedMsg = tuievents.ThemeChangedMsg
-type panelChangedMsg = tuievents.PanelChangedMsg
-type setEditorTextMsg = tuievents.SetEditorTextMsg
-type pasteToEditorMsg = tuievents.PasteToEditorMsg
-type editorTextRequestMsg = tuievents.EditorTextRequestMsg
-type setFooterMsg = tuievents.SetFooterMsg
-type setHeaderMsg = tuievents.SetHeaderMsg
-type setWorkingFramesMsg = tuievents.SetWorkingFramesMsg
+type (
+	popupPendingMsg         = tuievents.PopupPendingMsg
+	extStatusMsg            = tuievents.ExtStatusMsg
+	slashCommandsUpdatedMsg = tuievents.SlashCommandsUpdatedMsg
+	themeChangedMsg         = tuievents.ThemeChangedMsg
+	panelChangedMsg         = tuievents.PanelChangedMsg
+	setEditorTextMsg        = tuievents.SetEditorTextMsg
+	pasteToEditorMsg        = tuievents.PasteToEditorMsg
+	editorTextRequestMsg    = tuievents.EditorTextRequestMsg
+	setFooterMsg            = tuievents.SetFooterMsg
+	setHeaderMsg            = tuievents.SetHeaderMsg
+	setWorkingFramesMsg     = tuievents.SetWorkingFramesMsg
+)
 
 func NewTUIImpl(commands *tuicommands.CommandRegistry, bindings *tuikeybindings.BindingRegistry) *tuiui.TUIImpl {
 	return tuiui.NewTUIImpl(commands, bindings)

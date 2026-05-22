@@ -363,7 +363,7 @@ func (m Model) Init() tea.Cmd {
 	if m.ui != nil {
 		for _, s := range m.ui.DrainStatuses() {
 			cmds = append(cmds, func() tea.Msg {
-				return extStatusMsg(s)
+				return s
 			})
 		}
 	}
@@ -865,13 +865,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.showLanding = false
 		if msg.Error != "" {
 			m.chat = m.chat.AddItem(messages.NewNotificationMessage(
-				"Compaction failed: "+msg.Error, sdk.NotifyError))
+				"Compaction failed: "+msg.Error, sdk.NotifyError,
+			))
 		} else if msg.Summarized > 0 {
 			m.chat = m.chat.AddItem(messages.NewNotificationMessage(
 				fmt.Sprintf("Context compacted: %d messages summarized", msg.Summarized),
-				sdk.NotifyInfo))
+				sdk.NotifyInfo,
+			))
 			m.chat = m.chat.AddItem(messages.NewCompactionEntry(
-				msg.Summarized, msg.TokensBefore, msg.TokensAfter))
+				msg.Summarized, msg.TokensBefore, msg.TokensAfter,
+			))
 		}
 
 		return m, nil

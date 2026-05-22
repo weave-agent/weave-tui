@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	"github.com/weave-agent/weave/sdk"
 
 	"github.com/weave-agent/weave-tui/internal/extensionregistry"
@@ -15,7 +17,12 @@ func RegisterTUIExtension[TConfig any](name string, factory func(sdk.Config, sdk
 
 // GetTUIExtension instantiates a TUI extension by name with the given config.
 func GetTUIExtension(name string, cfg sdk.Config) (TUIExtension, error) {
-	return extensionregistry.Get(name, cfg)
+	ext, err := extensionregistry.Get(name, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("get TUI extension %q: %w", name, err)
+	}
+
+	return ext, nil
 }
 
 // TUIExtensionRegistered reports whether a TUI extension with the given name

@@ -205,7 +205,7 @@ func TestSessionDir_EnvOverride(t *testing.T) {
 func TestResolveDir_ConfigOverride(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(t.TempDir(), "config.json")
-	data := []byte(fmt.Sprintf(`{"jsonl":{"dir":%q}}`, dir))
+	data := fmt.Appendf(nil, `{"jsonl":{"dir":%q}}`, dir)
 	require.NoError(t, os.WriteFile(configPath, data, 0o644))
 
 	assert.Equal(t, dir, ResolveDir(configPath))

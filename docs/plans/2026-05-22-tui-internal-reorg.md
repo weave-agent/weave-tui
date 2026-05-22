@@ -157,13 +157,13 @@
 - [x] run `go test ./...` - must pass before next task
 
 ### Task 14: Verify acceptance criteria
-- [ ] verify root `package tui` exposes only the minimal extension-author API
-- [ ] verify implementation packages live under `internal/` feature/domain packages
-- [ ] verify no internal package imports root `github.com/weave-agent/weave-tui`
-- [ ] verify external-style root API tests compile and pass
-- [ ] run full test suite with `go test ./...`
-- [ ] run `go list ./...`
-- [ ] run linter if available for this module
+- [x] verify root `package tui` exposes only the minimal extension-author API
+- [x] verify implementation packages live under `internal/` feature/domain packages
+- [x] verify no internal package imports root `github.com/weave-agent/weave-tui`
+- [x] verify external-style root API tests compile and pass
+- [x] run full test suite with `go test ./...`
+- [x] run `go list ./...`
+- [x] run linter if available for this module
 
 ## Technical Details
 - Target root public API:

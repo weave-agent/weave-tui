@@ -6,17 +6,21 @@ import (
 	"github.com/weave-agent/weave-tui/internal/palette"
 )
 
-type PanelConfig = contract.PanelConfig
-type PanelDrawer = contract.PanelDrawer
-type PanelTrayAPI = contract.PanelTrayAPI
-type RichToolRenderer = contract.RichToolRenderer
-type TUIComponent = contract.TUIComponent
-type KeyEvent = contract.KeyEvent
-type AutocompleteProvider = contract.AutocompleteProvider
-type ThemeDef = contract.ThemeDef
+type (
+	PanelConfig          = contract.PanelConfig
+	PanelDrawer          = contract.PanelDrawer
+	PanelTrayAPI         = contract.PanelTrayAPI
+	RichToolRenderer     = contract.RichToolRenderer
+	TUIComponent         = contract.TUIComponent
+	KeyEvent             = contract.KeyEvent
+	AutocompleteProvider = contract.AutocompleteProvider
+	ThemeDef             = contract.ThemeDef
+)
 
-type overlayRequest = tuievents.OverlayRequest
-type overlayResponse = tuievents.OverlayResponse
+type (
+	overlayRequest  = tuievents.OverlayRequest
+	overlayResponse = tuievents.OverlayResponse
+)
 
 const (
 	requestSelect      = tuievents.RequestSelect
@@ -26,17 +30,19 @@ const (
 	requestMultiSelect = tuievents.RequestMultiSelect
 )
 
-type popupPendingMsg = tuievents.PopupPendingMsg
-type extStatusMsg = tuievents.ExtStatusMsg
-type slashCommandsUpdatedMsg = tuievents.SlashCommandsUpdatedMsg
-type themeChangedMsg = tuievents.ThemeChangedMsg
-type panelChangedMsg = tuievents.PanelChangedMsg
-type setEditorTextMsg = tuievents.SetEditorTextMsg
-type pasteToEditorMsg = tuievents.PasteToEditorMsg
-type editorTextRequestMsg = tuievents.EditorTextRequestMsg
-type setFooterMsg = tuievents.SetFooterMsg
-type setHeaderMsg = tuievents.SetHeaderMsg
-type setWorkingFramesMsg = tuievents.SetWorkingFramesMsg
+type (
+	popupPendingMsg         = tuievents.PopupPendingMsg
+	extStatusMsg            = tuievents.ExtStatusMsg
+	slashCommandsUpdatedMsg = tuievents.SlashCommandsUpdatedMsg
+	themeChangedMsg         = tuievents.ThemeChangedMsg
+	panelChangedMsg         = tuievents.PanelChangedMsg
+	setEditorTextMsg        = tuievents.SetEditorTextMsg
+	pasteToEditorMsg        = tuievents.PasteToEditorMsg
+	editorTextRequestMsg    = tuievents.EditorTextRequestMsg
+	setFooterMsg            = tuievents.SetFooterMsg
+	setHeaderMsg            = tuievents.SetHeaderMsg
+	setWorkingFramesMsg     = tuievents.SetWorkingFramesMsg
+)
 
 // toPaletteTheme converts a ThemeDef to a palette.Theme.
 func toPaletteTheme(td ThemeDef) *palette.Theme {

@@ -826,13 +826,3 @@ func (u *TUIImpl) hasPendingPopups() bool {
 func (u *TUIImpl) HasPendingPopups() bool {
 	return u.hasPendingPopups()
 }
-
-// richRendererAdapter adapts a RichToolRenderer to sdk.ToolRenderer.
-type richRendererAdapter struct {
-	renderer  RichToolRenderer
-	themeFunc func() sdk.ThemeInfo
-}
-
-func (a *richRendererAdapter) Render(content string, width int) string {
-	return a.renderer.Render(content, a.themeFunc(), width)
-}
