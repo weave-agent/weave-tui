@@ -139,14 +139,14 @@
 - [x] run `go test ./...` - must pass before task 8
 
 ### Task 8: Verify acceptance criteria
-- [ ] verify user messages render with `❯` on the first line only
-- [ ] verify assistant and thinking markers remain `◆` and `∴`
-- [ ] verify tool panels remain horizontal-rule blocks with the new glyph/status grammar
-- [ ] verify notifications render as banners/pills according to severity persistence rules
-- [ ] verify landing reads as a boot/status screen rather than a splash screen
-- [ ] verify list, tab, editor, and footer focus states follow their type-specific grammar
-- [ ] run full test suite with `go test ./...`
-- [ ] run `gofmt -w` on changed Go files
+- [x] verify user messages render with `❯` on the first line only
+- [x] verify assistant and thinking markers remain `◆` and `∴`
+- [x] verify tool panels remain horizontal-rule blocks with the new glyph/status grammar
+- [x] verify notifications render as banners/pills according to severity persistence rules
+- [x] verify landing reads as a boot/status screen rather than a splash screen
+- [x] verify list, tab, editor, and footer focus states follow their type-specific grammar
+- [x] run full test suite with `go test ./...`
+- [x] run `gofmt -w` on changed Go files
 
 ### Task 9: Update documentation if needed
 - [ ] update README.md only if user-facing theme or UI behavior documentation is currently present and becomes inaccurate

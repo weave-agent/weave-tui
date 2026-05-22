@@ -98,8 +98,8 @@ func TestStyleHelpers_UseProvidedTheme_NotDefault(t *testing.T) {
 
 func TestSelectedRow_UsesProvidedTheme(t *testing.T) {
 	custom := &palette.Theme{
-		Accent:      "42",
-		Foreground:  "43",
+		Accent:     "42",
+		Foreground: "43",
 	}
 	s := New(custom)
 	rendered := s.SelectedRow().Render("text")

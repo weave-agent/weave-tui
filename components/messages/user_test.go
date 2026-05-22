@@ -232,7 +232,7 @@ func TestUserMessage_Styling_SkillHasMarker(t *testing.T) {
 
 func TestUserMessage_SetStyles_UsesCustomTheme(t *testing.T) {
 	custom := &palette.Theme{
-		AccentDim: "99",
+		AccentDim:  "99",
 		Foreground: "88",
 	}
 	m := NewUserMessage("hello")
