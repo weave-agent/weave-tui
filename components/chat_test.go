@@ -855,6 +855,39 @@ func TestChatModel_BlankLineBetweenItems(t *testing.T) {
 	assert.Equal(t, "second", lines[2])
 }
 
+func TestChatModel_DoesNotRenderEmptyAssistantPlaceholder(t *testing.T) {
+	m := NewChatModel().SetSize(80, 10)
+	m = m.AddItem(stubItem{text: "before"})
+	m = m.AddItem(messages.NewAssistantMessage())
+	m = m.AddItem(stubItem{text: "after"})
+
+	view := m.View()
+	lines := splitLines(view)
+
+	assert.Equal(t, "before", lines[0])
+	assert.Contains(t, lines[1], "·")
+	assert.Equal(t, "after", lines[2])
+	assert.NotContains(t, view, "◆")
+}
+
+func TestChatModel_RendersAssistantAfterContentArrives(t *testing.T) {
+	m := NewChatModel().SetSize(80, 10)
+	assistant := messages.NewAssistantMessage()
+	m = m.AddItem(stubItem{text: "before"})
+	m = m.AddItem(assistant)
+	m = m.AddItem(stubItem{text: "after"})
+
+	assistant.Append("hello")
+	m = m.UpdateItemAt(1, assistant)
+
+	view := m.View()
+
+	assert.Contains(t, view, "before")
+	assert.Contains(t, view, "◆")
+	assert.Contains(t, view, "hello")
+	assert.Contains(t, view, "after")
+}
+
 func TestChatModel_BlankLineNotAfterLastItem(t *testing.T) {
 	m := NewChatModel().SetSize(80, 5)
 	m = m.AddItem(stubItem{text: "only"})

@@ -14,6 +14,12 @@ type ChatItem interface {
 	View(width int) string
 }
 
+// ChatItemVisibility is an optional interface for items that should be omitted
+// from rendering while they have no visible content.
+type ChatItemVisibility interface {
+	VisibleInChat() bool
+}
+
 // NeedsRenderer is an optional interface for items that may need re-rendering
 // even when width hasn't changed (e.g., streaming messages with debounce).
 type NeedsRenderer interface {
@@ -279,21 +285,10 @@ func (m *ChatModel) scrollToBottom() {
 	m.scroll = max(0, totalLines-m.height)
 }
 
-// totalLines counts the total rendered lines across all items, using cache where possible.
-// Includes dot divider lines between items.
+// totalLines counts the total rendered lines across all visible items, using cache where possible.
+// Includes dot divider lines between visible items.
 func (m *ChatModel) totalLines() int {
-	m.ensureCache()
-
-	total := 0
-	for i := range m.items {
-		total += len((*m.cache)[i].lines)
-		// Dot divider line between items (not after the last one)
-		if i < len(m.items)-1 {
-			total++
-		}
-	}
-
-	return total
+	return len(m.allContentLines())
 }
 
 // ensureCache guarantees the cache slice is aligned with items and renders any missing entries.
@@ -565,22 +560,36 @@ func (m ChatModel) plainLineRunes(line int) []rune {
 	return runes
 }
 
-// including blank separator lines between items.
+// including dot separators between visible items.
 func (m *ChatModel) allContentLines() []string {
 	m.ensureCache()
 
 	var lines []string
+	visibleCount := 0
 
-	for i := range m.items {
-		lines = append(lines, (*m.cache)[i].lines...)
-		// Dot divider between items (not after the last one)
-		if i < len(m.items)-1 {
+	for i, item := range m.items {
+		if !visibleInChat(item) {
+			continue
+		}
+
+		if visibleCount > 0 {
 			dotStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(palette.DefaultTheme().Muted))
 			lines = append(lines, dotStyle.Render("·"))
 		}
+
+		lines = append(lines, (*m.cache)[i].lines...)
+		visibleCount++
 	}
 
 	return lines
+}
+
+func visibleInChat(item ChatItem) bool {
+	if visibility, ok := item.(ChatItemVisibility); ok {
+		return visibility.VisibleInChat()
+	}
+
+	return true
 }
 
 // View renders the visible portion of the chat as a string.

@@ -74,6 +74,11 @@ func (m *AssistantMessage) Content() string {
 	return m.content.String()
 }
 
+// VisibleInChat returns false while the streaming placeholder has no content.
+func (m *AssistantMessage) VisibleInChat() bool {
+	return m.Content() != ""
+}
+
 // IsStreaming returns whether the message is still streaming.
 func (m *AssistantMessage) IsStreaming() bool {
 	return m.streaming
