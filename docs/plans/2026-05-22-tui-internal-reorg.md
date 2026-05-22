@@ -76,12 +76,12 @@
 - [x] run `go test ./...` - must pass before next task
 
 ### Task 3: Internalize rendering support packages
-- [ ] move `palette/` to `internal/palette/` and update imports
-- [ ] move `styles/` to `internal/styles/` and update imports
-- [ ] move `xchroma/` to `internal/xchroma/` and update imports
-- [ ] move package tests with their implementation packages and update package import paths
-- [ ] verify no non-internal package imports `internal/palette`, `internal/styles`, or `internal/xchroma` except root facade where explicitly necessary
-- [ ] run `go test ./...` - must pass before next task
+- [x] move `palette/` to `internal/palette/` and update imports
+- [x] move `styles/` to `internal/styles/` and update imports
+- [x] move `xchroma/` to `internal/xchroma/` and update imports
+- [x] move package tests with their implementation packages and update package import paths
+- [x] verify no non-internal package imports `internal/palette`, `internal/styles`, or `internal/xchroma` except root facade where explicitly necessary (transitional exception: public component packages still import these internal rendering packages until Task 4 internalizes components)
+- [x] run `go test ./...` - must pass before next task
 
 ### Task 4: Internalize UI component packages
 - [ ] move `components/` to `internal/components/` and update imports

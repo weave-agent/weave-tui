@@ -1,6 +1,8 @@
 package tui_test
 
 import (
+	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -115,6 +117,36 @@ func TestPublicAPI_AutocompleteTypes(t *testing.T) {
 
 	sugg := tui.AutocompleteSuggestion{Label: "hi", Description: "greeting", Value: "hi"}
 	assert.Equal(t, "hi", sugg.Label)
+}
+
+func TestPackageVisibility_RenderingSupportIsInternal(t *testing.T) {
+	cmd := exec.Command("go", "list", "./...")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	packages := strings.Split(strings.TrimSpace(string(out)), "\n")
+	require.NotEmpty(t, packages)
+
+	pkgSet := make(map[string]bool, len(packages))
+	for _, pkg := range packages {
+		pkgSet[pkg] = true
+	}
+
+	for _, pkg := range []string{
+		"github.com/weave-agent/weave-tui/palette",
+		"github.com/weave-agent/weave-tui/styles",
+		"github.com/weave-agent/weave-tui/xchroma",
+	} {
+		assert.False(t, pkgSet[pkg], "%s should not be a public package", pkg)
+	}
+
+	for _, pkg := range []string{
+		"github.com/weave-agent/weave-tui/internal/palette",
+		"github.com/weave-agent/weave-tui/internal/styles",
+		"github.com/weave-agent/weave-tui/internal/xchroma",
+	} {
+		assert.True(t, pkgSet[pkg], "%s should be available internally", pkg)
+	}
 }
 
 // publicExt is a minimal TUIExtension implementation for testing.

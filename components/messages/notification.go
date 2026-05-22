@@ -5,7 +5,7 @@ import (
 
 	"github.com/weave-agent/weave/sdk"
 
-	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/internal/palette"
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"

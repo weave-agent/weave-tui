@@ -2,7 +2,7 @@ package tui
 
 import (
 	"github.com/weave-agent/weave-tui/internal/contract"
-	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/internal/palette"
 )
 
 // Public API aliases — canonical definitions live in internal/contract.

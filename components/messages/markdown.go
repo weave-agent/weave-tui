@@ -9,7 +9,7 @@ import (
 	glamouransi "github.com/charmbracelet/glamour/ansi"
 	"github.com/charmbracelet/glamour/styles"
 
-	"github.com/weave-agent/weave-tui/xchroma"
+	"github.com/weave-agent/weave-tui/internal/xchroma"
 )
 
 const chromaFormatterName = "weave"

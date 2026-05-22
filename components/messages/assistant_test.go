@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/weave-agent/weave-tui/palette"
-	"github.com/weave-agent/weave-tui/styles"
+	"github.com/weave-agent/weave-tui/internal/palette"
+	"github.com/weave-agent/weave-tui/internal/styles"
 
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"

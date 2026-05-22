@@ -8,7 +8,7 @@ import (
 	"github.com/weave-agent/weave/bus"
 	"github.com/weave-agent/weave/sdk"
 
-	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/internal/palette"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"

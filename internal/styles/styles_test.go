@@ -7,7 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/internal/palette"
 )
 
 // --- Glyph constants ---

@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/weave-agent/weave-tui/components/attachments"
-	"github.com/weave-agent/weave-tui/palette"
-	"github.com/weave-agent/weave-tui/styles"
+	"github.com/weave-agent/weave-tui/internal/palette"
+	"github.com/weave-agent/weave-tui/internal/styles"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"

@@ -20,8 +20,8 @@ import (
 	"github.com/weave-agent/weave-tui/components/messages"
 	"github.com/weave-agent/weave-tui/components/overlays"
 	"github.com/weave-agent/weave-tui/internal/extensionregistry"
-	"github.com/weave-agent/weave-tui/palette"
-	"github.com/weave-agent/weave-tui/styles"
+	"github.com/weave-agent/weave-tui/internal/palette"
+	"github.com/weave-agent/weave-tui/internal/styles"
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"

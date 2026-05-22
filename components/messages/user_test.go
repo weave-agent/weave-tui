@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/weave-agent/weave-tui/palette"
-	"github.com/weave-agent/weave-tui/styles"
+	"github.com/weave-agent/weave-tui/internal/palette"
+	"github.com/weave-agent/weave-tui/internal/styles"
 )
 
 func TestUserMessage_Content(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/internal/palette"
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"

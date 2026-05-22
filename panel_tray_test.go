@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/internal/palette"
 
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/stretchr/testify/assert"

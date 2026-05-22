@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/weave-agent/weave-tui/components"
-	"github.com/weave-agent/weave-tui/palette"
+	"github.com/weave-agent/weave-tui/internal/palette"
 )
 
 // TestLipglossV2_NewStyleRendering verifies that basic lipgloss v2 style
