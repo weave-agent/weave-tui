@@ -1,8 +1,6 @@
 package overlays
 
 import (
-	"strings"
-
 	"github.com/weave-agent/weave-tui/palette"
 
 	"charm.land/bubbles/v2/textarea"
@@ -85,14 +83,29 @@ func (m EditorModel) SetSize(width, height int) EditorModel {
 	m.width = width
 	m.height = height
 
-	// Leave room for border, title, and hint
-	contentWidth := max(10, width-6)
-	contentHeight := max(3, height-6)
+	boxWidth := editorBoxWidth(width)
+	boxHeight := editorBoxHeight(height)
 
-	m.ta.SetWidth(contentWidth)
-	m.ta.SetHeight(contentHeight)
+	m.ta.SetWidth(max(10, boxWidth-6))
+	m.ta.SetHeight(max(3, boxHeight-4))
 
 	return m
+}
+
+func editorBoxWidth(width int) int {
+	if width < 4 {
+		return 0
+	}
+
+	return min(max(40, width*4/5), width-4)
+}
+
+func editorBoxHeight(height int) int {
+	if height < 6 {
+		return 0
+	}
+
+	return min(max(10, height*3/4), height-2)
 }
 
 // Width returns the editor modal width.
@@ -124,16 +137,21 @@ func (m EditorModel) handleKey(msg tea.KeyPressMsg) (EditorModel, tea.Cmd) {
 
 		return m, func() tea.Msg { return EditorResultMsg{Ok: false} }
 
-	case tea.KeyEnter:
+	case 's', 'S':
 		if msg.Mod&tea.ModCtrl != 0 {
-			// Ctrl+Enter submits
 			m.visible = false
 			val := m.ta.Value()
 
 			return m, func() tea.Msg { return EditorResultMsg{Value: val, Ok: true} }
 		}
 
-		// Plain Enter inserts newline — forward to textarea
+		var cmd tea.Cmd
+
+		m.ta, cmd = m.ta.Update(msg)
+
+		return m, cmd
+
+	case tea.KeyEnter, tea.KeyKpEnter:
 		var cmd tea.Cmd
 
 		m.ta, cmd = m.ta.Update(msg)
@@ -156,7 +174,10 @@ func (m EditorModel) View() string {
 	}
 
 	theme := palette.DefaultTheme()
-	boxWidth := min(60, m.width-4)
+	boxWidth := editorBoxWidth(m.width)
+	if boxWidth == 0 {
+		return ""
+	}
 
 	borderStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -171,15 +192,13 @@ func (m EditorModel) View() string {
 	hintStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(theme.Muted))
 
-	content := titleStyle.Render(m.title) + "\n" + m.ta.View() + "\n" + hintStyle.Render("Ctrl+Enter to confirm · Esc to cancel")
+	content := titleStyle.Render(m.title) + "\n" + m.ta.View() + "\n" + hintStyle.Render("Ctrl+S save · Esc cancel")
 	box := borderStyle.Render(content)
 
-	lines := strings.Split(box, "\n")
-
 	return lipgloss.NewStyle().
-		MarginTop(max(0, (m.height-len(lines))/2)).
+		MarginTop(max(0, (m.height-lipgloss.Height(box))/2)).
 		MarginLeft(max(0, (m.width-boxWidth)/2)).
-		Render(strings.Join(lines, "\n"))
+		Render(box)
 }
 
 // Draw renders the editor modal overlay into a screen buffer region.

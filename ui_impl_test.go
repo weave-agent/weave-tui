@@ -690,7 +690,7 @@ func TestModel_PopupView_Editor(t *testing.T) {
 	))
 	view := m.View()
 	assert.Contains(t, view.Content, "Edit note:")
-	assert.Contains(t, view.Content, "Ctrl+Enter")
+	assert.Contains(t, view.Content, "Ctrl+S")
 }
 
 func TestModel_HandlePopupPending_MultiSelect(t *testing.T) {

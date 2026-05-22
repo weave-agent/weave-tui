@@ -39,7 +39,6 @@ const (
 	ActionToggleToolOutput   BindingAction = "app.tools.expand"
 	ActionThinkingCycle      BindingAction = "app.thinking.cycle"
 	ActionNewSession         BindingAction = "app.session.new"
-	ActionAttachDelete       BindingAction = "app.attachments.delete"
 	ActionSandboxCycle       BindingAction = "sandbox.cycle"
 	ActionPanelPicker        BindingAction = "app.panel.picker"
 	ActionCopySelection      BindingAction = "app.copy.selection"
@@ -85,9 +84,6 @@ var defaultBindings = []Binding{
 
 	// Session
 	{Action: ActionNewSession, Keys: []string{"ctrl+n"}, Description: "New session"},
-
-	// Attachments
-	{Action: ActionAttachDelete, Keys: []string{"ctrl+r"}, Description: "Toggle attachment delete mode"},
 
 	// Panels
 	{Action: ActionPanelPicker, Keys: []string{"f6"}, Description: "Open panel picker"},

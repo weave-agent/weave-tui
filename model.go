@@ -77,12 +77,14 @@ type Model struct {
 	cfg    sdk.Config
 	ps     sdk.PreferenceStore
 
-	chat       components.ChatModel
-	editor     components.EditorModel
-	footer     components.FooterModel
-	spinner    components.SpinnerModel
-	prompted   bool
-	toolPanels map[string]*messages.ToolPanel // track pending tool panels by ID
+	chat                    components.ChatModel
+	editor                  components.EditorModel
+	footer                  components.FooterModel
+	spinner                 components.SpinnerModel
+	prompted                bool
+	toolPanels              map[string]*messages.ToolPanel // track pending tool panels by ID
+	attachmentPanelSelected int
+	editingAttachment       int
 	// pendingToolCalls tracks unresolved tool calls in provider order so the
 	// UI can distinguish the currently-running tool from queued calls.
 	pendingToolCalls map[string]string
@@ -250,35 +252,36 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 	messages.GetThemeInfo = ui.Theme
 
 	m := Model{
-		width:            80,
-		height:           24,
-		bus:              bus,
-		cfg:              cfg,
-		ps:               ps,
-		chat:             components.NewChatModel(),
-		editor:           editor,
-		footer:           components.NewFooterModel(),
-		spinner:          components.NewSpinnerModel(palette.DefaultTheme()),
-		toolPanels:       make(map[string]*messages.ToolPanel),
-		pendingToolCalls: make(map[string]string),
-		commands:         commands,
-		bindings:         bindings,
-		ui:               ui,
-		layout:           NewLayoutEngine(),
-		currentModel:     cur,
-		sessionDir:       sdir,
-		thinkingLevel:    initialThinkingLevel(ps),
-		noConfigured:     len(models) == 0,
-		showHints:        true,
-		showLanding:      true,
-		landing:          NewLandingModel(cur.Model, cur.Provider, listLoadedComponents()),
-		dialogStack:      overlays.NewDialogStack(),
-		popupChans:       make(map[string]chan overlayResponse),
-		theme:            palette.DefaultTheme(),
-		styles:           styles.New(palette.DefaultTheme()),
-		panelManager:     ui.panelManager,
-		panelTray:        NewPanelTray(),
-		focus:            FocusEditor,
+		width:             80,
+		height:            24,
+		bus:               bus,
+		cfg:               cfg,
+		ps:                ps,
+		chat:              components.NewChatModel(),
+		editor:            editor,
+		footer:            components.NewFooterModel(),
+		spinner:           components.NewSpinnerModel(palette.DefaultTheme()),
+		toolPanels:        make(map[string]*messages.ToolPanel),
+		pendingToolCalls:  make(map[string]string),
+		commands:          commands,
+		bindings:          bindings,
+		ui:                ui,
+		layout:            NewLayoutEngine(),
+		currentModel:      cur,
+		sessionDir:        sdir,
+		thinkingLevel:     initialThinkingLevel(ps),
+		noConfigured:      len(models) == 0,
+		showHints:         true,
+		showLanding:       true,
+		landing:           NewLandingModel(cur.Model, cur.Provider, listLoadedComponents()),
+		dialogStack:       overlays.NewDialogStack(),
+		popupChans:        make(map[string]chan overlayResponse),
+		theme:             palette.DefaultTheme(),
+		styles:            styles.New(palette.DefaultTheme()),
+		panelManager:      ui.panelManager,
+		panelTray:         NewPanelTray(),
+		focus:             FocusEditor,
+		editingAttachment: -1,
 	}
 	m.footer = m.footer.SetModel(cur.Model, cur.Provider)
 	m.footer = m.footer.SetReasoning(modelReasoning(cur))
@@ -488,30 +491,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}(handlers, ev)
 		}
 
-		// Attachment delete mode: intercept navigation keys
-		if m.attach.InDeleteMode() {
-			switch msg.String() {
-			case "esc", "ctrl+c":
-				m.attach = m.attach.ToggleDeleteMode()
-				return m, nil
-			case "up", "left":
-				m.attach = m.attach.DeleteModePrev()
-				return m, nil
-			case "down", "right":
-				m.attach = m.attach.DeleteModeNext()
-				return m, nil
-			case "enter":
-				m.attach = m.attach.Remove(m.attach.DeleteIdx())
-
-				if len(m.attach.Items()) == 0 {
-					m.attach = m.attach.ToggleDeleteMode()
-				}
-
-				return m, nil
-			}
-			// Fall through to binding resolver (ctrl+r handled there)
-		}
-
 		// Handle ctrl+c with double-press: first clears editor, second quits
 		if msg.String() == "ctrl+c" {
 			return m.handleCtrlC()
@@ -611,16 +590,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Try keybinding resolver
-		if action, ok := m.bindings.Resolve(keyString(msg)); ok {
-			return m.dispatchBinding(action)
-		}
-
 		// Forward keys to active panel when focused
 		if m.focus == FocusPanel && m.panelManager.Active() != "" {
 			if cmd, ok := m.panelManager.UpdateDrawer(m.panelManager.Active(), msg); ok {
 				return m, cmd
 			}
+		}
+
+		// Try keybinding resolver
+		if action, ok := m.bindings.Resolve(keyString(msg)); ok {
+			return m.dispatchBinding(action)
 		}
 
 		// Completion key interception
@@ -658,9 +637,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Paste detection: auto-convert large pastes to file attachments
 		if attachments.IsPastedContent(msg.Content) {
 			m.attach = m.attach.AddPaste(msg.Content)
-			m.showStatus(fmt.Sprintf("Pasted content added as attachment (%d lines)", m.attach.Items()[len(m.attach.Items())-1].Lines))
+			item := m.attach.Items()[len(m.attach.Items())-1]
 
-			return m, m.statusTimer
+			return m.onAttachmentAdded(item.Path, item.Lines)
 		}
 
 		// Short paste: forward to editor
@@ -670,6 +649,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.refreshEditorCompletion()
 
 		return m, cmd
+
+	case removeAttachmentMsg:
+		m = m.removeAttachment(msg.index)
+
+		return m, nil
+
+	case editAttachmentMsg:
+		return m.openAttachmentEditor(msg.index)
+
+	case externalEditAttachmentMsg:
+		return m.openAttachmentExternalEditor(msg.index)
 
 	case externalEditorMsg:
 		if msg.err != nil {
@@ -682,6 +672,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			})
 
 			return m, m.statusTimer
+		}
+
+		if msg.attachment >= 0 {
+			m.attach = m.attach.UpdateContent(msg.attachment, msg.text)
+			m = m.syncAttachmentPanel()
+			m.syncPanelTray()
+			m.syncChatViewport()
+			m.focus = FocusEditor
+			m.panelTray = m.panelTray.SetFocused(false)
+			m.expandedPanelID = ""
+
+			return m, nil
 		}
 
 		if msg.text != "" {
@@ -1488,17 +1490,6 @@ func (m Model) dispatchBinding(action BindingAction) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	// Attachments
-	case ActionAttachDelete:
-		if m.attach.InDeleteMode() {
-			// ctrl+r while in delete mode: delete highlighted attachment
-			m.attach = m.attach.Remove(m.attach.DeleteIdx())
-		} else {
-			m.attach = m.attach.ToggleDeleteMode()
-		}
-
-		return m, nil
-
 	// Panels
 	case ActionPanelPicker:
 		if m.panelTray.Len() > 0 {
@@ -1585,14 +1576,19 @@ func copySelectionCmd(text string) tea.Cmd {
 
 // externalEditorMsg is sent when the external editor finishes.
 type externalEditorMsg struct {
-	text string
-	err  error
+	text       string
+	err        error
+	attachment int
 }
 
 // openExternalEditor opens the current editor content in an external editor.
 func (m Model) openExternalEditor() (tea.Model, tea.Cmd) {
 	text := m.editor.Value()
 
+	return m.openExternalEditorText(text, -1)
+}
+
+func (m Model) openExternalEditorText(text string, attachment int) (tea.Model, tea.Cmd) {
 	tmpFile, err := os.CreateTemp("", "weave-editor-*.md")
 	if err != nil {
 		m.statusMsg = "Failed to create temp file: " + err.Error()
@@ -1641,17 +1637,17 @@ func (m Model) openExternalEditor() (tea.Model, tea.Cmd) {
 		if procErr != nil {
 			_ = os.Remove(tmpPath)
 
-			return externalEditorMsg{err: procErr}
+			return externalEditorMsg{err: procErr, attachment: attachment}
 		}
 
 		data, readErr := os.ReadFile(tmpPath)
 		_ = os.Remove(tmpPath)
 
 		if readErr != nil {
-			return externalEditorMsg{err: readErr}
+			return externalEditorMsg{err: readErr, attachment: attachment}
 		}
 
-		return externalEditorMsg{text: string(data)}
+		return externalEditorMsg{text: string(data), attachment: attachment}
 	})
 }
 
@@ -2561,6 +2557,8 @@ func (m Model) handleDialogDone(d overlays.Dialog, pendingCmd tea.Cmd) (tea.Mode
 		return m.onLoginDialogDone(result, pendingCmd)
 	case dialogLogoutSelect:
 		return m.onLogoutDialogDone(result, pendingCmd)
+	case dialogAttachmentEditor:
+		return m.onAttachmentEditorDone(result, pendingCmd)
 	case dialogLoginOAuth:
 		// Login OAuth dialog was dismissed (user canceled or flow completed).
 		// The actual flow result is handled by LoginFlowResultMsg.
@@ -3318,6 +3316,44 @@ func (m Model) panelRows() (trayRows, abovePanelRows, belowPanelRows int) {
 	return trayRows, abovePanelRows, belowPanelRows
 }
 
+func (m Model) syncAttachmentPanel() Model {
+	if m.panelManager == nil {
+		return m
+	}
+
+	items := m.attach.Items()
+	if len(items) == 0 {
+		if m.panelManager.IsRegistered(attachmentsPanelID) {
+			m.panelManager.Remove(attachmentsPanelID)
+		}
+
+		m.attachmentPanelSelected = 0
+		if m.focus == FocusPanel && m.panelManager.Active() == "" {
+			m.focus = FocusEditor
+			m.panelTray = m.panelTray.SetFocused(false)
+		}
+
+		return m
+	}
+
+	m.attachmentPanelSelected = normalizeAttachmentSelection(m.attachmentPanelSelected, len(items))
+	title := fmt.Sprintf("Attachments %d", len(items))
+	drawer := newAttachmentsPanelDrawer(items, m.attachmentPanelSelected, m.theme)
+	m.panelManager.Register(PanelConfig{
+		ID:        attachmentsPanelID,
+		Title:     title,
+		Placement: TrayOnly,
+		Width:     64,
+		Height:    14,
+	}, drawer)
+
+	if !m.panelManager.PanelVisible(attachmentsPanelID) {
+		m.panelManager.Show(attachmentsPanelID)
+	}
+
+	return m
+}
+
 // syncPanelTray updates the tray tabs from the panel manager's visible panels.
 func (m *Model) syncPanelTray() {
 	if m.panelManager == nil {
@@ -3383,7 +3419,7 @@ func (m Model) Draw(scr uv.Screen, area uv.Rectangle) {
 func (m Model) drawNormalUI(scr uv.Screen, area uv.Rectangle, dockedRows int) Layout {
 	headerRows, pillRows, trayRows, abovePanelRows, belowPanelRows := m.layoutRows()
 
-	editorH := m.editor.Height() + m.attach.Height()
+	editorH := m.editor.Height()
 	lt := m.layout.ComputeWithPanels(
 		area.Dx(), area.Dy(),
 		editorH, headerRows, pillRows, dockedRows,
@@ -3400,7 +3436,7 @@ func (m Model) drawNormalUI(scr uv.Screen, area uv.Rectangle, dockedRows int) La
 	m.drawPills(scr, lt.Pills)
 	m.drawPanelTray(scr, lt.PanelTray)
 	m.drawActivePanel(scr, lt.AbovePanel)
-	editorArea := m.drawEditorWithAttachments(scr, lt.Editor)
+	editorArea := m.drawEditor(scr, lt.Editor)
 	m.drawCompletionPopupIfActive(scr, editorArea)
 	m.drawActivePanel(scr, lt.BelowPanel)
 	m.drawFooter(scr, lt.Footer)
@@ -3568,6 +3604,77 @@ func (m Model) drawPanelOverlay(scr uv.Screen, area uv.Rectangle, panelID string
 	m.panelManager.DrawPanel(panelID, scr, contentArea)
 }
 
+func (m Model) onAttachmentAdded(path string, lines int) (tea.Model, tea.Cmd) {
+	m = m.syncAttachmentPanel()
+	m.syncPanelTray()
+	m.showBanner(fmt.Sprintf("Added %s to Attachments — Tab to enter the tray (%d lines)", path, lines), sdk.NotifyInfo)
+
+	return m, m.bannerTimer
+}
+
+func (m Model) openAttachmentEditor(index int) (tea.Model, tea.Cmd) {
+	m.editingAttachment = -1
+	items := m.attach.Items()
+	if index < 0 || index >= len(items) {
+		return m, nil
+	}
+
+	m.editingAttachment = index
+	editor := overlays.NewEditorModel("Edit "+items[index].Path, items[index].Content)
+	editor = editor.SetSize(m.width, m.height)
+	editor = editor.Show()
+	m.dialogStack = m.dialogStack.Push(overlays.NewEditorDialog(dialogAttachmentEditor, editor))
+
+	return m, nil
+}
+
+func (m Model) openAttachmentExternalEditor(index int) (tea.Model, tea.Cmd) {
+	items := m.attach.Items()
+	if index < 0 || index >= len(items) {
+		return m, nil
+	}
+
+	return m.openExternalEditorText(items[index].Content, index)
+}
+
+func (m Model) removeAttachment(index int) Model {
+	m.attach = m.attach.Remove(index)
+	if m.attachmentPanelSelected >= len(m.attach.Items()) {
+		m.attachmentPanelSelected = max(0, len(m.attach.Items())-1)
+	}
+
+	m = m.syncAttachmentPanel()
+	m.syncPanelTray()
+
+	if len(m.attach.Items()) == 0 {
+		m.focus = FocusEditor
+		m.panelTray = m.panelTray.SetFocused(false)
+		m.expandedPanelID = ""
+	} else {
+		m.syncChatViewport()
+	}
+
+	return m
+}
+
+func (m Model) onAttachmentEditorDone(result overlays.DialogResult, pendingCmd tea.Cmd) (tea.Model, tea.Cmd) {
+	index := m.editingAttachment
+	m.editingAttachment = -1
+
+	if result.Err == nil && index >= 0 {
+		m.attach = m.attach.UpdateContent(index, result.Value)
+	}
+
+	m = m.syncAttachmentPanel()
+	m.syncPanelTray()
+	m.syncChatViewport()
+	m.focus = FocusEditor
+	m.panelTray = m.panelTray.SetFocused(false)
+	m.expandedPanelID = ""
+
+	return m, pendingCmd
+}
+
 func (m Model) drawSeparator(scr uv.Screen, area uv.Rectangle) {
 	if area.Dy() == 0 {
 		return
@@ -3623,19 +3730,7 @@ func (m Model) drawPills(scr uv.Screen, area uv.Rectangle) {
 	}
 }
 
-func (m Model) drawEditorWithAttachments(scr uv.Screen, area uv.Rectangle) uv.Rectangle {
-	attachH := m.attach.Height()
-
-	if attachH > 0 && area.Dy() > attachH {
-		attachArea := uv.Rect(area.Min.X, area.Min.Y, area.Dx(), attachH)
-		editorArea := uv.Rect(area.Min.X, area.Min.Y+attachH, area.Dx(), area.Dy()-attachH)
-
-		m.attach.Draw(scr, attachArea)
-		m.editor.Draw(scr, editorArea)
-
-		return editorArea
-	}
-
+func (m Model) drawEditor(scr uv.Screen, area uv.Rectangle) uv.Rectangle {
 	m.editor.Draw(scr, area)
 
 	return area

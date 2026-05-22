@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,11 +51,11 @@ func TestEditorEnterInsertsNewline(t *testing.T) {
 	assert.Contains(t, m.Value(), "line1")
 }
 
-func TestEditorCtrlEnterSubmits(t *testing.T) {
+func TestEditorCtrlSSubmits(t *testing.T) {
 	m := NewEditorModel("Note:", "").Show()
 	m, _ = m.Update(tea.KeyPressMsg{Text: "content", Code: tea.KeyExtended})
 
-	m, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModCtrl})
+	m, cmd := m.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	assert.False(t, m.Visible())
 
@@ -63,6 +64,15 @@ func TestEditorCtrlEnterSubmits(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "content", result.Value)
 	assert.True(t, result.Ok)
+}
+
+func TestEditorShiftEnterStaysOpen(t *testing.T) {
+	m := NewEditorModel("Note:", "").Show()
+	m, _ = m.Update(tea.KeyPressMsg{Text: "content", Code: tea.KeyExtended})
+
+	m, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModShift})
+	assert.Nil(t, cmd)
+	assert.True(t, m.Visible())
 }
 
 func TestEditorEscapeCancels(t *testing.T) {
@@ -94,7 +104,7 @@ func TestEditorViewVisible(t *testing.T) {
 	m := NewEditorModel("Edit note:", "").Show().SetSize(60, 20)
 	view := m.View()
 	assert.Contains(t, view, "Edit note:")
-	assert.Contains(t, view, "Ctrl+Enter")
+	assert.Contains(t, view, "Ctrl+S")
 	assert.Contains(t, view, "cancel")
 }
 
@@ -103,13 +113,21 @@ func TestEditorViewZeroWidth(t *testing.T) {
 	assert.Empty(t, m.View())
 }
 
+func TestEditorView_StaysWithinSmallScreen(t *testing.T) {
+	m := NewEditorModel("Edit:", "hello").Show().SetSize(30, 10)
+	view := m.View()
+
+	assert.LessOrEqual(t, lipgloss.Width(view), 30)
+	assert.LessOrEqual(t, lipgloss.Height(view), 10)
+}
+
 func TestEditorDraw_Visible(t *testing.T) {
 	m := NewEditorModel("Edit:", "").Show().SetSize(60, 20)
 	canvas := uv.NewScreenBuffer(60, 20)
 	m.Draw(canvas, canvas.Bounds())
 	output := uv.TrimSpace(canvas.Render())
 	assert.Contains(t, output, "Edit:")
-	assert.Contains(t, output, "Ctrl+Enter")
+	assert.Contains(t, output, "Ctrl+S")
 }
 
 func TestEditorDraw_WithText(t *testing.T) {
@@ -138,7 +156,7 @@ func TestEditorView_StyledWithRoundedBorder(t *testing.T) {
 	m := NewEditorModel("Edit:", "").Show().SetSize(60, 20)
 	view := m.View()
 	assert.Contains(t, view, "Edit:")
-	assert.Contains(t, view, "Ctrl+Enter")
+	assert.Contains(t, view, "Ctrl+S")
 	// Rounded border should be present
 	assert.Contains(t, view, "╭")
 }

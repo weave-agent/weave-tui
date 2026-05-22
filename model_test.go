@@ -2812,8 +2812,8 @@ func TestModel_PasteDetection_ConvertsToAttachment(t *testing.T) {
 
 	assert.Len(t, m.attach.Items(), 1)
 	assert.Equal(t, 12, m.attach.Items()[0].Lines)
-	// Status message should be set
-	assert.Contains(t, m.statusMsg, "attachment")
+	assert.Contains(t, m.bannerMsg, "Attachments")
+	assert.Contains(t, m.bannerMsg, "Tab to enter the tray")
 	// cmd should be a timer (status timeout)
 	assert.NotNil(t, cmd)
 }
@@ -2845,70 +2845,88 @@ func TestModel_PasteDetection_CharThreshold(t *testing.T) {
 	assert.Len(t, m.attach.Items(), 1)
 }
 
-func TestModel_AttachmentDeleteMode_Toggle(t *testing.T) {
+func TestModel_PasteDetection_CreatesAttachmentsPanel(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m = addTestAttachment(m, "a.go", "content a", 1)
 
-	// ctrl+r toggles delete mode
-	action, ok := m.bindings.Resolve("ctrl+r")
-	require.True(t, ok)
-	assert.Equal(t, ActionAttachDelete, action)
-
-	model, _ := m.dispatchBinding(ActionAttachDelete)
+	model, cmd := m.Update(tea.PasteMsg{Content: strings.Repeat("line\n", 12)})
 	m = model.(Model)
-	assert.True(t, m.attach.InDeleteMode())
-	assert.Equal(t, 0, m.attach.DeleteIdx())
+
+	assert.True(t, m.panelManager.PanelVisible(attachmentsPanelID))
+	assert.Equal(t, attachmentsPanelID, m.panelManager.Active())
+	assert.Equal(t, FocusEditor, m.focus)
+	assert.Contains(t, m.bannerMsg, "Tab to enter the tray")
+	assert.NotNil(t, cmd)
 }
 
-func TestModel_AttachmentDeleteMode_NavigateAndDelete(t *testing.T) {
+func TestModel_AttachmentsPanel_Remove(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
 	m = addTestAttachment(m, "a.go", "aaa", 1)
-	m = addTestAttachment(m, "b.go", "bbb", 2)
+	m = m.syncAttachmentPanel()
 
-	// Enter delete mode
-	m.attach = m.attach.ToggleDeleteMode()
-	assert.True(t, m.attach.InDeleteMode())
-
-	// Navigate down to second attachment
-	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, _ := m.Update(removeAttachmentMsg{index: 0})
 	m = model.(Model)
-	assert.Equal(t, 1, m.attach.DeleteIdx())
 
-	// ctrl+r (dispatch) deletes highlighted
-	model, _ = m.dispatchBinding(ActionAttachDelete)
-	m = model.(Model)
-	assert.Len(t, m.attach.Items(), 1)
-	assert.Equal(t, "a.go", m.attach.Items()[0].Path)
+	assert.Empty(t, m.attach.Items())
+	assert.False(t, m.panelManager.IsRegistered(attachmentsPanelID))
+	assert.Equal(t, FocusEditor, m.focus)
 }
 
-func TestModel_AttachmentDeleteMode_EscapeExits(t *testing.T) {
+func TestModel_AttachmentsPanel_EditReturnsFocusToEditor(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m = addTestAttachment(m, "a.go", "aaa", 1)
-	m.attach = m.attach.ToggleDeleteMode()
+	m = addTestAttachment(m, "a.go", "old", 1)
+	m = m.syncAttachmentPanel()
+	m.focus = FocusPanel
 
-	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	model, _ := m.openAttachmentEditor(0)
 	m = model.(Model)
-	assert.False(t, m.attach.InDeleteMode())
+	require.False(t, m.dialogStack.Empty())
+
+	model, _ = m.Update(overlays.EditorResultMsg{Value: "new\ncontent", Ok: true})
+	m = model.(Model)
+
+	require.Len(t, m.attach.Items(), 1)
+	assert.Equal(t, "new\ncontent", m.attach.Items()[0].Content)
+	assert.Equal(t, 2, m.attach.Items()[0].Lines)
+	assert.Equal(t, FocusEditor, m.focus)
+	assert.False(t, m.panelTray.IsFocused())
 }
 
-func TestModel_AttachmentDeleteMode_UpNav(t *testing.T) {
+func TestModel_AttachmentEditorDoneIgnoresStaleInvalidIndex(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m = addTestAttachment(m, "a.go", "aaa", 1)
-	m = addTestAttachment(m, "b.go", "bbb", 2)
-	m.attach = m.attach.ToggleDeleteMode()
+	m = addTestAttachment(m, "a.go", "old", 1)
+	m.editingAttachment = 0
 
-	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
+	model, _ := m.openAttachmentEditor(99)
 	m = model.(Model)
-	// Up should wrap to last
-	assert.Equal(t, 1, m.attach.DeleteIdx())
+	model, _ = m.onAttachmentEditorDone(overlays.DialogResult{Value: "new"}, nil)
+	m = model.(Model)
+
+	assert.Equal(t, "old", m.attach.Items()[0].Content)
+}
+
+func TestModel_AttachmentsPanel_ExternalEditReturnsFocusToEditor(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+	m = addTestAttachment(m, "a.go", "old", 1)
+	m = m.syncAttachmentPanel()
+	m.focus = FocusPanel
+
+	model, _ := m.Update(externalEditorMsg{attachment: 0, text: "external"})
+	m = model.(Model)
+
+	require.Len(t, m.attach.Items(), 1)
+	assert.Equal(t, "external", m.attach.Items()[0].Content)
+	assert.Equal(t, FocusEditor, m.focus)
+	assert.False(t, m.panelTray.IsFocused())
 }
 
 func TestModel_SubmitWithAttachments(t *testing.T) {
@@ -3310,6 +3328,8 @@ func TestModel_Draw_CompletionWithAttachments(t *testing.T) {
 	m.width = 80
 	m.height = 24
 	m = addTestAttachment(m, "test.go", "package main", 1)
+	m = m.syncAttachmentPanel()
+	m.syncPanelTray()
 
 	m.editor = m.editor.SetValue("/he")
 	m = m.refreshEditorCompletion()
@@ -3320,6 +3340,9 @@ func TestModel_Draw_CompletionWithAttachments(t *testing.T) {
 	assert.NotPanics(t, func() {
 		m.Draw(canvas, canvas.Bounds())
 	})
+
+	rendered := canvas.Render()
+	assert.NotContains(t, rendered, "test.go")
 }
 
 func TestModel_RefreshEditorCompletion_MultilineAtTrigger(t *testing.T) {
@@ -4028,6 +4051,26 @@ func TestModel_PanelKeyForwarding(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, 'x', keyMsg.Code)
 	assert.Equal(t, FocusPanel, m.focus)
+}
+
+func TestModel_PanelKeyForwardingPrecedesGlobalBinding(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+
+	md := &mockPanelDrawer{}
+	m.panelManager.Register(PanelConfig{ID: "p1", Title: "Test"}, md)
+	m.panelManager.Show("p1")
+	m.focus = FocusPanel
+
+	model, _ := m.Update(tea.KeyPressMsg{Code: 'g', Mod: tea.ModCtrl})
+	_ = model.(Model)
+
+	assert.Equal(t, 1, md.updateCount)
+	keyMsg, ok := md.lastMsg.(tea.KeyPressMsg)
+	require.True(t, ok)
+	assert.Equal(t, 'g', keyMsg.Code)
+	assert.Equal(t, tea.ModCtrl, keyMsg.Mod)
 }
 
 func TestModel_PanelPickerKeybinding(t *testing.T) {
