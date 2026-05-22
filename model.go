@@ -154,6 +154,9 @@ type Model struct {
 	// theme is the active color theme for rendering.
 	theme *palette.Theme
 
+	// styles is the cached style set for the active theme.
+	styles *styles.Styles
+
 	contextTokens int
 
 	// agentState tracks current agent activity for accent color and pulse.
@@ -272,6 +275,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		dialogStack:      overlays.NewDialogStack(),
 		popupChans:       make(map[string]chan overlayResponse),
 		theme:            palette.DefaultTheme(),
+		styles:           styles.New(palette.DefaultTheme()),
 		panelManager:     ui.panelManager,
 		panelTray:        NewPanelTray(),
 		focus:            FocusEditor,
@@ -711,7 +715,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case MessageStartMsg:
-		m.chat = m.chat.AddItem(messages.NewAssistantMessage())
+		m.chat = m.chat.AddItem(m.newAssistantMessage())
 		m.chat = m.chat.ClearSelection()
 
 		// Keep render loop active so progressive renders show through
@@ -807,7 +811,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			am := messages.NewAssistantMessage()
+			am := m.newAssistantMessage()
 			am.Finalize("[error] " + errStr)
 			m.chat = m.chat.AddItem(am)
 		}
@@ -945,6 +949,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newTheme.AccentDim = accentDim
 		newTheme.AccentBright = accentBright
 		m.theme = &newTheme
+		m.styles = styles.New(m.theme)
 
 		// When idle, border uses thinking-level grayscale color.
 		borderColor := accent
@@ -1000,6 +1005,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.theme != nil {
 			m.theme = msg.theme
 		}
+		m.styles = styles.New(m.theme)
 
 		return m, nil
 
@@ -1687,7 +1693,7 @@ func (m *Model) onMessageEnd(msg MessageEndMsg) {
 	am, idx := m.findStreamingAssistant()
 	if am != nil {
 		if msg.Thinking != "" {
-			m.chat = m.chat.InsertItemAt(idx, messages.NewThinkingBlock(msg.Thinking))
+			m.chat = m.chat.InsertItemAt(idx, m.newThinkingBlock(msg.Thinking))
 			idx++
 		}
 
@@ -1703,7 +1709,7 @@ func (m *Model) onMessageEnd(msg MessageEndMsg) {
 			argsStr = string(args)
 		}
 
-		panel := messages.NewToolPanel(tc.ID, tc.Name, argsStr)
+		panel := m.newToolPanel(tc.ID, tc.Name, argsStr)
 		if m.ui != nil {
 			if r, ok := m.ui.GetRichRenderer(tc.Name); ok {
 				panel.SetRenderer(&richRendererAdapter{renderer: r, themeFunc: m.ui.Theme})
@@ -1727,7 +1733,7 @@ func (m *Model) onToolResult(msg ToolResultMsg) {
 
 	panel, ok := m.toolPanels[msg.ToolID]
 	if !ok {
-		panel = messages.NewToolPanel(msg.ToolID, msg.Tool, "")
+		panel = m.newToolPanel(msg.ToolID, msg.Tool, "")
 		m.toolPanels[msg.ToolID] = panel
 		m.chat = m.chat.AddItem(panel)
 	}
@@ -1743,7 +1749,7 @@ func (m *Model) onToolResult(msg ToolResultMsg) {
 func (m *Model) withToolPanel(id, tool, input string, update func(*messages.ToolPanel)) {
 	panel, ok := m.toolPanels[id]
 	if !ok {
-		panel = messages.NewToolPanel(id, tool, input)
+		panel = m.newToolPanel(id, tool, input)
 		m.toolPanels[id] = panel
 		m.chat = m.chat.AddItem(panel)
 	}
@@ -1874,7 +1880,37 @@ func (m Model) interruptStreaming() (tea.Model, tea.Cmd) {
 
 // AddUserMessage adds a user message to the chat.
 func (m *Model) AddUserMessage(content string) {
-	m.chat = m.chat.AddItem(messages.NewUserMessage(content))
+	um := messages.NewUserMessage(content)
+	um.SetStyles(m.styles)
+	m.chat = m.chat.AddItem(um)
+}
+
+// newAssistantMessage creates a styled assistant message using the active theme.
+func (m Model) newAssistantMessage() *messages.AssistantMessage {
+	am := messages.NewAssistantMessage()
+	am.SetStyles(m.styles)
+	return am
+}
+
+// newUserMessage creates a styled user message using the active theme.
+func (m Model) newUserMessage(content string) *messages.UserMessage {
+	um := messages.NewUserMessage(content)
+	um.SetStyles(m.styles)
+	return um
+}
+
+// newThinkingBlock creates a styled thinking block using the active theme.
+func (m Model) newThinkingBlock(content string) *messages.ThinkingBlock {
+	tb := messages.NewThinkingBlock(content)
+	tb.SetStyles(m.styles)
+	return tb
+}
+
+// newToolPanel creates a styled tool panel using the active theme.
+func (m Model) newToolPanel(id, tool, input string) *messages.ToolPanel {
+	panel := messages.NewToolPanel(id, tool, input)
+	panel.SetStyles(m.styles)
+	return panel
 }
 
 // onOutdatedExtensions renders a notification banner for outdated extensions.
@@ -1927,7 +1963,7 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 				xmlContent += "\n\n" + cmdArgs
 			}
 
-			m.chat = m.chat.AddItem(messages.NewUserMessage(xmlContent))
+			m.chat = m.chat.AddItem(m.newUserMessage(xmlContent))
 			m.prompted = true
 			m.showLanding = false
 		}
@@ -1956,7 +1992,7 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 		if result.Notify != "" {
 			m.showLanding = false
 
-			m.chat = m.chat.AddItem(messages.NewAssistantMessage())
+			m.chat = m.chat.AddItem(m.newAssistantMessage())
 
 			items := m.chat.Items()
 			if am, ok := items[len(items)-1].(*messages.AssistantMessage); ok {
@@ -2018,7 +2054,7 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 
 func (m Model) onSessionListResult(msg SessionListResultMsg) (tea.Model, tea.Cmd) {
 	if msg.Err != nil {
-		am := messages.NewAssistantMessage()
+		am := m.newAssistantMessage()
 		am.Finalize(fmt.Sprintf("Error listing sessions: %v", msg.Err))
 		m.chat = m.chat.AddItem(am)
 
@@ -2026,7 +2062,7 @@ func (m Model) onSessionListResult(msg SessionListResultMsg) (tea.Model, tea.Cmd
 	}
 
 	if len(msg.Sessions) == 0 {
-		am := messages.NewAssistantMessage()
+		am := m.newAssistantMessage()
 		am.Finalize("No sessions found.")
 		m.chat = m.chat.AddItem(am)
 
@@ -2051,7 +2087,7 @@ func (m Model) onSessionListResult(msg SessionListResultMsg) (tea.Model, tea.Cmd
 
 func (m Model) onModelListResult(msg ModelListResultMsg) (tea.Model, tea.Cmd) {
 	if len(msg.Models) == 0 {
-		am := messages.NewAssistantMessage()
+		am := m.newAssistantMessage()
 		am.Finalize("No models available.")
 		m.chat = m.chat.AddItem(am)
 
@@ -2059,7 +2095,7 @@ func (m Model) onModelListResult(msg ModelListResultMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if len(msg.Models) == 1 {
-		am := messages.NewAssistantMessage()
+		am := m.newAssistantMessage()
 		am.Finalize("Only one model available: " + msg.Models[0].Display())
 		m.chat = m.chat.AddItem(am)
 
@@ -2160,7 +2196,7 @@ func (m Model) onModelChangeFailed(msg ModelChangeFailedMsg) (tea.Model, tea.Cmd
 	m.footer = m.footer.SetThinkingLevel(string(m.thinkingLevel))
 	m.editor = m.editor.SetBorderColor(palette.ThinkingBorderColor(m.thinkingLevel))
 
-	am := messages.NewAssistantMessage()
+	am := m.newAssistantMessage()
 	am.Finalize("Failed to switch provider: " + msg.Error)
 	m.chat = m.chat.AddItem(am)
 
@@ -2173,7 +2209,7 @@ func (m Model) onModelChangeFailed(msg ModelChangeFailedMsg) (tea.Model, tea.Cmd
 
 func (m Model) onProviderListResult(msg ProviderListResultMsg) (tea.Model, tea.Cmd) {
 	if len(msg.Providers) == 0 {
-		am := messages.NewAssistantMessage()
+		am := m.newAssistantMessage()
 		am.Finalize("No providers available.")
 		m.chat = m.chat.AddItem(am)
 
@@ -2203,7 +2239,7 @@ func (m Model) onProviderListResult(msg ProviderListResultMsg) (tea.Model, tea.C
 
 func (m Model) onLoginListResult(msg LoginListResultMsg) (tea.Model, tea.Cmd) {
 	if len(msg.Providers) == 0 {
-		am := messages.NewAssistantMessage()
+		am := m.newAssistantMessage()
 		am.Finalize("No providers available for login.")
 		m.chat = m.chat.AddItem(am)
 
@@ -2237,7 +2273,7 @@ func (m Model) onLoginListResult(msg LoginListResultMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) onLogoutListResult(msg LogoutListResultMsg) (tea.Model, tea.Cmd) {
 	if len(msg.Providers) == 0 {
-		am := messages.NewAssistantMessage()
+		am := m.newAssistantMessage()
 		am.Finalize("No providers currently authenticated.")
 		m.chat = m.chat.AddItem(am)
 
@@ -2292,7 +2328,7 @@ func (m Model) onKeyInputDialogDone(result overlays.DialogResult, pendingCmd tea
 	}
 
 	if m.cfg == nil {
-		am := messages.NewAssistantMessage()
+		am := m.newAssistantMessage()
 		am.Finalize("No config available to save API key.")
 		m.chat = m.chat.AddItem(am)
 
@@ -2300,7 +2336,7 @@ func (m Model) onKeyInputDialogDone(result overlays.DialogResult, pendingCmd tea
 	}
 
 	if m.ps == nil {
-		am := messages.NewAssistantMessage()
+		am := m.newAssistantMessage()
 		am.Finalize("No preference store available to save API key.")
 		m.chat = m.chat.AddItem(am)
 
@@ -2309,7 +2345,7 @@ func (m Model) onKeyInputDialogDone(result overlays.DialogResult, pendingCmd tea
 
 	err := m.ps.SaveProviderKey(providerName, apiKey)
 
-	am := messages.NewAssistantMessage()
+	am := m.newAssistantMessage()
 	if err != nil {
 		am.Finalize(fmt.Sprintf("Failed to save API key for %s: %v", providerName, err))
 		m.chat = m.chat.AddItem(am)
@@ -2392,7 +2428,7 @@ func (m Model) onLoginDialogDone(result overlays.DialogResult, pendingCmd tea.Cm
 func (m Model) startOAuthLogin(selected LoginProviderEntry, pendingCmd tea.Cmd) (tea.Model, tea.Cmd) {
 	oauthProvider, ok := sdk.GetOAuthProvider(selected.ID)
 	if !ok {
-		am := messages.NewAssistantMessage()
+		am := m.newAssistantMessage()
 		am.Finalize(fmt.Sprintf("OAuth provider %s not configured.", selected.Name))
 		m.chat = m.chat.AddItem(am)
 
@@ -2417,7 +2453,7 @@ func (m Model) startOAuthLogin(selected LoginProviderEntry, pendingCmd tea.Cmd) 
 
 			cancel()
 
-			am := messages.NewAssistantMessage()
+			am := m.newAssistantMessage()
 			am.Finalize(fmt.Sprintf("Failed to start device code flow for %s: %v", selected.Name, err))
 			m.chat = m.chat.AddItem(am)
 
@@ -2455,7 +2491,7 @@ func (m Model) onLogoutDialogDone(result overlays.DialogResult, pendingCmd tea.C
 	m.pendingLogoutProviders = nil
 
 	if err := sdk.ClearProviderAuth(selected.ID); err != nil {
-		am := messages.NewAssistantMessage()
+		am := m.newAssistantMessage()
 		am.Finalize(fmt.Sprintf("Failed to clear auth for %s: %v", selected.Name, err))
 		m.chat = m.chat.AddItem(am)
 
@@ -2465,7 +2501,7 @@ func (m Model) onLogoutDialogDone(result overlays.DialogResult, pendingCmd tea.C
 	// Update in-memory auth status so the provider is no longer usable.
 	sdkmodel.SetProviderAuth(selected.ID, false)
 
-	am := messages.NewAssistantMessage()
+	am := m.newAssistantMessage()
 	am.Finalize(fmt.Sprintf("Logged out from %s.", selected.Name))
 	m.chat = m.chat.AddItem(am)
 
@@ -2641,7 +2677,7 @@ func (m *Model) rebuildChatFromSession(sessionID string) {
 	if err != nil {
 		m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
 		am := messages.NewAssistantMessage()
-		am.SetStyles(styles.New(m.theme))
+		am.SetStyles(m.styles)
 		am.Finalize(fmt.Sprintf("Error loading session: %v", err))
 		m.chat = m.chat.AddItem(am)
 
@@ -2650,7 +2686,7 @@ func (m *Model) rebuildChatFromSession(sessionID string) {
 
 	m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
 	m.toolPanels = make(map[string]*messages.ToolPanel)
-	ss := styles.New(m.theme)
+	ss := m.styles
 
 	for _, entry := range entries {
 		switch entry.Role {
@@ -2704,7 +2740,7 @@ func (m *Model) rebuildChatFromSession(sessionID string) {
 func (m *Model) rebuildChatFromMessages(msgs []sdk.Message) {
 	m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
 	m.toolPanels = make(map[string]*messages.ToolPanel)
-	ss := styles.New(m.theme)
+	ss := m.styles
 
 	for _, msg := range msgs {
 		content := ""
@@ -3547,7 +3583,7 @@ func (m Model) drawPills(scr uv.Screen, area uv.Rectangle) {
 	}
 
 	if m.bannerMsg != "" && y < area.Max.Y {
-		s := styles.New(m.theme)
+		s := m.styles
 		marker := bannerMarkerForLevel(m.bannerLevel)
 		var bannerStyle lipgloss.Style
 		switch m.bannerLevel {
