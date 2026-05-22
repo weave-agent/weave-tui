@@ -135,11 +135,11 @@
 - [x] run `go test ./...` - must pass before next task
 
 ### Task 11: Move application lifecycle and root extension registration wiring
-- [ ] move TUI runtime lifecycle from root `tui.go` into `internal/app`
-- [ ] update root extension registration to construct the internal app implementation without exposing `TUI`, `NewTUI`, or `ErrNoTTY` as public API
-- [ ] ensure `sdk.RegisterExtensionWithScopeAndWriter("tui", "ui", ...)` behavior is unchanged
-- [ ] update TUI lifecycle tests to target internal app behavior or root registration behavior as appropriate
-- [ ] run `go test ./...` - must pass before next task
+- [x] move TUI runtime lifecycle from root `tui.go` into `internal/app`
+- [x] update root extension registration to construct the internal app implementation without exposing `TUI`, `NewTUI`, or `ErrNoTTY` as public API
+- [x] ensure `sdk.RegisterExtensionWithScopeAndWriter("tui", "ui", ...)` behavior is unchanged
+- [x] update TUI lifecycle tests to target internal app behavior or root registration behavior as appropriate
+- [x] run `go test ./...` - must pass before next task
 
 ### Task 12: Clean root package and verify public surface
 - [ ] remove or internalize remaining root files that expose implementation-only symbols
