@@ -10,18 +10,12 @@ import (
 	"strings"
 	"time"
 
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
+
 	tea "charm.land/bubbletea/v2"
 )
 
 const entryTypeMessage = "message"
-
-// SessionEntry holds minimal session metadata for the selector.
-type SessionEntry struct {
-	ID        string
-	CWD       string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
 
 // sessionDir returns the directory where session JSONL files are stored.
 // Checks WEAVE_JSONL_DIR env var, then falls back to ~/.weave/sessions.
@@ -93,7 +87,7 @@ type sessionHeader struct {
 // listSessions reads session headers from the session directory.
 // Returns sessions sorted by most recent first.
 // dirOverride, when non-empty, is used instead of the default session directory.
-func listSessions(dirOverride string) ([]SessionEntry, error) {
+func listSessions(dirOverride string) ([]tuievents.SessionEntry, error) {
 	dir := dirOverride
 	if dir == "" {
 		var err error
@@ -113,7 +107,7 @@ func listSessions(dirOverride string) ([]SessionEntry, error) {
 		return nil, fmt.Errorf("read session dir: %w", err)
 	}
 
-	var sessions []SessionEntry
+	var sessions []tuievents.SessionEntry
 
 	for _, e := range entries {
 		if e.IsDir() || filepath.Ext(e.Name()) != ".jsonl" {
@@ -132,7 +126,7 @@ func listSessions(dirOverride string) ([]SessionEntry, error) {
 			continue
 		}
 
-		sessions = append(sessions, SessionEntry{
+		sessions = append(sessions, tuievents.SessionEntry{
 			ID:        header.ID,
 			CWD:       header.CWD,
 			CreatedAt: header.Timestamp,
@@ -241,11 +235,11 @@ func shortenCWD(cwd string) string {
 	return strings.Replace(cwd, home, "~", 1)
 }
 
-// listSessionsCmd returns a tea.Cmd that reads session headers and returns SessionListResultMsg.
+// listSessionsCmd returns a tea.Cmd that reads session headers and returns tuievents.SessionListResultMsg.
 func listSessionsCmd(dirOverride string) tea.Cmd {
 	return func() tea.Msg {
 		sessions, err := listSessions(dirOverride)
-		return SessionListResultMsg{Sessions: sessions, Err: err}
+		return tuievents.SessionListResultMsg{Sessions: sessions, Err: err}
 	}
 }
 

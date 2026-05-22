@@ -8,6 +8,7 @@ import (
 	"github.com/weave-agent/weave/sdk"
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
 
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 	"github.com/weave-agent/weave-tui/internal/palette"
 
 	tea "charm.land/bubbletea/v2"
@@ -55,135 +56,6 @@ const (
 // Sender abstracts tea.Program.Send for testability.
 type Sender interface {
 	Send(msg tea.Msg)
-}
-
-// tea.Msg types for Bubble Tea.
-
-type TurnStartMsg struct {
-	Turn int
-}
-
-type TurnEndMsg struct{}
-
-type MessageStartMsg struct{}
-
-type MessageUpdateMsg struct {
-	Content   string
-	TokenRate float64
-}
-
-type MessageEndMsg struct {
-	Content   string
-	Thinking  string
-	ToolCalls []sdk.ToolCall
-}
-
-type ToolResultMsg struct {
-	ToolID string
-	Tool   string
-	Result sdk.ToolResult
-}
-
-// ToolStartMsg is sent when a tool begins executing.
-type ToolStartMsg struct {
-	ToolID string
-	Tool   string
-	Input  string
-}
-
-// ToolProgressMsg carries a live update from a running tool.
-type ToolProgressMsg struct {
-	ToolID  string
-	Tool    string
-	Content string
-}
-
-// ToolCompleteMsg is sent when a tool finishes successfully.
-type ToolCompleteMsg struct {
-	ToolID  string
-	Tool    string
-	Content string
-}
-
-// ToolErrorMsg is sent when a tool fails.
-type ToolErrorMsg struct {
-	ToolID  string
-	Tool    string
-	Error   string
-	IsError bool
-}
-
-// ToolInterruptedMsg is sent when a tool is interrupted (e.g., by ESC).
-type ToolInterruptedMsg struct {
-	ToolID string
-	Tool   string
-}
-
-type AgentEndMsg struct {
-	Payload any
-}
-
-type ShutdownMsg struct{}
-
-// SessionListResultMsg carries the result of listing sessions.
-type SessionListResultMsg struct {
-	Sessions []SessionEntry
-	Err      error
-}
-
-// SessionResumedMsg is sent when a session resume event arrives from the bus.
-type SessionResumedMsg struct {
-	SessionID string
-	Messages  []sdk.Message
-}
-
-// ModelListResultMsg carries the result of listing available models.
-type ModelListResultMsg struct {
-	Models []ModelEntry
-}
-
-// ModelChangedMsg is sent when the user selects or cycles to a new model.
-type ModelChangedMsg struct {
-	Entry ModelEntry
-}
-
-// ModelChangeFailedMsg is sent when the loop fails to switch providers.
-type ModelChangeFailedMsg struct {
-	Provider string
-	Error    string
-}
-
-// ThinkingLevelSetMsg is sent when the user sets the thinking level via /thinking command.
-type ThinkingLevelSetMsg struct {
-	Level sdkmodel.ThinkingLevel
-}
-
-// OutdatedNotificationMsg is sent when outdated extensions are detected at startup.
-type OutdatedNotificationMsg struct {
-	Extensions []sdk.OutdatedInfo
-}
-
-// CompactedMsg is sent when the agent compacts the conversation context.
-type CompactedMsg struct {
-	Summarized   int
-	TokensBefore int
-	TokensAfter  int
-	Error        string
-}
-
-// TokenUsageMsg is sent when the provider reports token usage for a turn.
-type TokenUsageMsg struct {
-	InputTokens         int
-	OutputTokens        int
-	CacheCreationTokens int
-	CacheReadTokens     int
-	ContextTokens       int
-}
-
-// AgentStateChangeMsg is sent when the agent activity state changes.
-// The UI updates accent colors and editor pulse animation based on this.
-type AgentStateChangeMsg struct {
-	State palette.State
 }
 
 // agentStateTracker tracks agent activity state from bus events.
@@ -248,15 +120,15 @@ func (t *agentStateTracker) update(msg tea.Msg) (palette.State, bool) {
 	prev := t.state
 
 	switch msg := msg.(type) {
-	case TurnStartMsg:
+	case tuievents.TurnStartMsg:
 		t.state = palette.StateStreaming
 		t.clearTools()
-	case MessageStartMsg:
+	case tuievents.MessageStartMsg:
 		t.state = palette.StateStreaming
-	case ToolResultMsg:
+	case tuievents.ToolResultMsg:
 		t.removeTool(msg.ToolID)
 		t.maybeReturnToStreaming()
-	case MessageEndMsg:
+	case tuievents.MessageEndMsg:
 		for _, tc := range msg.ToolCalls {
 			t.addTool(tc.ID)
 		}
@@ -264,36 +136,36 @@ func (t *agentStateTracker) update(msg tea.Msg) (palette.State, bool) {
 		if t.toolCount > 0 {
 			t.state = palette.StateToolRunning
 		}
-	case ToolStartMsg:
+	case tuievents.ToolStartMsg:
 		t.addTool(msg.ToolID)
 
 		if t.toolCount > 0 {
 			t.state = palette.StateToolRunning
 		}
-	case ToolProgressMsg:
+	case tuievents.ToolProgressMsg:
 		t.addTool(msg.ToolID)
 
 		if t.toolCount > 0 {
 			t.state = palette.StateToolRunning
 		}
-	case ToolCompleteMsg, ToolErrorMsg, ToolInterruptedMsg:
+	case tuievents.ToolCompleteMsg, tuievents.ToolErrorMsg, tuievents.ToolInterruptedMsg:
 		var id string
 
 		switch m := msg.(type) {
-		case ToolCompleteMsg:
+		case tuievents.ToolCompleteMsg:
 			id = m.ToolID
-		case ToolErrorMsg:
+		case tuievents.ToolErrorMsg:
 			id = m.ToolID
-		case ToolInterruptedMsg:
+		case tuievents.ToolInterruptedMsg:
 			id = m.ToolID
 		}
 
 		t.removeTool(id)
 		t.maybeReturnToStreaming()
-	case TurnEndMsg:
+	case tuievents.TurnEndMsg:
 		t.state = palette.StateIdle
 		t.clearTools()
-	case AgentEndMsg:
+	case tuievents.AgentEndMsg:
 		if errStr, ok := msg.Payload.(string); ok && errStr != "" {
 			t.state = palette.StateError
 		} else {
@@ -306,35 +178,20 @@ func (t *agentStateTracker) update(msg tea.Msg) (palette.State, bool) {
 	return t.state, t.state != prev
 }
 
-// ProviderListResultMsg carries the result of listing providers with key status.
-type ProviderListResultMsg struct {
-	Providers []ProviderEntry
-}
-
-// LoginListResultMsg carries the result of listing providers available for login.
-type LoginListResultMsg struct {
-	Providers []LoginProviderEntry
-}
-
-// LogoutListResultMsg carries the result of listing providers with configured auth.
-type LogoutListResultMsg struct {
-	Providers []LogoutProviderEntry
-}
-
 // translateEvent converts a bus event into a tea.Msg.
 // Returns nil for unknown topics.
 func translateEvent(evt sdk.Event) tea.Msg {
 	switch evt.Topic {
 	case topicTurnStart:
 		turn, _ := evt.Payload.(int)
-		return TurnStartMsg{Turn: turn}
+		return tuievents.TurnStartMsg{Turn: turn}
 	case topicTurnEnd:
-		return TurnEndMsg{}
+		return tuievents.TurnEndMsg{}
 	case topicMsgStart:
-		return MessageStartMsg{}
+		return tuievents.MessageStartMsg{}
 	case topicMsgUpdate:
 		content, _ := evt.Payload.(string)
-		return MessageUpdateMsg{Content: content}
+		return tuievents.MessageUpdateMsg{Content: content}
 	case topicMsgEnd:
 		return translateMsgEnd(evt.Payload)
 	case topicToolResult:
@@ -350,13 +207,13 @@ func translateEvent(evt sdk.Event) tea.Msg {
 	case topicToolInterrupted:
 		return translateToolInterrupted(evt.Payload)
 	case topicEnd:
-		return AgentEndMsg{Payload: evt.Payload}
+		return tuievents.AgentEndMsg{Payload: evt.Payload}
 	case topicSessionResume:
 		if p, ok := evt.Payload.(sdk.SessionResumePayload); ok {
-			return SessionResumedMsg{SessionID: p.SessionID, Messages: p.Messages}
+			return tuievents.SessionResumedMsg{SessionID: p.SessionID, Messages: p.Messages}
 		}
 
-		return SessionResumedMsg{}
+		return tuievents.SessionResumedMsg{}
 	case topicModelChangeFailed:
 		return translateModelChangeFailed(evt.Payload)
 	case topicExtOutdated:
@@ -370,10 +227,10 @@ func translateEvent(evt sdk.Event) tea.Msg {
 	}
 }
 
-func translateMsgEnd(payload any) MessageEndMsg {
+func translateMsgEnd(payload any) tuievents.MessageEndMsg {
 	m, ok := payload.(map[string]any)
 	if !ok {
-		return MessageEndMsg{}
+		return tuievents.MessageEndMsg{}
 	}
 
 	content, _ := m["content"].(string)
@@ -385,13 +242,13 @@ func translateMsgEnd(payload any) MessageEndMsg {
 		toolCalls = tc
 	}
 
-	return MessageEndMsg{Content: content, Thinking: thinking, ToolCalls: toolCalls}
+	return tuievents.MessageEndMsg{Content: content, Thinking: thinking, ToolCalls: toolCalls}
 }
 
-func translateToolResult(payload any) ToolResultMsg {
+func translateToolResult(payload any) tuievents.ToolResultMsg {
 	m, ok := payload.(map[string]any)
 	if !ok {
-		return ToolResultMsg{}
+		return tuievents.ToolResultMsg{}
 	}
 
 	id, _ := m["id"].(string)
@@ -402,68 +259,68 @@ func translateToolResult(payload any) ToolResultMsg {
 		result = sdk.ToolResult{}
 	}
 
-	return ToolResultMsg{ToolID: id, Tool: tool, Result: result}
+	return tuievents.ToolResultMsg{ToolID: id, Tool: tool, Result: result}
 }
 
-func translateToolStart(payload any) ToolStartMsg {
+func translateToolStart(payload any) tuievents.ToolStartMsg {
 	if tp, ok := payload.(sdk.ToolProgress); ok {
-		return ToolStartMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName}
+		return tuievents.ToolStartMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName}
 	}
 
 	m, ok := payload.(map[string]any)
 	if !ok {
-		return ToolStartMsg{}
+		return tuievents.ToolStartMsg{}
 	}
 
 	id, _ := m["id"].(string)
 	tool, _ := m["tool"].(string)
 	input, _ := m["input"].(string)
 
-	return ToolStartMsg{ToolID: id, Tool: tool, Input: input}
+	return tuievents.ToolStartMsg{ToolID: id, Tool: tool, Input: input}
 }
 
-func translateToolProgress(payload any) ToolProgressMsg {
+func translateToolProgress(payload any) tuievents.ToolProgressMsg {
 	if tp, ok := payload.(sdk.ToolProgress); ok {
-		return ToolProgressMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName, Content: tp.Content}
+		return tuievents.ToolProgressMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName, Content: tp.Content}
 	}
 
 	m, ok := payload.(map[string]any)
 	if !ok {
-		return ToolProgressMsg{}
+		return tuievents.ToolProgressMsg{}
 	}
 
 	id, _ := m["id"].(string)
 	tool, _ := m["tool"].(string)
 	content, _ := m["content"].(string)
 
-	return ToolProgressMsg{ToolID: id, Tool: tool, Content: content}
+	return tuievents.ToolProgressMsg{ToolID: id, Tool: tool, Content: content}
 }
 
-func translateToolComplete(payload any) ToolCompleteMsg {
+func translateToolComplete(payload any) tuievents.ToolCompleteMsg {
 	if tp, ok := payload.(sdk.ToolProgress); ok {
-		return ToolCompleteMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName, Content: tp.Content}
+		return tuievents.ToolCompleteMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName, Content: tp.Content}
 	}
 
 	m, ok := payload.(map[string]any)
 	if !ok {
-		return ToolCompleteMsg{}
+		return tuievents.ToolCompleteMsg{}
 	}
 
 	id, _ := m["id"].(string)
 	tool, _ := m["tool"].(string)
 	content, _ := m["content"].(string)
 
-	return ToolCompleteMsg{ToolID: id, Tool: tool, Content: content}
+	return tuievents.ToolCompleteMsg{ToolID: id, Tool: tool, Content: content}
 }
 
-func translateToolError(payload any) ToolErrorMsg {
+func translateToolError(payload any) tuievents.ToolErrorMsg {
 	if tp, ok := payload.(sdk.ToolProgress); ok {
-		return ToolErrorMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName, Error: tp.Content, IsError: tp.IsError}
+		return tuievents.ToolErrorMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName, Error: tp.Content, IsError: tp.IsError}
 	}
 
 	m, ok := payload.(map[string]any)
 	if !ok {
-		return ToolErrorMsg{}
+		return tuievents.ToolErrorMsg{}
 	}
 
 	id, _ := m["id"].(string)
@@ -471,71 +328,71 @@ func translateToolError(payload any) ToolErrorMsg {
 	errStr, _ := m["error"].(string)
 	isErr, _ := m["is_error"].(bool)
 
-	return ToolErrorMsg{ToolID: id, Tool: tool, Error: errStr, IsError: isErr}
+	return tuievents.ToolErrorMsg{ToolID: id, Tool: tool, Error: errStr, IsError: isErr}
 }
 
-func translateToolInterrupted(payload any) ToolInterruptedMsg {
+func translateToolInterrupted(payload any) tuievents.ToolInterruptedMsg {
 	if tp, ok := payload.(sdk.ToolProgress); ok {
-		return ToolInterruptedMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName}
+		return tuievents.ToolInterruptedMsg{ToolID: tp.ToolCallID, Tool: tp.ToolName}
 	}
 
 	m, ok := payload.(map[string]any)
 	if !ok {
-		return ToolInterruptedMsg{}
+		return tuievents.ToolInterruptedMsg{}
 	}
 
 	id, _ := m["id"].(string)
 	tool, _ := m["tool"].(string)
 
-	return ToolInterruptedMsg{ToolID: id, Tool: tool}
+	return tuievents.ToolInterruptedMsg{ToolID: id, Tool: tool}
 }
 
-func translateModelChangeFailed(payload any) ModelChangeFailedMsg {
+func translateModelChangeFailed(payload any) tuievents.ModelChangeFailedMsg {
 	m, ok := payload.(map[string]any)
 	if !ok {
-		return ModelChangeFailedMsg{}
+		return tuievents.ModelChangeFailedMsg{}
 	}
 
 	provider, _ := m[keyProvider].(string)
 	errStr, _ := m["error"].(string)
 
-	return ModelChangeFailedMsg{Provider: provider, Error: errStr}
+	return tuievents.ModelChangeFailedMsg{Provider: provider, Error: errStr}
 }
 
-func translateExtOutdated(payload any) OutdatedNotificationMsg {
+func translateExtOutdated(payload any) tuievents.OutdatedNotificationMsg {
 	evt, ok := payload.(sdk.OutdatedEvent)
 	if !ok {
-		return OutdatedNotificationMsg{}
+		return tuievents.OutdatedNotificationMsg{}
 	}
 
-	return OutdatedNotificationMsg{Extensions: evt.Extensions}
+	return tuievents.OutdatedNotificationMsg{Extensions: evt.Extensions}
 }
 
-func translateCompacted(payload any) CompactedMsg {
+func translateCompacted(payload any) tuievents.CompactedMsg {
 	m, ok := payload.(map[string]any)
 	if !ok {
-		return CompactedMsg{}
+		return tuievents.CompactedMsg{}
 	}
 
 	if errStr, ok := m["error"].(string); ok {
-		return CompactedMsg{Error: errStr}
+		return tuievents.CompactedMsg{Error: errStr}
 	}
 
 	summarized, _ := m["summarized"].(int)
 	tokensBefore, _ := m["tokens_before"].(int)
 	tokensAfter, _ := m["tokens_after"].(int)
 
-	return CompactedMsg{
+	return tuievents.CompactedMsg{
 		Summarized:   summarized,
 		TokensBefore: tokensBefore,
 		TokensAfter:  tokensAfter,
 	}
 }
 
-func translateUsage(payload any) TokenUsageMsg {
+func translateUsage(payload any) tuievents.TokenUsageMsg {
 	m, ok := payload.(map[string]any)
 	if !ok {
-		return TokenUsageMsg{}
+		return tuievents.TokenUsageMsg{}
 	}
 
 	inputTokens, _ := m["input_tokens"].(int)
@@ -544,7 +401,7 @@ func translateUsage(payload any) TokenUsageMsg {
 	cacheReadTokens, _ := m["cache_read_tokens"].(int)
 	contextTokens, _ := m["context_tokens"].(int)
 
-	return TokenUsageMsg{
+	return tuievents.TokenUsageMsg{
 		InputTokens:         inputTokens,
 		OutputTokens:        outputTokens,
 		CacheCreationTokens: cacheCreationTokens,
@@ -554,7 +411,7 @@ func translateUsage(payload any) TokenUsageMsg {
 }
 
 // Bridge reads bus events and sends them as tea.Msg to the program.
-// When multiple MessageUpdateMsg deltas arrive in rapid succession, it batches
+// When multiple tuievents.MessageUpdateMsg deltas arrive in rapid succession, it batches
 // them into a single concatenated message to reduce UI update pressure.
 // Blocks until the event channel is closed.
 func Bridge(sender Sender, events <-chan sdk.Event) {
@@ -572,18 +429,18 @@ func Bridge(sender Sender, events <-chan sdk.Event) {
 
 		// Track agent state changes
 		if newState, changed := stateTracker.update(msg); changed {
-			sender.Send(AgentStateChangeMsg{State: newState})
+			sender.Send(tuievents.AgentStateChangeMsg{State: newState})
 		}
 
 		// Reset rate tracking at message boundaries
 		switch msg.(type) {
-		case MessageStartMsg, MessageEndMsg:
+		case tuievents.MessageStartMsg, tuievents.MessageEndMsg:
 			streamStart = time.Time{}
 			streamRunes = 0
 		}
 
-		// Batch consecutive MessageUpdateMsg deltas
-		if mu, ok := msg.(MessageUpdateMsg); ok { //nolint:nestif // batching requires nested select/drain
+		// Batch consecutive tuievents.MessageUpdateMsg deltas.
+		if mu, ok := msg.(tuievents.MessageUpdateMsg); ok { //nolint:nestif // batching requires nested select/drain
 			// Track rate
 			if streamStart.IsZero() {
 				streamStart = time.Now()
@@ -603,25 +460,25 @@ func Bridge(sender Sender, events <-chan sdk.Event) {
 					if !ok {
 						// Channel closed while batching — flush and exit
 						if batch.Len() > 0 {
-							sender.Send(MessageUpdateMsg{
+							sender.Send(tuievents.MessageUpdateMsg{
 								Content:   batch.String(),
 								TokenRate: calcTokenRate(streamStart, streamRunes),
 							})
 						}
 
-						sender.Send(ShutdownMsg{})
+						sender.Send(tuievents.ShutdownMsg{})
 
 						return
 					}
 
 					nextMsg := translateEvent(next)
-					if nextMu, ok := nextMsg.(MessageUpdateMsg); ok {
+					if nextMu, ok := nextMsg.(tuievents.MessageUpdateMsg); ok {
 						streamRunes += utf8.RuneCountInString(nextMu.Content)
 						batch.WriteString(nextMu.Content)
 					} else {
 						// Non-delta message — flush the batch, then handle this message
 						if batch.Len() > 0 {
-							sender.Send(MessageUpdateMsg{
+							sender.Send(tuievents.MessageUpdateMsg{
 								Content:   batch.String(),
 								TokenRate: calcTokenRate(streamStart, streamRunes),
 							})
@@ -630,12 +487,12 @@ func Bridge(sender Sender, events <-chan sdk.Event) {
 
 						// Track state for non-delta messages found during drain
 						if newState, changed := stateTracker.update(nextMsg); changed {
-							sender.Send(AgentStateChangeMsg{State: newState})
+							sender.Send(tuievents.AgentStateChangeMsg{State: newState})
 						}
 
 						// Reset rate at message boundaries found during drain
 						switch nextMsg.(type) {
-						case MessageStartMsg, MessageEndMsg:
+						case tuievents.MessageStartMsg, tuievents.MessageEndMsg:
 							streamStart = time.Time{}
 							streamRunes = 0
 						}
@@ -652,7 +509,7 @@ func Bridge(sender Sender, events <-chan sdk.Event) {
 			}
 
 			if batch.Len() > 0 {
-				sender.Send(MessageUpdateMsg{
+				sender.Send(tuievents.MessageUpdateMsg{
 					Content:   batch.String(),
 					TokenRate: calcTokenRate(streamStart, streamRunes),
 				})
@@ -664,7 +521,7 @@ func Bridge(sender Sender, events <-chan sdk.Event) {
 		sender.Send(msg)
 	}
 
-	sender.Send(ShutdownMsg{})
+	sender.Send(tuievents.ShutdownMsg{})
 }
 
 // calcTokenRate estimates token rate from accumulated rune count and elapsed time.
@@ -738,7 +595,7 @@ func PublishSessionResume(bus sdk.Bus, payload sdk.SessionResumePayload) tea.Cmd
 }
 
 // PublishModelChange returns a tea.Cmd that publishes a model.change event.
-func PublishModelChange(bus sdk.Bus, entry ModelEntry) tea.Cmd {
+func PublishModelChange(bus sdk.Bus, entry tuievents.ModelEntry) tea.Cmd {
 	return func() tea.Msg {
 		if bus != nil {
 			bus.Publish(sdk.NewEvent(topicModelChange, map[string]string{
@@ -793,27 +650,27 @@ func PublishAuthLogout(bus sdk.Bus, provider string) tea.Cmd {
 // listModelsCmd returns a tea.Cmd that lists available models.
 func listModelsCmd() tea.Cmd {
 	return func() tea.Msg {
-		return ModelListResultMsg{Models: listModels()}
+		return tuievents.ModelListResultMsg{Models: listModels()}
 	}
 }
 
 // listProvidersCmd returns a tea.Cmd that lists providers with key status.
 func listProvidersCmd() tea.Cmd {
 	return func() tea.Msg {
-		return ProviderListResultMsg{Providers: listProviders()}
+		return tuievents.ProviderListResultMsg{Providers: listProviders()}
 	}
 }
 
 // loginCmd returns a tea.Cmd that lists providers available for login.
 func loginCmd() tea.Cmd {
 	return func() tea.Msg {
-		return LoginListResultMsg{Providers: buildLoginProviders()}
+		return tuievents.LoginListResultMsg{Providers: buildLoginProviders()}
 	}
 }
 
 // logoutCmd returns a tea.Cmd that lists providers with configured auth.
 func logoutCmd() tea.Cmd {
 	return func() tea.Msg {
-		return LogoutListResultMsg{Providers: buildLogoutProviders()}
+		return tuievents.LogoutListResultMsg{Providers: buildLogoutProviders()}
 	}
 }

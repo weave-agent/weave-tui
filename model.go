@@ -19,6 +19,7 @@ import (
 	"github.com/weave-agent/weave-tui/internal/components/attachments"
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 	"github.com/weave-agent/weave-tui/internal/extensionregistry"
 	"github.com/weave-agent/weave-tui/internal/palette"
 	"github.com/weave-agent/weave-tui/internal/styles"
@@ -96,13 +97,13 @@ type Model struct {
 	ui               *TUIImpl
 	layout           LayoutEngine
 
-	pendingSessions        []SessionEntry
-	pendingModels          []ModelEntry
-	pendingProviders       []ProviderEntry
-	pendingLoginProviders  []LoginProviderEntry
-	pendingLogoutProviders []LogoutProviderEntry
-	currentModel           ModelEntry
-	prevModel              ModelEntry
+	pendingSessions        []tuievents.SessionEntry
+	pendingModels          []tuievents.ModelEntry
+	pendingProviders       []tuievents.ProviderEntry
+	pendingLoginProviders  []tuievents.LoginProviderEntry
+	pendingLogoutProviders []tuievents.LogoutProviderEntry
+	currentModel           tuievents.ModelEntry
+	prevModel              tuievents.ModelEntry
 	prevThinkingLevel      sdkmodel.ThinkingLevel
 	dialogStack            overlays.DialogStack
 	attach                 attachments.Model
@@ -130,7 +131,7 @@ type Model struct {
 	oauthCancel context.CancelFunc
 
 	// oauthGen increments on each new OAuth flow start. Used to reject stale
-	// LoginFlowResultMsg from previously canceled flows.
+	// tuievents.LoginFlowResultMsg from previously canceled flows.
 	oauthGen int
 
 	// startup hints banner
@@ -224,7 +225,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		}
 
 		return CommandResult{Command: func() tea.Msg {
-			return ThinkingLevelSetMsg{Level: level}
+			return tuievents.ThinkingLevelSetMsg{Level: level}
 		}}
 	})
 
@@ -377,7 +378,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.syncPanelTray()
 
 	// Login flow authorization URL must be handled even when the login dialog is open.
-	if authURLMsg, ok := msg.(LoginAuthURLMsg); ok {
+	if authURLMsg, ok := msg.(tuievents.LoginAuthURLMsg); ok {
 		if m.oauthCancel == nil || authURLMsg.Gen != m.oauthGen {
 			return m, nil
 		}
@@ -392,7 +393,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Login flow completion must be handled even when the login dialog is open.
-	if loginResult, ok := msg.(LoginFlowResultMsg); ok {
+	if loginResult, ok := msg.(tuievents.LoginFlowResultMsg); ok {
 		if m.oauthCancel == nil || loginResult.Gen != m.oauthGen {
 			// Flow was canceled by the user or the result is from a previous flow;
 			// ignore stale result.
@@ -719,7 +720,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case TurnStartMsg:
+	case tuievents.TurnStartMsg:
 		var cmd tea.Cmd
 
 		m.spinner, cmd = m.spinner.SpinnerUpdate(components.SpinnerShowMsg{})
@@ -727,7 +728,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, cmd
 
-	case MessageStartMsg:
+	case tuievents.MessageStartMsg:
 		m.chat = m.chat.AddItem(m.newAssistantMessage())
 		m.chat = m.chat.ClearSelection()
 
@@ -738,18 +739,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case MessageUpdateMsg:
+	case tuievents.MessageUpdateMsg:
 		m.onMessageUpdate(msg)
 
 		return m, nil
 
-	case MessageEndMsg:
+	case tuievents.MessageEndMsg:
 		m.onMessageEnd(msg)
 		m.updateFooterContextUsage()
 
 		return m, nil
 
-	case ToolResultMsg:
+	case tuievents.ToolResultMsg:
 		m.onToolResult(msg)
 		m.contextTokens += estimateContextTokens(msg.Result.Content)
 		m.updateFooterContextUsage()
@@ -760,19 +761,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return toolFlashExpireMsg{}
 		})
 
-	case ToolStartMsg:
+	case tuievents.ToolStartMsg:
 		m.onToolStart(msg)
 		m.syncChatViewport()
 
 		return m, nil
 
-	case ToolProgressMsg:
+	case tuievents.ToolProgressMsg:
 		m.onToolProgress(msg)
 		m.syncChatViewport()
 
 		return m, nil
 
-	case ToolCompleteMsg:
+	case tuievents.ToolCompleteMsg:
 		m.onToolComplete(msg)
 		m.syncChatViewport()
 
@@ -780,7 +781,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return toolFlashExpireMsg{}
 		})
 
-	case ToolErrorMsg:
+	case tuievents.ToolErrorMsg:
 		m.onToolError(msg)
 		m.syncChatViewport()
 
@@ -788,7 +789,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return toolFlashExpireMsg{}
 		})
 
-	case ToolInterruptedMsg:
+	case tuievents.ToolInterruptedMsg:
 		m.onToolInterrupted(msg)
 		m.syncChatViewport()
 
@@ -799,7 +800,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case toolFlashExpireMsg:
 		return m, nil
 
-	case TurnEndMsg:
+	case tuievents.TurnEndMsg:
 		m.spinner = m.spinner.Hide()
 		m.syncChatViewport()
 
@@ -809,13 +810,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case AgentEndMsg:
+	case tuievents.AgentEndMsg:
 		m.spinner = m.spinner.Hide()
 		m.syncChatViewport()
 		m.footer = m.footer.SetTokenRate(0)
 
 		// Only mark tools as interrupted on actual error; for clean ends let
-		// the normal lifecycle messages (ToolCompleteMsg, etc.) finalize state.
+		// the normal lifecycle messages (tuievents.ToolCompleteMsg, etc.) finalize state.
 		if errStr, ok := msg.Payload.(string); ok && errStr != "" {
 			for _, panel := range m.toolPanels {
 				if panel.State() == messages.ToolPending || panel.State() == messages.ToolRunning {
@@ -835,7 +836,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case TokenUsageMsg:
+	case tuievents.TokenUsageMsg:
 		if msg.ContextTokens > 0 {
 			m.contextTokens = msg.ContextTokens
 		}
@@ -846,7 +847,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case CompactedMsg:
+	case tuievents.CompactedMsg:
 		m.showLanding = false
 		if msg.Error != "" {
 			m.chat = m.chat.AddItem(messages.NewNotificationMessage(
@@ -861,7 +862,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case SessionResumedMsg:
+	case tuievents.SessionResumedMsg:
 		if msg.SessionID != "" {
 			m.rebuildChatFromMessages(msg.Messages)
 			m.showLanding = false
@@ -870,33 +871,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case SessionListResultMsg:
+	case tuievents.SessionListResultMsg:
 		return m.onSessionListResult(msg)
 
-	case ModelListResultMsg:
+	case tuievents.ModelListResultMsg:
 		return m.onModelListResult(msg)
 
-	case ModelChangedMsg:
+	case tuievents.ModelChangedMsg:
 		return m.onModelChanged(msg)
 
-	case ModelChangeFailedMsg:
+	case tuievents.ModelChangeFailedMsg:
 		return m.onModelChangeFailed(msg)
 
-	case ProviderListResultMsg:
+	case tuievents.ProviderListResultMsg:
 		return m.onProviderListResult(msg)
 
-	case LoginListResultMsg:
+	case tuievents.LoginListResultMsg:
 		return m.onLoginListResult(msg)
 
-	case LogoutListResultMsg:
+	case tuievents.LogoutListResultMsg:
 		return m.onLogoutListResult(msg)
 
-	case ShutdownMsg:
+	case tuievents.ShutdownMsg:
 		return m, tea.Quit
 
 	case reloadMsg:
 		if err := handleReload(msg); err != nil {
-			return m, func() tea.Msg { return notifyMsg{message: "/reload failed: " + err.Error()} }
+			return m, func() tea.Msg { return tuievents.NotifyMsg{Message: "/reload failed: " + err.Error()} }
 		}
 
 		return m, tea.Quit
@@ -908,13 +909,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.footer = m.footer.SetExtStatus(msg.key, msg.text)
 		return m, nil
 
-	case notifyMsg:
-		m.showBanner(msg.message, sdk.NotifyInfo)
+	case tuievents.NotifyMsg:
+		m.showBanner(msg.Message, sdk.NotifyInfo)
 
 		return m, m.bannerTimer
 
-	case notifyTypedMsg:
-		m.showBanner(msg.message, msg.level)
+	case tuievents.NotifyTypedMsg:
+		m.showBanner(msg.Message, msg.Level)
 
 		return m, m.bannerTimer
 
@@ -949,10 +950,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case ThinkingLevelSetMsg:
+	case tuievents.ThinkingLevelSetMsg:
 		return m.applyThinkingLevel(msg.Level)
 
-	case AgentStateChangeMsg:
+	case tuievents.AgentStateChangeMsg:
 		m.agentState = msg.State
 		accent, accentDim, accentBright := palette.AccentForState(msg.State)
 		newTheme := *m.theme
@@ -1003,7 +1004,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case OutdatedNotificationMsg:
+	case tuievents.OutdatedNotificationMsg:
 		return m.onOutdatedExtensions(msg)
 
 	case slashCommandsUpdatedMsg:
@@ -1415,7 +1416,7 @@ func (m Model) dispatchBinding(action BindingAction) (tea.Model, tea.Cmd) {
 
 		next := cycleModel(models, m.currentModel)
 
-		return m, func() tea.Msg { return ModelChangedMsg{Entry: next} }
+		return m, func() tea.Msg { return tuievents.ModelChangedMsg{Entry: next} }
 
 	// Editor navigation
 	case ActionCursorLineStart:
@@ -1575,10 +1576,10 @@ func copySelectionCmd(text string) tea.Cmd {
 		tea.SetClipboard(text),
 		func() tea.Msg {
 			if err := clipboard.WriteAll(text); err != nil {
-				return notifyTypedMsg{message: "Copy failed: " + err.Error(), level: sdk.NotifyError}
+				return tuievents.NotifyTypedMsg{Message: "Copy failed: " + err.Error(), Level: sdk.NotifyError}
 			}
 
-			return notifyTypedMsg{message: "Copied to clipboard", level: sdk.NotifySuccess}
+			return tuievents.NotifyTypedMsg{Message: "Copied to clipboard", Level: sdk.NotifySuccess}
 		},
 	)
 }
@@ -1673,7 +1674,7 @@ func (m *Model) findStreamingAssistant() (*messages.AssistantMessage, int) {
 }
 
 // onMessageUpdate appends a delta to the current assistant message and updates token rate.
-func (m *Model) onMessageUpdate(msg MessageUpdateMsg) {
+func (m *Model) onMessageUpdate(msg tuievents.MessageUpdateMsg) {
 	if msg.TokenRate > 0 {
 		m.footer = m.footer.SetTokenRate(msg.TokenRate)
 	}
@@ -1688,7 +1689,7 @@ func (m *Model) onMessageUpdate(msg MessageUpdateMsg) {
 }
 
 // onMessageEnd finalizes the current assistant message and creates pending tool panels.
-func (m *Model) onMessageEnd(msg MessageEndMsg) {
+func (m *Model) onMessageEnd(msg tuievents.MessageEndMsg) {
 	m.footer = m.footer.SetTokenRate(0)
 	m.contextTokens += estimateContextTokens(msg.Content)
 
@@ -1734,7 +1735,7 @@ func (m *Model) onMessageEnd(msg MessageEndMsg) {
 }
 
 // onToolResult updates the tool panel with the result.
-func (m *Model) onToolResult(msg ToolResultMsg) {
+func (m *Model) onToolResult(msg tuievents.ToolResultMsg) {
 	m.clearPendingToolCall(msg.ToolID)
 
 	panel, ok := m.toolPanels[msg.ToolID]
@@ -1765,14 +1766,14 @@ func (m *Model) withToolPanel(id, tool, input string, update func(*messages.Tool
 }
 
 // onToolStart marks a tool panel as actively running.
-func (m *Model) onToolStart(msg ToolStartMsg) {
+func (m *Model) onToolStart(msg tuievents.ToolStartMsg) {
 	m.withToolPanel(msg.ToolID, msg.Tool, msg.Input, func(p *messages.ToolPanel) {
 		p.SetRunning()
 	})
 }
 
 // onToolProgress updates a running tool panel with partial output.
-func (m *Model) onToolProgress(msg ToolProgressMsg) {
+func (m *Model) onToolProgress(msg tuievents.ToolProgressMsg) {
 	m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
 		if p.State() == messages.ToolPending {
 			p.SetRunning()
@@ -1783,7 +1784,7 @@ func (m *Model) onToolProgress(msg ToolProgressMsg) {
 }
 
 // onToolComplete finalizes a tool panel with successful output.
-func (m *Model) onToolComplete(msg ToolCompleteMsg) {
+func (m *Model) onToolComplete(msg tuievents.ToolCompleteMsg) {
 	m.clearPendingToolCall(msg.ToolID)
 
 	m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
@@ -1794,7 +1795,7 @@ func (m *Model) onToolComplete(msg ToolCompleteMsg) {
 }
 
 // onToolError finalizes a tool panel with an error.
-func (m *Model) onToolError(msg ToolErrorMsg) {
+func (m *Model) onToolError(msg tuievents.ToolErrorMsg) {
 	m.clearPendingToolCall(msg.ToolID)
 
 	m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
@@ -1805,7 +1806,7 @@ func (m *Model) onToolError(msg ToolErrorMsg) {
 }
 
 // onToolInterrupted marks a tool panel as interrupted.
-func (m *Model) onToolInterrupted(msg ToolInterruptedMsg) {
+func (m *Model) onToolInterrupted(msg tuievents.ToolInterruptedMsg) {
 	m.clearPendingToolCall(msg.ToolID)
 
 	m.withToolPanel(msg.ToolID, msg.Tool, "", func(p *messages.ToolPanel) {
@@ -1925,7 +1926,7 @@ func (m Model) newToolPanel(id, tool, input string) *messages.ToolPanel {
 }
 
 // onOutdatedExtensions renders a notification banner for outdated extensions.
-func (m Model) onOutdatedExtensions(msg OutdatedNotificationMsg) (tea.Model, tea.Cmd) {
+func (m Model) onOutdatedExtensions(msg tuievents.OutdatedNotificationMsg) (tea.Model, tea.Cmd) {
 	if len(msg.Extensions) == 0 {
 		return m, nil
 	}
@@ -2072,7 +2073,7 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) onSessionListResult(msg SessionListResultMsg) (tea.Model, tea.Cmd) {
+func (m Model) onSessionListResult(msg tuievents.SessionListResultMsg) (tea.Model, tea.Cmd) {
 	if msg.Err != nil {
 		am := m.newAssistantMessage()
 		am.Finalize(fmt.Sprintf("Error listing sessions: %v", msg.Err))
@@ -2105,7 +2106,7 @@ func (m Model) onSessionListResult(msg SessionListResultMsg) (tea.Model, tea.Cmd
 	return m, nil
 }
 
-func (m Model) onModelListResult(msg ModelListResultMsg) (tea.Model, tea.Cmd) {
+func (m Model) onModelListResult(msg tuievents.ModelListResultMsg) (tea.Model, tea.Cmd) {
 	if len(msg.Models) == 0 {
 		am := m.newAssistantMessage()
 		am.Finalize("No models available.")
@@ -2143,7 +2144,7 @@ func (m Model) onModelListResult(msg ModelListResultMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) onModelChanged(msg ModelChangedMsg) (tea.Model, tea.Cmd) {
+func (m Model) onModelChanged(msg tuievents.ModelChangedMsg) (tea.Model, tea.Cmd) {
 	m.prevModel = m.currentModel
 	m.prevThinkingLevel = m.thinkingLevel
 	m.currentModel = msg.Entry
@@ -2207,7 +2208,7 @@ func (m Model) contextLimit() int {
 	return def.ContextWindow
 }
 
-func (m Model) onModelChangeFailed(msg ModelChangeFailedMsg) (tea.Model, tea.Cmd) {
+func (m Model) onModelChangeFailed(msg tuievents.ModelChangeFailedMsg) (tea.Model, tea.Cmd) {
 	m.currentModel = m.prevModel
 	m.footer = m.footer.SetModel(m.prevModel.Model, m.prevModel.Provider)
 	m.footer = m.footer.SetReasoning(modelReasoning(m.prevModel))
@@ -2227,7 +2228,7 @@ func (m Model) onModelChangeFailed(msg ModelChangeFailedMsg) (tea.Model, tea.Cmd
 	return m, nil
 }
 
-func (m Model) onProviderListResult(msg ProviderListResultMsg) (tea.Model, tea.Cmd) {
+func (m Model) onProviderListResult(msg tuievents.ProviderListResultMsg) (tea.Model, tea.Cmd) {
 	if len(msg.Providers) == 0 {
 		am := m.newAssistantMessage()
 		am.Finalize("No providers available.")
@@ -2257,7 +2258,7 @@ func (m Model) onProviderListResult(msg ProviderListResultMsg) (tea.Model, tea.C
 	return m, nil
 }
 
-func (m Model) onLoginListResult(msg LoginListResultMsg) (tea.Model, tea.Cmd) {
+func (m Model) onLoginListResult(msg tuievents.LoginListResultMsg) (tea.Model, tea.Cmd) {
 	if len(msg.Providers) == 0 {
 		am := m.newAssistantMessage()
 		am.Finalize("No providers available for login.")
@@ -2291,7 +2292,7 @@ func (m Model) onLoginListResult(msg LoginListResultMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) onLogoutListResult(msg LogoutListResultMsg) (tea.Model, tea.Cmd) {
+func (m Model) onLogoutListResult(msg tuievents.LogoutListResultMsg) (tea.Model, tea.Cmd) {
 	if len(msg.Providers) == 0 {
 		am := m.newAssistantMessage()
 		am.Finalize("No providers currently authenticated.")
@@ -2445,7 +2446,7 @@ func (m Model) onLoginDialogDone(result overlays.DialogResult, pendingCmd tea.Cm
 
 // startOAuthLogin initiates the OAuth login flow for the selected provider.
 // It handles both device code and authorization code flows.
-func (m Model) startOAuthLogin(selected LoginProviderEntry, pendingCmd tea.Cmd) (tea.Model, tea.Cmd) {
+func (m Model) startOAuthLogin(selected tuievents.LoginProviderEntry, pendingCmd tea.Cmd) (tea.Model, tea.Cmd) {
 	oauthProvider, ok := sdk.GetOAuthProvider(selected.ID)
 	if !ok {
 		am := m.newAssistantMessage()
@@ -2576,7 +2577,7 @@ func (m Model) handleDialogDone(d overlays.Dialog, pendingCmd tea.Cmd) (tea.Mode
 		return m.onAttachmentEditorDone(result, pendingCmd)
 	case dialogLoginOAuth:
 		// Login OAuth dialog was dismissed (user canceled or flow completed).
-		// The actual flow result is handled by LoginFlowResultMsg.
+		// The actual flow result is handled by tuievents.LoginFlowResultMsg.
 		if m.oauthCancel != nil {
 			m.oauthCancel()
 			m.oauthCancel = nil
@@ -2660,7 +2661,7 @@ func (m Model) onSessionDialogDone(result overlays.DialogResult, pendingCmd tea.
 				return m, tea.Batch(
 					pendingCmd,
 					func() tea.Msg {
-						return notifyTypedMsg{message: "Failed to load session: " + err.Error(), level: sdk.NotifyError}
+						return tuievents.NotifyTypedMsg{Message: "Failed to load session: " + err.Error(), Level: sdk.NotifyError}
 					},
 				)
 			}
@@ -2689,7 +2690,7 @@ func (m Model) onModelDialogDone(result overlays.DialogResult, pendingCmd tea.Cm
 	selected := m.pendingModels[result.Index]
 	m.pendingModels = nil
 
-	model, cmd := m.onModelChanged(ModelChangedMsg{Entry: selected})
+	model, cmd := m.onModelChanged(tuievents.ModelChangedMsg{Entry: selected})
 
 	return model, tea.Batch(pendingCmd, cmd)
 }

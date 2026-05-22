@@ -5,34 +5,21 @@ import (
 
 	"github.com/weave-agent/weave/sdk"
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
+
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 )
-
-// ProviderEntry describes a provider with its API key status.
-type ProviderEntry struct {
-	Name   string
-	HasKey bool
-}
-
-// Display returns a human-readable label showing provider name and key status.
-func (e ProviderEntry) Display() string {
-	if e.HasKey {
-		return e.Name + "  key set"
-	}
-
-	return e.Name + "  no key"
-}
 
 // listProviders builds a list of all known providers with their API key status.
 // Combines registered providers from sdk.ListProviders() with the model registry
 // to include providers that may not be registered yet but have known models.
-func listProviders() []ProviderEntry {
+func listProviders() []tuievents.ProviderEntry {
 	seen := make(map[string]bool)
 
-	var entries []ProviderEntry
+	var entries []tuievents.ProviderEntry
 
 	for _, name := range sdk.ListProviders() {
 		seen[name] = true
-		entries = append(entries, ProviderEntry{
+		entries = append(entries, tuievents.ProviderEntry{
 			Name:   name,
 			HasKey: sdkmodel.ProviderHasAuth(name),
 		})
@@ -41,7 +28,7 @@ func listProviders() []ProviderEntry {
 	for _, md := range sdkmodel.ListAllModels() {
 		if !seen[md.Provider] {
 			seen[md.Provider] = true
-			entries = append(entries, ProviderEntry{
+			entries = append(entries, tuievents.ProviderEntry{
 				Name:   md.Provider,
 				HasKey: sdkmodel.ProviderHasAuth(md.Provider),
 			})

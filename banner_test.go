@@ -5,6 +5,8 @@ import (
 
 	"github.com/weave-agent/weave/sdk"
 
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
+
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +17,7 @@ func TestBanner_EphemeralInfo(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	updated, cmd := m.Update(notifyTypedMsg{message: "info banner", level: sdk.NotifyInfo})
+	updated, cmd := m.Update(tuievents.NotifyTypedMsg{Message: "info banner", Level: sdk.NotifyInfo})
 	m = updated.(Model)
 
 	assert.Equal(t, "info banner", m.bannerMsg)
@@ -40,7 +42,7 @@ func TestBanner_EphemeralSuccess(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	updated, cmd := m.Update(notifyTypedMsg{message: "success banner", level: sdk.NotifySuccess})
+	updated, cmd := m.Update(tuievents.NotifyTypedMsg{Message: "success banner", Level: sdk.NotifySuccess})
 	m = updated.(Model)
 
 	assert.Equal(t, "success banner", m.bannerMsg)
@@ -53,7 +55,7 @@ func TestBanner_PersistentWarning(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	updated, cmd := m.Update(notifyTypedMsg{message: "warning banner", level: sdk.NotifyWarning})
+	updated, cmd := m.Update(tuievents.NotifyTypedMsg{Message: "warning banner", Level: sdk.NotifyWarning})
 	m = updated.(Model)
 
 	assert.Equal(t, "warning banner", m.bannerMsg)
@@ -66,7 +68,7 @@ func TestBanner_PersistentError(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	updated, cmd := m.Update(notifyTypedMsg{message: "error banner", level: sdk.NotifyError})
+	updated, cmd := m.Update(tuievents.NotifyTypedMsg{Message: "error banner", Level: sdk.NotifyError})
 	m = updated.(Model)
 
 	assert.Equal(t, "error banner", m.bannerMsg)
@@ -80,12 +82,12 @@ func TestBanner_StaleTimeoutIgnored(t *testing.T) {
 	m.height = 24
 
 	// First banner
-	updated, _ := m.Update(notifyTypedMsg{message: "first", level: sdk.NotifyInfo})
+	updated, _ := m.Update(tuievents.NotifyTypedMsg{Message: "first", Level: sdk.NotifyInfo})
 	m = updated.(Model)
 	oldGen := m.bannerGen
 
 	// Second banner replaces first
-	updated, _ = m.Update(notifyTypedMsg{message: "second", level: sdk.NotifyInfo})
+	updated, _ = m.Update(tuievents.NotifyTypedMsg{Message: "second", Level: sdk.NotifyInfo})
 	m = updated.(Model)
 	assert.Equal(t, "second", m.bannerMsg)
 
@@ -103,7 +105,7 @@ func TestBanner_DismissOnSubmit(t *testing.T) {
 	m.editor = m.editor.SetValue("hello")
 
 	// Set a persistent warning banner
-	updated, _ := m.Update(notifyTypedMsg{message: "warning", level: sdk.NotifyWarning})
+	updated, _ := m.Update(tuievents.NotifyTypedMsg{Message: "warning", Level: sdk.NotifyWarning})
 	m = updated.(Model)
 	require.Equal(t, "warning", m.bannerMsg)
 
@@ -120,7 +122,7 @@ func TestBanner_DismissOnPaste(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 10)
 
 	// Set a persistent error banner
-	updated, _ := m.Update(notifyTypedMsg{message: "error", level: sdk.NotifyError})
+	updated, _ := m.Update(tuievents.NotifyTypedMsg{Message: "error", Level: sdk.NotifyError})
 	m = updated.(Model)
 	require.Equal(t, "error", m.bannerMsg)
 
@@ -137,7 +139,7 @@ func TestBanner_DismissOnEditorContentChange(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 10)
 
 	// Set a persistent error banner
-	updated, _ := m.Update(notifyTypedMsg{message: "error", level: sdk.NotifyError})
+	updated, _ := m.Update(tuievents.NotifyTypedMsg{Message: "error", Level: sdk.NotifyError})
 	m = updated.(Model)
 	require.Equal(t, "error", m.bannerMsg)
 
@@ -154,7 +156,7 @@ func TestBanner_EphemeralNotDismissedOnUserAction(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 10)
 
 	// Set an ephemeral info banner
-	updated, _ := m.Update(notifyTypedMsg{message: "info", level: sdk.NotifyInfo})
+	updated, _ := m.Update(tuievents.NotifyTypedMsg{Message: "info", Level: sdk.NotifyInfo})
 	m = updated.(Model)
 	require.Equal(t, "info", m.bannerMsg)
 
@@ -170,12 +172,12 @@ func TestBanner_ReplaceExistingBanner(t *testing.T) {
 	m.height = 24
 
 	// First banner
-	updated, _ := m.Update(notifyTypedMsg{message: "first", level: sdk.NotifyWarning})
+	updated, _ := m.Update(tuievents.NotifyTypedMsg{Message: "first", Level: sdk.NotifyWarning})
 	m = updated.(Model)
 	gen1 := m.bannerGen
 
 	// Second banner replaces first
-	updated, _ = m.Update(notifyTypedMsg{message: "second", level: sdk.NotifyError})
+	updated, _ = m.Update(tuievents.NotifyTypedMsg{Message: "second", Level: sdk.NotifyError})
 	m = updated.(Model)
 
 	assert.Equal(t, "second", m.bannerMsg)
@@ -189,7 +191,7 @@ func TestBanner_LandingPreserved(t *testing.T) {
 	m.height = 24
 	m.showLanding = true
 
-	updated, _ := m.Update(notifyMsg{message: "hello"})
+	updated, _ := m.Update(tuievents.NotifyMsg{Message: "hello"})
 	m = updated.(Model)
 
 	assert.True(t, m.showLanding)

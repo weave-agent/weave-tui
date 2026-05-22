@@ -8,6 +8,7 @@ import (
 	"github.com/weave-agent/weave/bus"
 	"github.com/weave-agent/weave/sdk"
 
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 	"github.com/weave-agent/weave-tui/internal/palette"
 
 	tea "charm.land/bubbletea/v2"
@@ -17,26 +18,26 @@ import (
 
 func TestTranslateEvent_TurnStart(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicTurnStart, 3))
-	ts, ok := msg.(TurnStartMsg)
+	ts, ok := msg.(tuievents.TurnStartMsg)
 	require.True(t, ok)
 	assert.Equal(t, 3, ts.Turn)
 }
 
 func TestTranslateEvent_TurnEnd(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicTurnEnd, nil))
-	_, ok := msg.(TurnEndMsg)
+	_, ok := msg.(tuievents.TurnEndMsg)
 	require.True(t, ok)
 }
 
 func TestTranslateEvent_MessageStart(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicMsgStart, nil))
-	_, ok := msg.(MessageStartMsg)
+	_, ok := msg.(tuievents.MessageStartMsg)
 	require.True(t, ok)
 }
 
 func TestTranslateEvent_MessageUpdate(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicMsgUpdate, "hello "))
-	mu, ok := msg.(MessageUpdateMsg)
+	mu, ok := msg.(tuievents.MessageUpdateMsg)
 	require.True(t, ok)
 	assert.Equal(t, "hello ", mu.Content)
 }
@@ -48,7 +49,7 @@ func TestTranslateEvent_MessageEnd(t *testing.T) {
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicMsgEnd, payload))
-	me, ok := msg.(MessageEndMsg)
+	me, ok := msg.(tuievents.MessageEndMsg)
 	require.True(t, ok)
 	assert.Equal(t, "response text", me.Content)
 	require.Len(t, me.ToolCalls, 1)
@@ -58,7 +59,7 @@ func TestTranslateEvent_MessageEnd(t *testing.T) {
 
 func TestTranslateEvent_MessageEnd_NilPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicMsgEnd, nil))
-	me, ok := msg.(MessageEndMsg)
+	me, ok := msg.(tuievents.MessageEndMsg)
 	require.True(t, ok)
 	assert.Empty(t, me.Content)
 	assert.Nil(t, me.ToolCalls)
@@ -72,7 +73,7 @@ func TestTranslateEvent_MessageEnd_WithThinking(t *testing.T) {
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicMsgEnd, payload))
-	me, ok := msg.(MessageEndMsg)
+	me, ok := msg.(tuievents.MessageEndMsg)
 	require.True(t, ok)
 	assert.Equal(t, "response text", me.Content)
 	assert.Equal(t, "I considered the alternatives...", me.Thinking)
@@ -85,7 +86,7 @@ func TestTranslateEvent_MessageEnd_WithoutThinking(t *testing.T) {
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicMsgEnd, payload))
-	me, ok := msg.(MessageEndMsg)
+	me, ok := msg.(tuievents.MessageEndMsg)
 	require.True(t, ok)
 	assert.Empty(t, me.Thinking)
 }
@@ -98,7 +99,7 @@ func TestTranslateEvent_ToolResult(t *testing.T) {
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicToolResult, payload))
-	tr, ok := msg.(ToolResultMsg)
+	tr, ok := msg.(tuievents.ToolResultMsg)
 	require.True(t, ok)
 	assert.Equal(t, "tc1", tr.ToolID)
 	assert.Equal(t, "bash", tr.Tool)
@@ -108,7 +109,7 @@ func TestTranslateEvent_ToolResult(t *testing.T) {
 
 func TestTranslateEvent_ToolResult_NilPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicToolResult, nil))
-	tr, ok := msg.(ToolResultMsg)
+	tr, ok := msg.(tuievents.ToolResultMsg)
 	require.True(t, ok)
 	assert.Empty(t, tr.ToolID)
 	assert.Empty(t, tr.Tool)
@@ -122,7 +123,7 @@ func TestTranslateEvent_ToolStart(t *testing.T) {
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicToolStart, payload))
-	ts, ok := msg.(ToolStartMsg)
+	ts, ok := msg.(tuievents.ToolStartMsg)
 	require.True(t, ok)
 	assert.Equal(t, "tc1", ts.ToolID)
 	assert.Equal(t, "bash", ts.Tool)
@@ -131,7 +132,7 @@ func TestTranslateEvent_ToolStart(t *testing.T) {
 
 func TestTranslateEvent_ToolStart_NilPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicToolStart, nil))
-	ts, ok := msg.(ToolStartMsg)
+	ts, ok := msg.(tuievents.ToolStartMsg)
 	require.True(t, ok)
 	assert.Empty(t, ts.ToolID)
 	assert.Empty(t, ts.Tool)
@@ -145,7 +146,7 @@ func TestTranslateEvent_ToolProgress(t *testing.T) {
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicToolProgress, payload))
-	tp, ok := msg.(ToolProgressMsg)
+	tp, ok := msg.(tuievents.ToolProgressMsg)
 	require.True(t, ok)
 	assert.Equal(t, "tc1", tp.ToolID)
 	assert.Equal(t, "bash", tp.Tool)
@@ -154,7 +155,7 @@ func TestTranslateEvent_ToolProgress(t *testing.T) {
 
 func TestTranslateEvent_ToolProgress_NilPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicToolProgress, nil))
-	tp, ok := msg.(ToolProgressMsg)
+	tp, ok := msg.(tuievents.ToolProgressMsg)
 	require.True(t, ok)
 	assert.Empty(t, tp.ToolID)
 	assert.Empty(t, tp.Content)
@@ -162,7 +163,7 @@ func TestTranslateEvent_ToolProgress_NilPayload(t *testing.T) {
 
 func TestTranslateEvent_ToolProgress_NonMapPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicToolProgress, "not a map"))
-	tp, ok := msg.(ToolProgressMsg)
+	tp, ok := msg.(tuievents.ToolProgressMsg)
 	require.True(t, ok)
 	assert.Empty(t, tp.ToolID)
 	assert.Empty(t, tp.Content)
@@ -176,7 +177,7 @@ func TestTranslateEvent_ToolComplete(t *testing.T) {
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicToolComplete, payload))
-	tc, ok := msg.(ToolCompleteMsg)
+	tc, ok := msg.(tuievents.ToolCompleteMsg)
 	require.True(t, ok)
 	assert.Equal(t, "tc1", tc.ToolID)
 	assert.Equal(t, "bash", tc.Tool)
@@ -185,7 +186,7 @@ func TestTranslateEvent_ToolComplete(t *testing.T) {
 
 func TestTranslateEvent_ToolComplete_NilPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicToolComplete, nil))
-	tc, ok := msg.(ToolCompleteMsg)
+	tc, ok := msg.(tuievents.ToolCompleteMsg)
 	require.True(t, ok)
 	assert.Empty(t, tc.ToolID)
 	assert.Empty(t, tc.Content)
@@ -199,7 +200,7 @@ func TestTranslateEvent_ToolError(t *testing.T) {
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicToolError, payload))
-	te, ok := msg.(ToolErrorMsg)
+	te, ok := msg.(tuievents.ToolErrorMsg)
 	require.True(t, ok)
 	assert.Equal(t, "tc1", te.ToolID)
 	assert.Equal(t, "bash", te.Tool)
@@ -208,7 +209,7 @@ func TestTranslateEvent_ToolError(t *testing.T) {
 
 func TestTranslateEvent_ToolError_NilPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicToolError, nil))
-	te, ok := msg.(ToolErrorMsg)
+	te, ok := msg.(tuievents.ToolErrorMsg)
 	require.True(t, ok)
 	assert.Empty(t, te.ToolID)
 	assert.Empty(t, te.Error)
@@ -221,7 +222,7 @@ func TestTranslateEvent_ToolInterrupted(t *testing.T) {
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicToolInterrupted, payload))
-	ti, ok := msg.(ToolInterruptedMsg)
+	ti, ok := msg.(tuievents.ToolInterruptedMsg)
 	require.True(t, ok)
 	assert.Equal(t, "tc1", ti.ToolID)
 	assert.Equal(t, "bash", ti.Tool)
@@ -229,7 +230,7 @@ func TestTranslateEvent_ToolInterrupted(t *testing.T) {
 
 func TestTranslateEvent_ToolInterrupted_NilPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicToolInterrupted, nil))
-	ti, ok := msg.(ToolInterruptedMsg)
+	ti, ok := msg.(tuievents.ToolInterruptedMsg)
 	require.True(t, ok)
 	assert.Empty(t, ti.ToolID)
 	assert.Empty(t, ti.Tool)
@@ -237,14 +238,14 @@ func TestTranslateEvent_ToolInterrupted_NilPayload(t *testing.T) {
 
 func TestTranslateEvent_AgentEnd(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicEnd, "stream error: timeout"))
-	ae, ok := msg.(AgentEndMsg)
+	ae, ok := msg.(tuievents.AgentEndMsg)
 	require.True(t, ok)
 	assert.Equal(t, "stream error: timeout", ae.Payload)
 }
 
 func TestTranslateEvent_AgentEnd_NilPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicEnd, nil))
-	ae, ok := msg.(AgentEndMsg)
+	ae, ok := msg.(tuievents.AgentEndMsg)
 	require.True(t, ok)
 	assert.Nil(t, ae.Payload)
 }
@@ -256,7 +257,7 @@ func TestTranslateEvent_UnknownTopic(t *testing.T) {
 
 func TestTranslateEvent_SessionResume_StringPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicSessionResume, "sess-123"))
-	sr, ok := msg.(SessionResumedMsg)
+	sr, ok := msg.(tuievents.SessionResumedMsg)
 	require.True(t, ok)
 	assert.Empty(t, sr.SessionID)
 }
@@ -266,7 +267,7 @@ func TestTranslateEvent_SessionResume_PayloadStruct(t *testing.T) {
 		{Role: sdk.RoleUser, Content: "hello"},
 	}}
 	msg := translateEvent(sdk.NewEvent(topicSessionResume, payload))
-	sr, ok := msg.(SessionResumedMsg)
+	sr, ok := msg.(tuievents.SessionResumedMsg)
 	require.True(t, ok)
 	assert.Equal(t, "sess-456", sr.SessionID)
 	require.Len(t, sr.Messages, 1)
@@ -276,21 +277,21 @@ func TestTranslateEvent_SessionResume_PayloadStruct(t *testing.T) {
 
 func TestTranslateEvent_SessionResume_UnknownPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicSessionResume, 42))
-	sr, ok := msg.(SessionResumedMsg)
+	sr, ok := msg.(tuievents.SessionResumedMsg)
 	require.True(t, ok)
 	assert.Empty(t, sr.SessionID)
 }
 
 func TestTranslateEvent_MessageUpdate_NonStringPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicMsgUpdate, 42))
-	mu, ok := msg.(MessageUpdateMsg)
+	mu, ok := msg.(tuievents.MessageUpdateMsg)
 	require.True(t, ok)
 	assert.Empty(t, mu.Content)
 }
 
 func TestTranslateEvent_TurnStart_NonIntPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicTurnStart, "not an int"))
-	ts, ok := msg.(TurnStartMsg)
+	ts, ok := msg.(tuievents.TurnStartMsg)
 	require.True(t, ok)
 	assert.Equal(t, 0, ts.Turn)
 }
@@ -304,7 +305,7 @@ func TestTranslateEvent_ExtOutdated(t *testing.T) {
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicExtOutdated, payload))
-	outdated, ok := msg.(OutdatedNotificationMsg)
+	outdated, ok := msg.(tuievents.OutdatedNotificationMsg)
 	require.True(t, ok)
 	require.Len(t, outdated.Extensions, 2)
 	assert.Equal(t, "mcp", outdated.Extensions[0].Name)
@@ -313,14 +314,14 @@ func TestTranslateEvent_ExtOutdated(t *testing.T) {
 
 func TestTranslateEvent_ExtOutdated_NonEventPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicExtOutdated, "not an event"))
-	outdated, ok := msg.(OutdatedNotificationMsg)
+	outdated, ok := msg.(tuievents.OutdatedNotificationMsg)
 	require.True(t, ok)
 	assert.Empty(t, outdated.Extensions)
 }
 
 func TestTranslateEvent_ExtOutdated_NilPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicExtOutdated, nil))
-	outdated, ok := msg.(OutdatedNotificationMsg)
+	outdated, ok := msg.(tuievents.OutdatedNotificationMsg)
 	require.True(t, ok)
 	assert.Empty(t, outdated.Extensions)
 }
@@ -349,23 +350,23 @@ func TestBridge_ForwardsEventsAndShutdown(t *testing.T) {
 
 	require.Len(t, sender.msgs, 6) // state change + msg start + update + state change + turn end + shutdown
 
-	_, ok := sender.msgs[0].(AgentStateChangeMsg)
+	_, ok := sender.msgs[0].(tuievents.AgentStateChangeMsg)
 	assert.True(t, ok)
 
-	_, ok = sender.msgs[1].(MessageStartMsg)
+	_, ok = sender.msgs[1].(tuievents.MessageStartMsg)
 	assert.True(t, ok)
 
-	mu, ok := sender.msgs[2].(MessageUpdateMsg)
+	mu, ok := sender.msgs[2].(tuievents.MessageUpdateMsg)
 	assert.True(t, ok)
 	assert.Equal(t, "hello", mu.Content)
 
-	_, ok = sender.msgs[3].(AgentStateChangeMsg)
+	_, ok = sender.msgs[3].(tuievents.AgentStateChangeMsg)
 	assert.True(t, ok)
 
-	_, ok = sender.msgs[4].(TurnEndMsg)
+	_, ok = sender.msgs[4].(tuievents.TurnEndMsg)
 	assert.True(t, ok)
 
-	_, ok = sender.msgs[5].(ShutdownMsg)
+	_, ok = sender.msgs[5].(tuievents.ShutdownMsg)
 	assert.True(t, ok)
 }
 
@@ -391,13 +392,13 @@ func TestBridge_SkipsUnknownTopics(t *testing.T) {
 
 	require.Len(t, sender.msgs, 3) // unknown skipped, state change + msg start + shutdown
 
-	_, ok := sender.msgs[0].(AgentStateChangeMsg)
+	_, ok := sender.msgs[0].(tuievents.AgentStateChangeMsg)
 	assert.True(t, ok)
 
-	_, ok = sender.msgs[1].(MessageStartMsg)
+	_, ok = sender.msgs[1].(tuievents.MessageStartMsg)
 	assert.True(t, ok)
 
-	_, ok = sender.msgs[2].(ShutdownMsg)
+	_, ok = sender.msgs[2].(tuievents.ShutdownMsg)
 	assert.True(t, ok)
 }
 
@@ -439,19 +440,19 @@ func TestBridge_IntegrationWithRealBus(t *testing.T) {
 
 	require.Len(t, sender.msgs, 9) // 6 events + 2 state changes + shutdown
 
-	assert.IsType(t, AgentStateChangeMsg{}, sender.msgs[0]) // Idle→Streaming
-	assert.IsType(t, TurnStartMsg{}, sender.msgs[1])
-	assert.IsType(t, MessageStartMsg{}, sender.msgs[2])
+	assert.IsType(t, tuievents.AgentStateChangeMsg{}, sender.msgs[0]) // Idle→Streaming
+	assert.IsType(t, tuievents.TurnStartMsg{}, sender.msgs[1])
+	assert.IsType(t, tuievents.MessageStartMsg{}, sender.msgs[2])
 
-	mu, ok := sender.msgs[3].(MessageUpdateMsg)
+	mu, ok := sender.msgs[3].(tuievents.MessageUpdateMsg)
 	require.True(t, ok)
 	assert.Equal(t, "hi", mu.Content)
 
-	assert.IsType(t, MessageEndMsg{}, sender.msgs[4])
-	assert.IsType(t, AgentStateChangeMsg{}, sender.msgs[5]) // Streaming→Idle
-	assert.IsType(t, TurnEndMsg{}, sender.msgs[6])
-	assert.IsType(t, AgentEndMsg{}, sender.msgs[7])
-	assert.IsType(t, ShutdownMsg{}, sender.msgs[8])
+	assert.IsType(t, tuievents.MessageEndMsg{}, sender.msgs[4])
+	assert.IsType(t, tuievents.AgentStateChangeMsg{}, sender.msgs[5]) // Streaming→Idle
+	assert.IsType(t, tuievents.TurnEndMsg{}, sender.msgs[6])
+	assert.IsType(t, tuievents.AgentEndMsg{}, sender.msgs[7])
+	assert.IsType(t, tuievents.ShutdownMsg{}, sender.msgs[8])
 }
 
 func TestPublishPrompt(t *testing.T) {
@@ -535,33 +536,33 @@ func TestBridge_ToolLifecycleEvents(t *testing.T) {
 	// Should have: state change (Idle→ToolRunning) + ToolStart + ToolProgress + state change (ToolRunning→Streaming) + ToolComplete + Shutdown
 	var (
 		toolStartFound, toolProgressFound, toolCompleteFound bool
-		stateChanges                                         []AgentStateChangeMsg
+		stateChanges                                         []tuievents.AgentStateChangeMsg
 	)
 
 	for _, msg := range sender.msgs {
 		switch m := msg.(type) {
-		case ToolStartMsg:
+		case tuievents.ToolStartMsg:
 			toolStartFound = true
 
 			assert.Equal(t, "tc1", m.ToolID)
 			assert.Equal(t, "bash", m.Tool)
 			assert.Equal(t, "ls", m.Input)
-		case ToolProgressMsg:
+		case tuievents.ToolProgressMsg:
 			toolProgressFound = true
 
 			assert.Equal(t, "partial output", m.Content)
-		case ToolCompleteMsg:
+		case tuievents.ToolCompleteMsg:
 			toolCompleteFound = true
 
 			assert.Equal(t, "final output", m.Content)
-		case AgentStateChangeMsg:
+		case tuievents.AgentStateChangeMsg:
 			stateChanges = append(stateChanges, m)
 		}
 	}
 
-	assert.True(t, toolStartFound, "expected ToolStartMsg")
-	assert.True(t, toolProgressFound, "expected ToolProgressMsg")
-	assert.True(t, toolCompleteFound, "expected ToolCompleteMsg")
+	assert.True(t, toolStartFound, "expected tuievents.ToolStartMsg")
+	assert.True(t, toolProgressFound, "expected tuievents.ToolProgressMsg")
+	assert.True(t, toolCompleteFound, "expected tuievents.ToolCompleteMsg")
 	require.Len(t, stateChanges, 2)
 	assert.Equal(t, palette.StateToolRunning, stateChanges[0].State)
 	assert.Equal(t, palette.StateStreaming, stateChanges[1].State)
@@ -594,21 +595,21 @@ func TestBridge_ToolErrorEvent(t *testing.T) {
 
 	var (
 		toolErrorFound bool
-		stateChanges   []AgentStateChangeMsg
+		stateChanges   []tuievents.AgentStateChangeMsg
 	)
 
 	for _, msg := range sender.msgs {
 		switch m := msg.(type) {
-		case ToolErrorMsg:
+		case tuievents.ToolErrorMsg:
 			toolErrorFound = true
 
 			assert.Equal(t, "command not found", m.Error)
-		case AgentStateChangeMsg:
+		case tuievents.AgentStateChangeMsg:
 			stateChanges = append(stateChanges, m)
 		}
 	}
 
-	assert.True(t, toolErrorFound, "expected ToolErrorMsg")
+	assert.True(t, toolErrorFound, "expected tuievents.ToolErrorMsg")
 	require.Len(t, stateChanges, 2)
 	assert.Equal(t, palette.StateToolRunning, stateChanges[0].State)
 	assert.Equal(t, palette.StateStreaming, stateChanges[1].State)
@@ -640,21 +641,21 @@ func TestBridge_ToolInterruptedEvent(t *testing.T) {
 
 	var (
 		toolInterruptedFound bool
-		stateChanges         []AgentStateChangeMsg
+		stateChanges         []tuievents.AgentStateChangeMsg
 	)
 
 	for _, msg := range sender.msgs {
 		switch m := msg.(type) {
-		case ToolInterruptedMsg:
+		case tuievents.ToolInterruptedMsg:
 			toolInterruptedFound = true
 
 			assert.Equal(t, "tc1", m.ToolID)
-		case AgentStateChangeMsg:
+		case tuievents.AgentStateChangeMsg:
 			stateChanges = append(stateChanges, m)
 		}
 	}
 
-	assert.True(t, toolInterruptedFound, "expected ToolInterruptedMsg")
+	assert.True(t, toolInterruptedFound, "expected tuievents.ToolInterruptedMsg")
 	require.Len(t, stateChanges, 2)
 	assert.Equal(t, palette.StateToolRunning, stateChanges[0].State)
 	assert.Equal(t, palette.StateStreaming, stateChanges[1].State)
@@ -691,15 +692,15 @@ func TestBridge_DeltaBatching(t *testing.T) {
 
 	<-done
 
-	// The bridge should batch consecutive MessageUpdateMsg into one
+	// The bridge should batch consecutive tuievents.MessageUpdateMsg into one
 	// (or at most a few) messages
 	require.GreaterOrEqual(t, len(sender.msgs), 1, "expected at least 1 message, got %d", len(sender.msgs))
 
-	// Find all MessageUpdateMsg
+	// Find all tuievents.MessageUpdateMsg
 	var updates []string
 
 	for _, msg := range sender.msgs {
-		if mu, ok := msg.(MessageUpdateMsg); ok {
+		if mu, ok := msg.(tuievents.MessageUpdateMsg); ok {
 			updates = append(updates, mu.Content)
 		}
 	}
@@ -712,8 +713,8 @@ func TestBridge_DeltaBatching(t *testing.T) {
 
 	assert.Equal(t, "hello world test", combined.String())
 
-	// Last message should be ShutdownMsg
-	_, ok := sender.msgs[len(sender.msgs)-1].(ShutdownMsg)
+	// Last message should be tuievents.ShutdownMsg
+	_, ok := sender.msgs[len(sender.msgs)-1].(tuievents.ShutdownMsg)
 	assert.True(t, ok)
 }
 
@@ -743,26 +744,26 @@ func TestBridge_DeltaBatchingMixedEvents(t *testing.T) {
 	// Should have: batched(delta1+delta2), TurnEnd, delta3, Shutdown
 	require.GreaterOrEqual(t, len(sender.msgs), 3)
 
-	// Last message is always ShutdownMsg
-	_, ok := sender.msgs[len(sender.msgs)-1].(ShutdownMsg)
+	// Last message is always tuievents.ShutdownMsg
+	_, ok := sender.msgs[len(sender.msgs)-1].(tuievents.ShutdownMsg)
 	assert.True(t, ok)
 
 	// Verify combined content of all updates
 	var combined strings.Builder
 
 	for _, msg := range sender.msgs {
-		if mu, ok := msg.(MessageUpdateMsg); ok {
+		if mu, ok := msg.(tuievents.MessageUpdateMsg); ok {
 			combined.WriteString(mu.Content)
 		}
 	}
 
 	assert.Equal(t, "delta1delta2delta3", combined.String())
 
-	// Verify TurnEndMsg is present
+	// Verify tuievents.TurnEndMsg is present
 	hasTurnEnd := false
 
 	for _, msg := range sender.msgs {
-		if _, ok := msg.(TurnEndMsg); ok {
+		if _, ok := msg.(tuievents.TurnEndMsg); ok {
 			hasTurnEnd = true
 		}
 	}
@@ -806,22 +807,22 @@ func TestBridge_TokenRateTracking(t *testing.T) {
 
 	<-done
 
-	// Should have: MessageStartMsg, MessageUpdateMsg(with rate), ShutdownMsg
+	// Should have: tuievents.MessageStartMsg, tuievents.MessageUpdateMsg(with rate), tuievents.ShutdownMsg
 	require.GreaterOrEqual(t, len(sender.msgs), 2, "expected at least 2 messages")
 
-	// Find the MessageUpdateMsg
-	var updateMsg MessageUpdateMsg
+	// Find the tuievents.MessageUpdateMsg
+	var updateMsg tuievents.MessageUpdateMsg
 
 	found := false
 
 	for _, msg := range sender.msgs {
-		if mu, ok := msg.(MessageUpdateMsg); ok {
+		if mu, ok := msg.(tuievents.MessageUpdateMsg); ok {
 			updateMsg = mu
 			found = true
 		}
 	}
 
-	require.True(t, found, "expected a MessageUpdateMsg")
+	require.True(t, found, "expected a tuievents.MessageUpdateMsg")
 	assert.Equal(t, "hello world test data here", updateMsg.Content)
 	assert.Greater(t, updateMsg.TokenRate, float64(0), "token rate should be > 0")
 }
@@ -859,7 +860,7 @@ func TestBridge_TokenRateResetsOnMessageEnd(t *testing.T) {
 	var rates []float64
 
 	for _, msg := range sender.msgs {
-		if mu, ok := msg.(MessageUpdateMsg); ok {
+		if mu, ok := msg.(tuievents.MessageUpdateMsg); ok {
 			rates = append(rates, mu.TokenRate)
 		}
 	}
@@ -877,7 +878,7 @@ func TestTranslateEvent_Compacted(t *testing.T) {
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicCompacted, payload))
-	c, ok := msg.(CompactedMsg)
+	c, ok := msg.(tuievents.CompactedMsg)
 	require.True(t, ok)
 	assert.Equal(t, 5, c.Summarized)
 	assert.Equal(t, 10000, c.TokensBefore)
@@ -891,14 +892,14 @@ func TestTranslateEvent_Compacted_WithError(t *testing.T) {
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicCompacted, payload))
-	c, ok := msg.(CompactedMsg)
+	c, ok := msg.(tuievents.CompactedMsg)
 	require.True(t, ok)
 	assert.Equal(t, "compaction stream: timeout", c.Error)
 }
 
 func TestTranslateEvent_Compacted_NilPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicCompacted, nil))
-	c, ok := msg.(CompactedMsg)
+	c, ok := msg.(tuievents.CompactedMsg)
 	require.True(t, ok)
 	assert.Empty(t, c.Error)
 	assert.Zero(t, c.Summarized)
@@ -906,7 +907,7 @@ func TestTranslateEvent_Compacted_NilPayload(t *testing.T) {
 
 func TestTranslateEvent_Compacted_NonMapPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicCompacted, "not a map"))
-	c, ok := msg.(CompactedMsg)
+	c, ok := msg.(tuievents.CompactedMsg)
 	require.True(t, ok)
 	assert.Empty(t, c.Error)
 }
@@ -921,7 +922,7 @@ func TestTranslateEvent_Usage(t *testing.T) {
 	}
 
 	msg := translateEvent(sdk.NewEvent(topicUsage, payload))
-	u, ok := msg.(TokenUsageMsg)
+	u, ok := msg.(tuievents.TokenUsageMsg)
 	require.True(t, ok)
 	assert.Equal(t, 1000, u.InputTokens)
 	assert.Equal(t, 500, u.OutputTokens)
@@ -932,7 +933,7 @@ func TestTranslateEvent_Usage(t *testing.T) {
 
 func TestTranslateEvent_Usage_NilPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicUsage, nil))
-	u, ok := msg.(TokenUsageMsg)
+	u, ok := msg.(tuievents.TokenUsageMsg)
 	require.True(t, ok)
 	assert.Zero(t, u.InputTokens)
 	assert.Zero(t, u.OutputTokens)
@@ -940,7 +941,7 @@ func TestTranslateEvent_Usage_NilPayload(t *testing.T) {
 
 func TestTranslateEvent_Usage_NonMapPayload(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicUsage, "not a map"))
-	u, ok := msg.(TokenUsageMsg)
+	u, ok := msg.(tuievents.TokenUsageMsg)
 	require.True(t, ok)
 	assert.Zero(t, u.InputTokens)
 	assert.Zero(t, u.OutputTokens)
@@ -973,11 +974,11 @@ func TestBridge_UsageEvent(t *testing.T) {
 
 	<-done
 
-	// Find the TokenUsageMsg
+	// Find the tuievents.TokenUsageMsg
 	var found bool
 
 	for _, msg := range sender.msgs {
-		if u, ok := msg.(TokenUsageMsg); ok {
+		if u, ok := msg.(tuievents.TokenUsageMsg); ok {
 			found = true
 
 			assert.Equal(t, 100, u.InputTokens)
@@ -986,7 +987,7 @@ func TestBridge_UsageEvent(t *testing.T) {
 		}
 	}
 
-	assert.True(t, found, "expected TokenUsageMsg in sent messages")
+	assert.True(t, found, "expected tuievents.TokenUsageMsg in sent messages")
 }
 
 func TestCalcTokenRate(t *testing.T) {

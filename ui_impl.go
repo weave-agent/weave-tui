@@ -11,6 +11,7 @@ import (
 	"github.com/weave-agent/weave/sdk"
 
 	"github.com/weave-agent/weave-tui/internal/components/messages"
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 	"github.com/weave-agent/weave-tui/internal/palette"
 
 	tea "charm.land/bubbletea/v2"
@@ -229,7 +230,7 @@ func (u *TUIImpl) Notify(message string) {
 	u.mu.Unlock()
 
 	if p != nil {
-		p.Send(notifyMsg{message: message})
+		p.Send(tuievents.NotifyMsg{Message: message})
 	}
 }
 
@@ -368,7 +369,7 @@ func (u *TUIImpl) NotifyTyped(message string, level sdk.NotifyLevel) {
 	u.mu.Unlock()
 
 	if p != nil {
-		p.Send(notifyTypedMsg{message: message, level: level})
+		p.Send(tuievents.NotifyTypedMsg{Message: message, Level: level})
 	}
 }
 

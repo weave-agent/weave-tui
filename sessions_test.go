@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -188,7 +190,7 @@ func TestListSessionsCmd(t *testing.T) {
 	cmd := listSessionsCmd("")
 	msg := cmd()
 
-	result, ok := msg.(SessionListResultMsg)
+	result, ok := msg.(tuievents.SessionListResultMsg)
 	require.True(t, ok)
 	require.NoError(t, result.Err)
 	require.Len(t, result.Sessions, 1)

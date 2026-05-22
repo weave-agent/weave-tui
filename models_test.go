@@ -13,6 +13,7 @@ import (
 
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
@@ -25,12 +26,12 @@ func splitLines(s string) []string {
 }
 
 func TestModelEntry_Display(t *testing.T) {
-	e := ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
+	e := tuievents.ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
 	assert.Equal(t, "anthropic/claude-sonnet-4-6", e.Display())
 }
 
 func TestCycleModel(t *testing.T) {
-	entries := []ModelEntry{
+	entries := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 		{Provider: "openai", Model: "gpt-5.5"},
 		{Provider: "zai", Model: "glm-5.1"},
@@ -49,7 +50,7 @@ func TestCycleModel(t *testing.T) {
 }
 
 func TestCycleModel_SingleEntry(t *testing.T) {
-	entries := []ModelEntry{
+	entries := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 	}
 	next := cycleModel(entries, entries[0])
@@ -57,13 +58,13 @@ func TestCycleModel_SingleEntry(t *testing.T) {
 }
 
 func TestCycleModel_Empty(t *testing.T) {
-	cur := ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
+	cur := tuievents.ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
 	next := cycleModel(nil, cur)
 	assert.Equal(t, cur, next)
 }
 
 func TestCurrentModel(t *testing.T) {
-	entries := []ModelEntry{
+	entries := []tuievents.ModelEntry{
 		{Provider: "openai", Model: "gpt-5.5"},
 		{Provider: "zai", Model: "glm-5.1"},
 	}
@@ -75,7 +76,7 @@ func TestCurrentModel(t *testing.T) {
 }
 
 func TestCurrentModel_EnvProvider(t *testing.T) {
-	entries := []ModelEntry{
+	entries := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 		{Provider: "openai", Model: "gpt-5.5"},
 	}
@@ -88,7 +89,7 @@ func TestCurrentModel_EnvProvider(t *testing.T) {
 }
 
 func TestCurrentModel_EnvProviderNotInEntries(t *testing.T) {
-	entries := []ModelEntry{
+	entries := []tuievents.ModelEntry{
 		{Provider: "openai", Model: "gpt-5.5"},
 	}
 
@@ -106,7 +107,7 @@ func TestCurrentModel_PreferencesProviderOnly(t *testing.T) {
 	sdkmodel.RegisterModel(sdkmodel.ModelDef{ID: "gpt-5.5", Provider: "openai", Default: true})
 	sdkmodel.RegisterModel(sdkmodel.ModelDef{ID: "gpt-5.4", Provider: "openai"})
 
-	entries := []ModelEntry{
+	entries := []tuievents.ModelEntry{
 		{Provider: "openai", Model: "gpt-5.5"},
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 	}
@@ -127,7 +128,7 @@ func TestCurrentModel_PreferencesProviderOnly_NoRegistryFallback(t *testing.T) {
 	sdkmodel.ResetModelRegistry()
 	defer sdkmodel.ResetModelRegistry()
 
-	entries := []ModelEntry{
+	entries := []tuievents.ModelEntry{
 		{Provider: "openai", Model: "gpt-5.5"},
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 	}
@@ -172,12 +173,12 @@ func TestModel_ModelListResultShowsOverlay(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	models := []ModelEntry{
+	models := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 		{Provider: "openai", Model: "gpt-5.5"},
 	}
 
-	model, _ := m.Update(ModelListResultMsg{Models: models})
+	model, _ := m.Update(tuievents.ModelListResultMsg{Models: models})
 	m = model.(Model)
 
 	assert.False(t, m.dialogStack.Empty())
@@ -195,7 +196,7 @@ func TestModel_ModelListResultEmpty(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	model, _ := m.Update(ModelListResultMsg{Models: nil})
+	model, _ := m.Update(tuievents.ModelListResultMsg{Models: nil})
 	m = model.(Model)
 
 	assert.True(t, m.dialogStack.Empty())
@@ -213,11 +214,11 @@ func TestModel_ModelListResultSingle(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	models := []ModelEntry{
+	models := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 	}
 
-	model, _ := m.Update(ModelListResultMsg{Models: models})
+	model, _ := m.Update(tuievents.ModelListResultMsg{Models: models})
 	m = model.(Model)
 
 	// Should show a message instead of overlay for single model
@@ -236,12 +237,12 @@ func TestModel_ModelSelectorSelect(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	models := []ModelEntry{
+	models := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 		{Provider: "openai", Model: "gpt-5.5"},
 	}
 
-	model, _ := m.Update(ModelListResultMsg{Models: models})
+	model, _ := m.Update(tuievents.ModelListResultMsg{Models: models})
 	m = model.(Model)
 	require.False(t, m.dialogStack.Empty())
 
@@ -263,12 +264,12 @@ func TestModel_ModelSelectorCancel(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	models := []ModelEntry{
+	models := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 		{Provider: "openai", Model: "gpt-5.5"},
 	}
 
-	model, _ := m.Update(ModelListResultMsg{Models: models})
+	model, _ := m.Update(tuievents.ModelListResultMsg{Models: models})
 	m = model.(Model)
 	require.False(t, m.dialogStack.Empty())
 
@@ -284,12 +285,12 @@ func TestModel_ModelSelectorCancelClearsPendingModels(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	models := []ModelEntry{
+	models := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 		{Provider: "openai", Model: "gpt-5.5"},
 	}
 
-	model, _ := m.Update(ModelListResultMsg{Models: models})
+	model, _ := m.Update(tuievents.ModelListResultMsg{Models: models})
 	m = model.(Model)
 	require.False(t, m.dialogStack.Empty())
 	require.NotNil(t, m.pendingModels)
@@ -313,7 +314,7 @@ func TestModel_CtrlLOpensModelSelector(t *testing.T) {
 	require.NotNil(t, cmd)
 
 	msg := cmd()
-	result, ok := msg.(ModelListResultMsg)
+	result, ok := msg.(tuievents.ModelListResultMsg)
 	require.True(t, ok)
 	// No providers registered in test, so empty
 	assert.Empty(t, result.Models)
@@ -338,8 +339,8 @@ func TestModel_ModelChangedUpdatesFooter(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	entry := ModelEntry{Provider: "openai", Model: "gpt-5.5"}
-	model, _ := m.Update(ModelChangedMsg{Entry: entry})
+	entry := tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}
+	model, _ := m.Update(tuievents.ModelChangedMsg{Entry: entry})
 	m = model.(Model)
 
 	assert.Equal(t, "gpt-5.5", m.currentModel.Model)
@@ -360,8 +361,8 @@ func TestModel_ModelChangedToNonReasoningForcesThinkingOff(t *testing.T) {
 	assert.Equal(t, sdkmodel.ThinkingMedium, m.thinkingLevel)
 
 	// Switch to non-reasoning model
-	entry := ModelEntry{Provider: "openai", Model: "gpt-4.1"}
-	model, _ := m.Update(ModelChangedMsg{Entry: entry})
+	entry := tuievents.ModelEntry{Provider: "openai", Model: "gpt-4.1"}
+	model, _ := m.Update(tuievents.ModelChangedMsg{Entry: entry})
 	m = model.(Model)
 
 	assert.Equal(t, sdkmodel.ThinkingOff, m.thinkingLevel)
@@ -379,8 +380,8 @@ func TestModel_ModelChangedPublishesEvent(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	entry := ModelEntry{Provider: "openai", Model: "gpt-5.5"}
-	model, cmd := m.Update(ModelChangedMsg{Entry: entry})
+	entry := tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}
+	model, cmd := m.Update(tuievents.ModelChangedMsg{Entry: entry})
 	_ = model.(Model)
 
 	require.NotNil(t, cmd)
@@ -402,7 +403,7 @@ func TestModel_ModelSlashCommandDispatches(t *testing.T) {
 	assert.NotNil(t, result.Command)
 
 	msg := result.Command()
-	_, ok := msg.(ModelListResultMsg)
+	_, ok := msg.(tuievents.ModelListResultMsg)
 	assert.True(t, ok)
 }
 
@@ -411,12 +412,12 @@ func TestModel_ModelOverlayInterceptsKeys(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	models := []ModelEntry{
+	models := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 		{Provider: "openai", Model: "gpt-5.5"},
 	}
 
-	model, _ := m.Update(ModelListResultMsg{Models: models})
+	model, _ := m.Update(tuievents.ModelListResultMsg{Models: models})
 	m = model.(Model)
 	require.False(t, m.dialogStack.Empty())
 
@@ -436,12 +437,12 @@ func TestModel_ModelSelectorViewShowsOverlay(t *testing.T) {
 	normalView := m.View()
 	assert.NotContains(t, normalView.Content, "Select Model")
 
-	models := []ModelEntry{
+	models := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 		{Provider: "openai", Model: "gpt-5.5"},
 	}
 
-	model, _ := m.Update(ModelListResultMsg{Models: models})
+	model, _ := m.Update(tuievents.ModelListResultMsg{Models: models})
 	m = model.(Model)
 
 	overlayView := m.View()
@@ -452,8 +453,8 @@ func TestModel_ModelSelectedInvalidIndex(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m.currentModel = ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
-	m.pendingModels = []ModelEntry{
+	m.currentModel = tuievents.ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
+	m.pendingModels = []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 	}
 
@@ -577,10 +578,10 @@ func TestModelEntryDisplayName(t *testing.T) {
 
 	defer sdkmodel.ResetModelRegistry()
 
-	e := ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
+	e := tuievents.ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
 	assert.Equal(t, "Claude Sonnet 4.6", e.DisplayName())
 
-	e = ModelEntry{Provider: "unknown", Model: "custom-model"}
+	e = tuievents.ModelEntry{Provider: "unknown", Model: "custom-model"}
 	assert.Equal(t, "unknown/custom-model", e.DisplayName())
 }
 
@@ -596,12 +597,12 @@ func TestModelSelectorEntryBadges(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	models := []ModelEntry{
+	models := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 		{Provider: "openai", Model: "gpt-5.5"},
 	}
 
-	model, _ := m.Update(ModelListResultMsg{Models: models})
+	model, _ := m.Update(tuievents.ModelListResultMsg{Models: models})
 	m = model.(Model)
 	require.False(t, m.dialogStack.Empty())
 
@@ -625,14 +626,14 @@ func TestModelSelectorCurrentModelMarker(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 10)
 
 	// Current model is the default (anthropic/claude-sonnet)
-	m.currentModel = ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
+	m.currentModel = tuievents.ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
 
-	models := []ModelEntry{
+	models := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 		{Provider: "openai", Model: "gpt-5.5"},
 	}
 
-	model, _ := m.Update(ModelListResultMsg{Models: models})
+	model, _ := m.Update(tuievents.ModelListResultMsg{Models: models})
 	m = model.(Model)
 
 	canvas := uv.NewScreenBuffer(m.width, m.height)
@@ -662,17 +663,17 @@ func TestStatusMessageOnModelCycle(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m.currentModel = ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
+	m.currentModel = tuievents.ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
 
-	// Cycle produces a ModelChangedMsg cmd — execute it and process the result
+	// Cycle produces a tuievents.ModelChangedMsg cmd — execute it and process the result
 	model, cmd := m.dispatchBinding(ActionModelCycle)
 	m = model.(Model)
 
 	require.NotNil(t, cmd)
 
 	msg := cmd()
-	changedMsg, ok := msg.(ModelChangedMsg)
-	require.True(t, ok, "expected ModelChangedMsg, got %T", msg)
+	changedMsg, ok := msg.(tuievents.ModelChangedMsg)
+	require.True(t, ok, "expected tuievents.ModelChangedMsg, got %T", msg)
 
 	model, _ = m.Update(changedMsg)
 	m = model.(Model)
@@ -691,8 +692,8 @@ func TestStatusMessageOnModelChanged(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	entry := ModelEntry{Provider: "openai", Model: "gpt-5.5"}
-	model, _ := m.Update(ModelChangedMsg{Entry: entry})
+	entry := tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}
+	model, _ := m.Update(tuievents.ModelChangedMsg{Entry: entry})
 	m = model.(Model)
 
 	assert.Contains(t, m.statusMsg, "Switched to")
@@ -749,7 +750,7 @@ func TestStatusMessageNotRenderedWhenEmpty(t *testing.T) {
 }
 
 func TestCurrentModel_LayeredSettings(t *testing.T) {
-	entries := []ModelEntry{
+	entries := []tuievents.ModelEntry{
 		{Provider: "openai", Model: "gpt-5.5"},
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 	}
@@ -767,7 +768,7 @@ func TestCurrentModel_LayeredSettings(t *testing.T) {
 }
 
 func TestCurrentModel_EnvOverridesSettings(t *testing.T) {
-	entries := []ModelEntry{
+	entries := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 		{Provider: "openai", Model: "gpt-5.5"},
 	}
@@ -827,7 +828,7 @@ func TestSaveSettings_CallsSavePreferences(t *testing.T) {
 		},
 	}
 
-	saveSettings(mockCfg, ModelEntry{Provider: "openai", Model: "gpt-5.5"}, sdkmodel.ThinkingHigh)
+	saveSettings(mockCfg, tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}, sdkmodel.ThinkingHigh)
 
 	assert.Equal(t, "openai", capturedPrefs.Provider)
 	assert.Equal(t, "gpt-5.5", capturedPrefs.Model)
@@ -862,7 +863,7 @@ func TestSaveSettings_PreservesUIFields(t *testing.T) {
 	}
 
 	// Save model change
-	saveSettings(mockCfg, ModelEntry{Provider: "openai", Model: "gpt-5.5"}, sdkmodel.ThinkingHigh)
+	saveSettings(mockCfg, tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}, sdkmodel.ThinkingHigh)
 
 	// Verify model fields updated
 	assert.Equal(t, "openai", stored["provider"])
@@ -889,7 +890,7 @@ func TestNewModel_DefaultEditorHeightWhenNoSettings(t *testing.T) {
 func TestSaveSettings_NilConfig(t *testing.T) {
 	// Should not panic with nil config
 	assert.NotPanics(t, func() {
-		saveSettings(nil, ModelEntry{Provider: "openai", Model: "gpt-5.5"}, sdkmodel.ThinkingHigh)
+		saveSettings(nil, tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}, sdkmodel.ThinkingHigh)
 	})
 }
 

@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"os"
 
 	tea "charm.land/bubbletea/v2"
@@ -9,6 +8,8 @@ import (
 	"github.com/weave-agent/weave/sdk"
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
 	"github.com/weave-agent/weave/settings"
+
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 )
 
 // preferences mirrors the settings fields used by the TUI for model/thinking persistence.
@@ -26,30 +27,9 @@ func preferenceStoreOrDefault(ps sdk.PreferenceStore) sdk.PreferenceStore {
 	return sdk.NoopPreferenceStore{}
 }
 
-// ModelEntry describes a provider + model combination.
-type ModelEntry struct {
-	Provider string
-	Model    string
-}
-
-// Display returns a human-readable label for the model entry.
-func (e ModelEntry) Display() string {
-	return fmt.Sprintf("%s/%s", e.Provider, e.Model)
-}
-
-// DisplayName returns the human-friendly name from the model registry,
-// falling back to provider/model format.
-func (e ModelEntry) DisplayName() string {
-	if def, ok := sdkmodel.GetModelForProvider(e.Model, e.Provider); ok && def.DisplayName != "" {
-		return def.DisplayName
-	}
-
-	return e.Display()
-}
-
 // listModels returns model entries for providers that are registered and have
 // valid auth credentials.
-func listModels() []ModelEntry {
+func listModels() []tuievents.ModelEntry {
 	registered := sdk.ListProviders()
 
 	regSet := make(map[string]bool, len(registered))
@@ -57,14 +37,14 @@ func listModels() []ModelEntry {
 		regSet[p] = true
 	}
 
-	var entries []ModelEntry
+	var entries []tuievents.ModelEntry
 
 	for _, md := range sdkmodel.ListAvailableModels() {
 		if !regSet[md.Provider] {
 			continue
 		}
 
-		entries = append(entries, ModelEntry{Provider: md.Provider, Model: md.ID})
+		entries = append(entries, tuievents.ModelEntry{Provider: md.Provider, Model: md.ID})
 	}
 
 	return entries
@@ -73,7 +53,7 @@ func listModels() []ModelEntry {
 // modelFromSettings resolves a model entry from persisted preferences. When
 // the model field is empty or stale it falls back to the provider's default.
 // Only returns entries whose provider has a configured key (entries is pre-filtered).
-func modelFromSettings(entries []ModelEntry, prefs preferences) ModelEntry {
+func modelFromSettings(entries []tuievents.ModelEntry, prefs preferences) tuievents.ModelEntry {
 	if prefs.Model != "" {
 		for _, e := range entries {
 			if e.Provider == prefs.Provider && e.Model == prefs.Model {
@@ -88,12 +68,12 @@ func modelFromSettings(entries []ModelEntry, prefs preferences) ModelEntry {
 		}
 	}
 
-	return ModelEntry{}
+	return tuievents.ModelEntry{}
 }
 
 // currentModel returns the startup model entry using the same priority as the
 // loop's provider resolver: WEAVE_PROVIDER env var > settings > first registered > fallback.
-func currentModel(entries []ModelEntry, ps sdk.PreferenceStore) ModelEntry {
+func currentModel(entries []tuievents.ModelEntry, ps sdk.PreferenceStore) tuievents.ModelEntry {
 	ps = preferenceStoreOrDefault(ps)
 
 	// 1. WEAVE_PROVIDER env var — highest priority (matches loop resolver).
@@ -101,7 +81,7 @@ func currentModel(entries []ModelEntry, ps sdk.PreferenceStore) ModelEntry {
 		if def, ok := sdkmodel.DefaultModelForProvider(provider); ok {
 			for _, e := range entries {
 				if e.Provider == provider {
-					return ModelEntry{Provider: provider, Model: def.ID}
+					return tuievents.ModelEntry{Provider: provider, Model: def.ID}
 				}
 			}
 		}
@@ -127,7 +107,7 @@ func currentModel(entries []ModelEntry, ps sdk.PreferenceStore) ModelEntry {
 		if def, ok := sdkmodel.DefaultModelForProvider(provider); ok {
 			for _, e := range entries {
 				if e.Provider == provider {
-					return ModelEntry{Provider: provider, Model: def.ID}
+					return tuievents.ModelEntry{Provider: provider, Model: def.ID}
 				}
 			}
 		}
@@ -138,11 +118,11 @@ func currentModel(entries []ModelEntry, ps sdk.PreferenceStore) ModelEntry {
 		return entries[0]
 	}
 
-	return ModelEntry{}
+	return tuievents.ModelEntry{}
 }
 
 // cycleModel returns the next model entry after the current one, wrapping around.
-func cycleModel(entries []ModelEntry, current ModelEntry) ModelEntry {
+func cycleModel(entries []tuievents.ModelEntry, current tuievents.ModelEntry) tuievents.ModelEntry {
 	for i, e := range entries {
 		if e.Provider == current.Provider && e.Model == current.Model {
 			next := (i + 1) % len(entries)
@@ -158,7 +138,7 @@ func cycleModel(entries []ModelEntry, current ModelEntry) ModelEntry {
 }
 
 // modelReasoning returns whether the given model entry supports reasoning.
-func modelReasoning(entry ModelEntry) bool {
+func modelReasoning(entry tuievents.ModelEntry) bool {
 	if def, ok := sdkmodel.GetModelForProvider(entry.Model, entry.Provider); ok {
 		return def.Reasoning
 	}
@@ -183,7 +163,7 @@ func initialThinkingLevel(ps sdk.PreferenceStore) sdkmodel.ThinkingLevel {
 
 // saveSettings persists the current model and thinking level to the global
 // settings file via PreferenceStore. Best-effort — errors are silently ignored.
-func saveSettings(ps sdk.PreferenceStore, entry ModelEntry, level sdkmodel.ThinkingLevel) {
+func saveSettings(ps sdk.PreferenceStore, entry tuievents.ModelEntry, level sdkmodel.ThinkingLevel) {
 	ps = preferenceStoreOrDefault(ps)
 	prefs := preferences{
 		Provider:      entry.Provider,
@@ -195,7 +175,7 @@ func saveSettings(ps sdk.PreferenceStore, entry ModelEntry, level sdkmodel.Think
 }
 
 // saveSettingsCmd returns a tea.Cmd that persists settings asynchronously.
-func saveSettingsCmd(ps sdk.PreferenceStore, entry ModelEntry, level sdkmodel.ThinkingLevel) tea.Cmd {
+func saveSettingsCmd(ps sdk.PreferenceStore, entry tuievents.ModelEntry, level sdkmodel.ThinkingLevel) tea.Cmd {
 	return func() tea.Msg {
 		saveSettings(ps, entry, level)
 		return nil

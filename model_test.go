@@ -21,6 +21,7 @@ import (
 	"github.com/weave-agent/weave-tui/internal/components/attachments"
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -114,7 +115,7 @@ func TestModel_HandlesMessageStart(t *testing.T) {
 	m.height = 10
 	m.chat = m.chat.SetSize(80, 10)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m2 := model.(Model)
 
 	items := m2.chat.Items()
@@ -132,14 +133,14 @@ func TestModel_HandlesMessageUpdate(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 10)
 
 	// Start message first
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
 	// Stream deltas
-	model, _ = m.Update(MessageUpdateMsg{Content: "hello "})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "hello "})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageUpdateMsg{Content: "world"})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "world"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -157,13 +158,13 @@ func TestModel_HandlesMessageEnd(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 10)
 
 	// Start, update, end
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageUpdateMsg{Content: "streaming"})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "streaming"})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{Content: "final response"})
+	model, _ = m.Update(tuievents.MessageEndMsg{Content: "final response"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -184,19 +185,19 @@ func TestModel_FullStreamingFlow(t *testing.T) {
 	m.AddUserMessage("explain Go")
 
 	// Assistant streaming
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageUpdateMsg{Content: "Go is "})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "Go is "})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageUpdateMsg{Content: "a statically typed "})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "a statically typed "})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageUpdateMsg{Content: "language."})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "language."})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{Content: "Go is a statically typed language."})
+	model, _ = m.Update(tuievents.MessageEndMsg{Content: "Go is a statically typed language."})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -222,13 +223,13 @@ func TestModel_ViewShowsChatContent(t *testing.T) {
 
 	m.AddUserMessage("hello")
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageUpdateMsg{Content: "hi there"})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "hi there"})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{Content: "hi there"})
+	model, _ = m.Update(tuievents.MessageEndMsg{Content: "hi there"})
 	m = model.(Model)
 
 	view := m.View()
@@ -243,7 +244,7 @@ func TestModel_UpdateWithoutStartIgnored(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 10)
 
 	// Update without MessageStart should be ignored
-	model, _ := m.Update(MessageUpdateMsg{Content: "orphan"})
+	model, _ := m.Update(tuievents.MessageUpdateMsg{Content: "orphan"})
 	m = model.(Model)
 
 	assert.Empty(t, m.chat.Items())
@@ -251,7 +252,7 @@ func TestModel_UpdateWithoutStartIgnored(t *testing.T) {
 
 func TestModel_Shutdown(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
-	_, cmd := m.Update(ShutdownMsg{})
+	_, cmd := m.Update(tuievents.ShutdownMsg{})
 	require.NotNil(t, cmd)
 	// tea.Quit is a func, so we verify it produces a tea.QuitMsg
 	msg := cmd()
@@ -296,7 +297,7 @@ func TestModel_ResizeWithSpinner(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 
 	// Show spinner
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 	model, cmd := m.Update(components.SpinnerShowMsg{})
 	m = model.(Model)
@@ -324,20 +325,20 @@ func TestModel_MultipleTurns(t *testing.T) {
 
 	// Turn 1
 	m.AddUserMessage("question 1")
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
-	model, _ = m.Update(MessageUpdateMsg{Content: "answer 1"})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "answer 1"})
 	m = model.(Model)
-	model, _ = m.Update(MessageEndMsg{Content: "answer 1"})
+	model, _ = m.Update(tuievents.MessageEndMsg{Content: "answer 1"})
 	m = model.(Model)
 
 	// Turn 2
 	m.AddUserMessage("question 2")
-	model, _ = m.Update(MessageStartMsg{})
+	model, _ = m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
-	model, _ = m.Update(MessageUpdateMsg{Content: "answer 2"})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "answer 2"})
 	m = model.(Model)
-	model, _ = m.Update(MessageEndMsg{Content: "answer 2"})
+	model, _ = m.Update(tuievents.MessageEndMsg{Content: "answer 2"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -370,11 +371,11 @@ func TestModel_MessageEndCreatesToolPanels(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 20)
 
 	// Start assistant message
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
 	// End with tool calls
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content: "I'll run bash",
 		ToolCalls: []sdk.ToolCall{
 			{ID: "tc1", Name: "bash", Arguments: map[string]any{"command": "ls"}},
@@ -415,18 +416,18 @@ func TestModel_ToolResultUpdatesPanel(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 20)
 
 	// Start assistant message
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
 	// End with tool call
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "running bash",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
 	})
 	m = model.(Model)
 
 	// Tool result arrives
-	model, _ = m.Update(ToolResultMsg{
+	model, _ = m.Update(tuievents.ToolResultMsg{
 		ToolID: "tc1",
 		Tool:   "bash",
 		Result: sdk.ToolResult{Content: "file.txt", IsError: false},
@@ -448,16 +449,16 @@ func TestModel_ToolResultError(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "running bash",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
 	})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolResultMsg{
+	model, _ = m.Update(tuievents.ToolResultMsg{
 		ToolID: "tc1",
 		Tool:   "bash",
 		Result: sdk.ToolResult{Content: "permission denied", IsError: true},
@@ -476,7 +477,7 @@ func TestModel_ToolResultUnknownID(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 20)
 
 	// Result for a tool panel that wasn't created via MessageEnd
-	model, _ := m.Update(ToolResultMsg{
+	model, _ := m.Update(tuievents.ToolResultMsg{
 		ToolID: "tc-unknown",
 		Tool:   "bash",
 		Result: sdk.ToolResult{Content: "output", IsError: false},
@@ -502,18 +503,18 @@ func TestModel_ToolPanelInlineInChat(t *testing.T) {
 	m.AddUserMessage("list files")
 
 	// Assistant response with tool use
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
-	model, _ = m.Update(MessageUpdateMsg{Content: "I'll list"})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "I'll list"})
 	m = model.(Model)
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "I'll list the files",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: map[string]any{"command": "ls"}}},
 	})
 	m = model.(Model)
 
 	// Tool result
-	model, _ = m.Update(ToolResultMsg{
+	model, _ = m.Update(tuievents.ToolResultMsg{
 		ToolID: "tc1",
 		Tool:   "bash",
 		Result: sdk.ToolResult{Content: "file1.txt\nfile2.txt", IsError: false},
@@ -521,11 +522,11 @@ func TestModel_ToolPanelInlineInChat(t *testing.T) {
 	m = model.(Model)
 
 	// Second assistant message with final answer
-	model, _ = m.Update(MessageStartMsg{})
+	model, _ = m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
-	model, _ = m.Update(MessageUpdateMsg{Content: "Here are"})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "Here are"})
 	m = model.(Model)
-	model, _ = m.Update(MessageEndMsg{Content: "Here are the files"})
+	model, _ = m.Update(tuievents.MessageEndMsg{Content: "Here are the files"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -556,18 +557,18 @@ func TestModel_ToolStartMsg_UpdatesPanel(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 20)
 
 	// Start assistant message
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
 	// End with tool call
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "running bash",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
 	})
 	m = model.(Model)
 
 	// Tool starts executing
-	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "{\"command\": \"ls\"}"})
+	model, _ = m.Update(tuievents.ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "{\"command\": \"ls\"}"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -584,19 +585,19 @@ func TestModel_ToolProgressMsg_UpdatesPanel(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "running bash",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
 	})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash"})
+	model, _ = m.Update(tuievents.ToolStartMsg{ToolID: "tc1", Tool: "bash"})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "partial output"})
+	model, _ = m.Update(tuievents.ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "partial output"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -612,16 +613,16 @@ func TestModel_ToolCompleteMsg_FinalizesPanel(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "running bash",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
 	})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolCompleteMsg{ToolID: "tc1", Tool: "bash", Content: "final output"})
+	model, _ = m.Update(tuievents.ToolCompleteMsg{ToolID: "tc1", Tool: "bash", Content: "final output"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -637,16 +638,16 @@ func TestModel_ToolErrorMsg_FinalizesPanel(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "running bash",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
 	})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolErrorMsg{ToolID: "tc1", Tool: "bash", Error: "command not found", IsError: true})
+	model, _ = m.Update(tuievents.ToolErrorMsg{ToolID: "tc1", Tool: "bash", Error: "command not found", IsError: true})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -662,16 +663,16 @@ func TestModel_ToolInterruptedMsg_MarksPanel(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "running bash",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
 	})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
+	model, _ = m.Update(tuievents.ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -687,20 +688,20 @@ func TestModel_ToolResultMsg_PreservesInterrupted(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "running bash",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
 	})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
+	model, _ = m.Update(tuievents.ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
 	m = model.(Model)
 
 	// Legacy agent.tool_result with "interrupted" should not overwrite
-	model, _ = m.Update(ToolResultMsg{ToolID: "tc1", Tool: "bash", Result: sdk.ToolResult{Content: "interrupted", IsError: false}})
+	model, _ = m.Update(tuievents.ToolResultMsg{ToolID: "tc1", Tool: "bash", Result: sdk.ToolResult{Content: "interrupted", IsError: false}})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -717,7 +718,7 @@ func TestModel_ToolStartMsg_CreatesPanelIfMissing(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 20)
 
 	// Tool start without prior MessageEnd tool call
-	model, _ := m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "ls"})
+	model, _ := m.Update(tuievents.ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "ls"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -735,7 +736,7 @@ func TestModel_ToolCompleteMsg_CreatesPanelIfMissing(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(ToolCompleteMsg{ToolID: "tc1", Tool: "bash", Content: "output"})
+	model, _ := m.Update(tuievents.ToolCompleteMsg{ToolID: "tc1", Tool: "bash", Content: "output"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -752,7 +753,7 @@ func TestModel_ToolErrorMsg_CreatesPanelIfMissing(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(ToolErrorMsg{ToolID: "tc1", Tool: "bash", Error: "command not found", IsError: true})
+	model, _ := m.Update(tuievents.ToolErrorMsg{ToolID: "tc1", Tool: "bash", Error: "command not found", IsError: true})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -770,7 +771,7 @@ func TestModel_ToolInterruptedMsg_CreatesPanelIfMissing(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
+	model, _ := m.Update(tuievents.ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -788,7 +789,7 @@ func TestModel_ToolProgressMsg_CreatesPanelIfMissing(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "partial output"})
+	model, _ := m.Update(tuievents.ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "partial output"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -808,17 +809,17 @@ func TestModel_ToolLifecycle_FullFlow(t *testing.T) {
 
 	m.AddUserMessage("run command")
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "I'll run it",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: map[string]any{"command": "ls"}}},
 	})
 	m = model.(Model)
 
 	// Tool starts
-	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "{\"command\": \"ls\"}"})
+	model, _ = m.Update(tuievents.ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "{\"command\": \"ls\"}"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -827,14 +828,14 @@ func TestModel_ToolLifecycle_FullFlow(t *testing.T) {
 	assert.Equal(t, messages.ToolRunning, tp.State())
 
 	// Progress updates
-	model, _ = m.Update(ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "file1.txt"})
+	model, _ = m.Update(tuievents.ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "file1.txt"})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "file1.txt\nfile2.txt"})
+	model, _ = m.Update(tuievents.ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "file1.txt\nfile2.txt"})
 	m = model.(Model)
 
 	// Complete
-	model, _ = m.Update(ToolCompleteMsg{ToolID: "tc1", Tool: "bash", Content: "file1.txt\nfile2.txt"})
+	model, _ = m.Update(tuievents.ToolCompleteMsg{ToolID: "tc1", Tool: "bash", Content: "file1.txt\nfile2.txt"})
 	m = model.(Model)
 
 	items = m.chat.Items()
@@ -842,10 +843,10 @@ func TestModel_ToolLifecycle_FullFlow(t *testing.T) {
 	assert.Equal(t, messages.ToolSuccess, tp.State())
 
 	// Final assistant response
-	model, _ = m.Update(MessageStartMsg{})
+	model, _ = m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{Content: "Here are the files"})
+	model, _ = m.Update(tuievents.MessageEndMsg{Content: "Here are the files"})
 	m = model.(Model)
 
 	items = m.chat.Items()
@@ -858,14 +859,14 @@ func TestModel_ToolInterrupted_ClearsPending(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageEndMsg{
+	model, _ := m.Update(tuievents.MessageEndMsg{
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
 	})
 	m = model.(Model)
 
 	require.Equal(t, "bash", m.activeToolName())
 
-	model, _ = m.Update(ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
+	model, _ = m.Update(tuievents.ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
 	m = model.(Model)
 
 	assert.Empty(t, m.activeToolName())
@@ -877,14 +878,14 @@ func TestModel_ToolComplete_ClearsPending(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageEndMsg{
+	model, _ := m.Update(tuievents.MessageEndMsg{
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
 	})
 	m = model.(Model)
 
 	require.Equal(t, "bash", m.activeToolName())
 
-	model, _ = m.Update(ToolCompleteMsg{ToolID: "tc1", Tool: "bash", Content: "done"})
+	model, _ = m.Update(tuievents.ToolCompleteMsg{ToolID: "tc1", Tool: "bash", Content: "done"})
 	m = model.(Model)
 
 	assert.Empty(t, m.activeToolName())
@@ -896,14 +897,14 @@ func TestModel_ToolError_ClearsPending(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageEndMsg{
+	model, _ := m.Update(tuievents.MessageEndMsg{
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
 	})
 	m = model.(Model)
 
 	require.Equal(t, "bash", m.activeToolName())
 
-	model, _ = m.Update(ToolErrorMsg{ToolID: "tc1", Tool: "bash", Error: "failed"})
+	model, _ = m.Update(tuievents.ToolErrorMsg{ToolID: "tc1", Tool: "bash", Error: "failed"})
 	m = model.(Model)
 
 	assert.Empty(t, m.activeToolName())
@@ -915,22 +916,22 @@ func TestModel_ToolInterrupted_WithProgress(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "running bash",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: nil}},
 	})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash"})
+	model, _ = m.Update(tuievents.ToolStartMsg{ToolID: "tc1", Tool: "bash"})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "partial result"})
+	model, _ = m.Update(tuievents.ToolProgressMsg{ToolID: "tc1", Tool: "bash", Content: "partial result"})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
+	model, _ = m.Update(tuievents.ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -976,10 +977,10 @@ func TestModel_ToolStartMsg_UpdatesExistingPanel(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 20)
 
 	// Create panel via MessageEnd
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "running bash",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: map[string]any{"command": "ls"}}},
 	})
@@ -991,7 +992,7 @@ func TestModel_ToolStartMsg_UpdatesExistingPanel(t *testing.T) {
 	assert.Equal(t, messages.ToolPending, tp.State())
 
 	// ToolStart transitions it to running
-	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "{\"command\": \"ls\"}"})
+	model, _ = m.Update(tuievents.ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "{\"command\": \"ls\"}"})
 	m = model.(Model)
 
 	items = m.chat.Items()
@@ -1006,11 +1007,11 @@ func TestModel_MessageEndWithThinking(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 20)
 
 	// Start assistant message
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
 	// End with thinking content
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:  "The answer is 42",
 		Thinking: "I need to consider the deep philosophical implications...",
 	})
@@ -1037,10 +1038,10 @@ func TestModel_MessageEndWithoutThinking(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:  "simple response",
 		Thinking: "",
 	})
@@ -1056,10 +1057,10 @@ func TestModel_ThinkingBlockInChatView(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:  "result",
 		Thinking: "deep thoughts",
 	})
@@ -1075,10 +1076,10 @@ func TestModel_ThinkingBlockWithToolCalls(t *testing.T) {
 	m.height = 30
 	m.chat = m.chat.SetSize(80, 30)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "let me check",
 		Thinking:  "I should use bash for this",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: map[string]any{"command": "ls"}}},
@@ -1118,12 +1119,12 @@ func TestModel_SessionListResultShowsOverlay(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	sessions := []SessionEntry{
+	sessions := []tuievents.SessionEntry{
 		{ID: "aaa11122233344455566677788899900", CWD: "/project/alpha", CreatedAt: time.Now()},
 		{ID: "bbb11122233344455566677788899900", CWD: "/project/beta", CreatedAt: time.Now().Add(-time.Hour)},
 	}
 
-	model, _ := m.Update(SessionListResultMsg{Sessions: sessions})
+	model, _ := m.Update(tuievents.SessionListResultMsg{Sessions: sessions})
 	m = model.(Model)
 
 	assert.False(t, m.dialogStack.Empty())
@@ -1142,7 +1143,7 @@ func TestModel_SessionListEmpty(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	model, _ := m.Update(SessionListResultMsg{Sessions: nil})
+	model, _ := m.Update(tuievents.SessionListResultMsg{Sessions: nil})
 	m = model.(Model)
 
 	assert.True(t, m.dialogStack.Empty())
@@ -1160,7 +1161,7 @@ func TestModel_SessionListError(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	model, _ := m.Update(SessionListResultMsg{Err: errors.New("disk error")})
+	model, _ := m.Update(tuievents.SessionListResultMsg{Err: errors.New("disk error")})
 	m = model.(Model)
 
 	assert.True(t, m.dialogStack.Empty())
@@ -1177,11 +1178,11 @@ func TestModel_SessionSelectorCancel(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	sessions := []SessionEntry{
+	sessions := []tuievents.SessionEntry{
 		{ID: "aaa11122233344455566677788899900", CWD: "/project", CreatedAt: time.Now()},
 	}
 
-	model, _ := m.Update(SessionListResultMsg{Sessions: sessions})
+	model, _ := m.Update(tuievents.SessionListResultMsg{Sessions: sessions})
 	m = model.(Model)
 	require.False(t, m.dialogStack.Empty())
 
@@ -1197,11 +1198,11 @@ func TestModel_SessionSelectorEscape(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	sessions := []SessionEntry{
+	sessions := []tuievents.SessionEntry{
 		{ID: "aaa11122233344455566677788899900", CWD: "/project", CreatedAt: time.Now()},
 	}
 
-	model, _ := m.Update(SessionListResultMsg{Sessions: sessions})
+	model, _ := m.Update(tuievents.SessionListResultMsg{Sessions: sessions})
 	m = model.(Model)
 	require.False(t, m.dialogStack.Empty())
 
@@ -1239,7 +1240,7 @@ func TestModel_SessionSelectorSelect(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 10)
 
 	sessionID := "aaa11122233344455566677788899900"
-	sessions := []SessionEntry{
+	sessions := []tuievents.SessionEntry{
 		{ID: sessionID, CWD: "/project", CreatedAt: time.Now()},
 	}
 
@@ -1265,7 +1266,7 @@ func TestModel_SessionSelectorSelect(t *testing.T) {
 	defer sdk.ResetSessionStore()
 
 	// Show selector
-	model, _ := m.Update(SessionListResultMsg{Sessions: sessions})
+	model, _ := m.Update(tuievents.SessionListResultMsg{Sessions: sessions})
 	m = model.(Model)
 	require.False(t, m.dialogStack.Empty())
 
@@ -1305,11 +1306,11 @@ func TestModel_OverlayInterceptsKeys(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	sessions := []SessionEntry{
+	sessions := []tuievents.SessionEntry{
 		{ID: "aaa11122233344455566677788899900", CWD: "/project", CreatedAt: time.Now()},
 	}
 
-	model, _ := m.Update(SessionListResultMsg{Sessions: sessions})
+	model, _ := m.Update(tuievents.SessionListResultMsg{Sessions: sessions})
 	m = model.(Model)
 	require.False(t, m.dialogStack.Empty())
 
@@ -1326,11 +1327,11 @@ func TestModel_OverlayCtrlCDoesNotQuit(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	sessions := []SessionEntry{
+	sessions := []tuievents.SessionEntry{
 		{ID: "aaa11122233344455566677788899900", CWD: "/project", CreatedAt: time.Now()},
 	}
 
-	model, _ := m.Update(SessionListResultMsg{Sessions: sessions})
+	model, _ := m.Update(tuievents.SessionListResultMsg{Sessions: sessions})
 	m = model.(Model)
 	require.False(t, m.dialogStack.Empty())
 
@@ -1432,7 +1433,7 @@ func TestModel_SessionResumedMsg_RebuildsChat(t *testing.T) {
 	m.showLanding = true
 	m.prompted = true
 
-	model, _ := m.Update(SessionResumedMsg{
+	model, _ := m.Update(tuievents.SessionResumedMsg{
 		SessionID: sessionID,
 		Messages: []sdk.Message{
 			{Role: sdk.RoleUser, Content: "previous question"},
@@ -1466,7 +1467,7 @@ func TestModel_SessionResumedMsg_EmptySessionID(t *testing.T) {
 	m.showLanding = true
 	m.prompted = true
 
-	model, _ := m.Update(SessionResumedMsg{SessionID: ""})
+	model, _ := m.Update(tuievents.SessionResumedMsg{SessionID: ""})
 	m = model.(Model)
 
 	// Nothing should change
@@ -1483,7 +1484,7 @@ func TestModel_SessionResumedMsg_EmptyMessages(t *testing.T) {
 	m.showLanding = true
 	m.prompted = true
 
-	model, _ := m.Update(SessionResumedMsg{SessionID: "empty-session", Messages: []sdk.Message{}})
+	model, _ := m.Update(tuievents.SessionResumedMsg{SessionID: "empty-session", Messages: []sdk.Message{}})
 	m = model.(Model)
 
 	// Chat should be cleared (empty session)
@@ -1646,14 +1647,14 @@ func TestModel_ViewShowsOverlayWhenActive(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	sessions := []SessionEntry{
+	sessions := []tuievents.SessionEntry{
 		{ID: "aaa11122233344455566677788899900", CWD: "/project", CreatedAt: time.Now()},
 	}
 
 	normalView := m.View()
 	assert.NotContains(t, normalView.Content, "Resume Session")
 
-	model, _ := m.Update(SessionListResultMsg{Sessions: sessions})
+	model, _ := m.Update(tuievents.SessionListResultMsg{Sessions: sessions})
 	m = model.(Model)
 
 	dialogView := m.View()
@@ -1678,9 +1679,9 @@ func TestModel_ResumeSlashCommandIntegration(t *testing.T) {
 
 	require.NotNil(t, cmd)
 
-	// Execute the command to get SessionListResultMsg
+	// Execute the command to get tuievents.SessionListResultMsg
 	msg := cmd()
-	result, ok := msg.(SessionListResultMsg)
+	result, ok := msg.(tuievents.SessionListResultMsg)
 	require.True(t, ok)
 	require.NoError(t, result.Err)
 	assert.Empty(t, result.Sessions) // empty dir
@@ -1700,9 +1701,9 @@ func TestModel_InterruptStreaming(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 20)
 
 	// Start streaming
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
-	model, _ = m.Update(MessageUpdateMsg{Content: "partial"})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "partial"})
 	m = model.(Model)
 
 	// Trigger interrupt — interruptStreaming only handles UI, not event publish.
@@ -1749,7 +1750,7 @@ func TestModel_EscapeInterruptsAwaitAgent(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageEndMsg{
+	model, _ := m.Update(tuievents.MessageEndMsg{
 		ToolCalls: []sdk.ToolCall{{ID: "tool-1", Name: "await_agent"}},
 	})
 	m = model.(Model)
@@ -1780,13 +1781,13 @@ func TestModel_EscapeInterruptsStreamingDuringAwaitAgent(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 20)
 
 	// Start streaming assistant
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
-	model, _ = m.Update(MessageUpdateMsg{Content: "working on it"})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "working on it"})
 	m = model.(Model)
 
 	// Simulate an await_agent tool becoming active while assistant is still streaming
-	// (edge case: normally MessageEndMsg finalizes the assistant, but we test the
+	// (edge case: normally tuievents.MessageEndMsg finalizes the assistant, but we test the
 	// concurrent state where streaming hasn't been finalized yet)
 	m.trackPendingToolCall(sdk.ToolCall{ID: "tool-1", Name: "await_agent"})
 
@@ -1823,7 +1824,7 @@ func TestModel_EscapeInterruptsActiveSubagent(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageEndMsg{
+	model, _ := m.Update(tuievents.MessageEndMsg{
 		ToolCalls: []sdk.ToolCall{
 			{ID: "tool-1", Name: "subagent_explore"},
 			{ID: "tool-2", Name: "await_agent"},
@@ -1856,7 +1857,7 @@ func TestModel_EscapeInterruptsAwaitAgentAfterSubagentCompletes(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageEndMsg{
+	model, _ := m.Update(tuievents.MessageEndMsg{
 		ToolCalls: []sdk.ToolCall{
 			{ID: "tool-1", Name: "subagent_explore"},
 			{ID: "tool-2", Name: "await_agent"},
@@ -1864,7 +1865,7 @@ func TestModel_EscapeInterruptsAwaitAgentAfterSubagentCompletes(t *testing.T) {
 	})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolResultMsg{
+	model, _ = m.Update(tuievents.ToolResultMsg{
 		ToolID: "tool-1",
 		Tool:   "subagent_explore",
 		Result: sdk.ToolResult{Content: "done"},
@@ -1896,7 +1897,7 @@ func TestModel_EscapeInterruptsGenericTool(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageEndMsg{
+	model, _ := m.Update(tuievents.MessageEndMsg{
 		ToolCalls: []sdk.ToolCall{{ID: "tool-1", Name: "grep"}},
 	})
 	m = model.(Model)
@@ -1921,7 +1922,7 @@ func TestModel_EscapeInterruptsGenericTool_WithNilBus(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageEndMsg{
+	model, _ := m.Update(tuievents.MessageEndMsg{
 		ToolCalls: []sdk.ToolCall{{ID: "tool-1", Name: "grep"}},
 	})
 	m = model.(Model)
@@ -1935,7 +1936,7 @@ func TestModel_EscapeInterruptsGenericTool_WithNilBus(t *testing.T) {
 
 	require.NotNil(t, cmd)
 	executeBatchCmd(t, cmd)
-	// With nil bus, no interrupt event is published and no ToolInterruptedMsg
+	// With nil bus, no interrupt event is published and no tuievents.ToolInterruptedMsg
 	// can arrive, so pending tool calls remain until the lifecycle message
 	// arrives (which requires a real bus/agent loop).
 	assert.NotEmpty(t, m.pendingToolCalls)
@@ -1950,15 +1951,15 @@ func TestModel_EscapeDuringToolRunning_PanelBecomesInterrupted(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash", Arguments: map[string]any{"command": "sleep 10"}}},
 	})
 	m = model.(Model)
 
-	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "sleep 10"})
+	model, _ = m.Update(tuievents.ToolStartMsg{ToolID: "tc1", Tool: "bash", Input: "sleep 10"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -1973,7 +1974,7 @@ func TestModel_EscapeDuringToolRunning_PanelBecomesInterrupted(t *testing.T) {
 	executeBatchCmd(t, cmd)
 
 	// After sending ToolInterrupted, panel should be interrupted
-	model, _ = m.Update(ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
+	model, _ = m.Update(tuievents.ToolInterruptedMsg{ToolID: "tc1", Tool: "bash"})
 	m = model.(Model)
 
 	items = m.chat.Items()
@@ -1989,7 +1990,7 @@ func TestModel_AgentEndMsg_WithError(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 20)
 
 	// Simulate a provider error
-	model, _ := m.Update(AgentEndMsg{Payload: "stream error: timeout"})
+	model, _ := m.Update(tuievents.AgentEndMsg{Payload: "stream error: timeout"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -2007,7 +2008,7 @@ func TestModel_AgentEndMsg_WithNilPayload(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 20)
 
 	// Normal end with no error
-	model, _ := m.Update(AgentEndMsg{Payload: nil})
+	model, _ := m.Update(tuievents.AgentEndMsg{Payload: nil})
 	m = model.(Model)
 
 	assert.Empty(t, m.chat.Items())
@@ -2020,7 +2021,7 @@ func TestModel_AgentEndMsg_WithEmptyString(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(AgentEndMsg{Payload: ""})
+	model, _ := m.Update(tuievents.AgentEndMsg{Payload: ""})
 	m = model.(Model)
 
 	assert.Empty(t, m.chat.Items())
@@ -2033,17 +2034,17 @@ func TestModel_AgentEndMsg_InterruptsRunningTools(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 20)
 
 	// Start a tool via message end (pending state)
-	model, _ := m.Update(MessageEndMsg{
+	model, _ := m.Update(tuievents.MessageEndMsg{
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "bash"}},
 	})
 	m = model.(Model)
 
 	// Transition to running
-	model, _ = m.Update(ToolStartMsg{ToolID: "tc1", Tool: "bash"})
+	model, _ = m.Update(tuievents.ToolStartMsg{ToolID: "tc1", Tool: "bash"})
 	m = model.(Model)
 
 	// Agent ends with an error while tool is still running
-	model, _ = m.Update(AgentEndMsg{Payload: "agent crashed"})
+	model, _ = m.Update(tuievents.AgentEndMsg{Payload: "agent crashed"})
 	m = model.(Model)
 
 	items := m.chat.Items()
@@ -2112,7 +2113,7 @@ func TestModel_CycleThinkingLevel(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m.currentModel = ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
+	m.currentModel = tuievents.ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
 
 	assert.Equal(t, sdkmodel.ThinkingMedium, m.thinkingLevel)
 
@@ -2142,7 +2143,7 @@ func TestModel_CycleThinkingLevelWraps(t *testing.T) {
 	defer sdkmodel.ResetModelRegistry()
 
 	// Set current model to one that supports xhigh (opus)
-	m.currentModel = ModelEntry{Provider: "anthropic", Model: "claude-opus-4-7"}
+	m.currentModel = tuievents.ModelEntry{Provider: "anthropic", Model: "claude-opus-4-7"}
 
 	model, _ := m.dispatchBinding(ActionThinkingCycle)
 	m = model.(Model)
@@ -2160,7 +2161,7 @@ func TestModel_CycleThinkingLevelSkipsClampedForSonnet(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m.currentModel = ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
+	m.currentModel = tuievents.ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
 
 	// Sonnet doesn't support xhigh, so the cycle skips it (xhigh is clamped to high):
 	// medium -> high -> off -> minimal -> low -> medium (wraps, skipping xhigh)
@@ -2189,7 +2190,7 @@ func TestModel_CycleThinkingLevelAllLevels(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m.currentModel = ModelEntry{Provider: "anthropic", Model: "claude-opus-4-7"}
+	m.currentModel = tuievents.ModelEntry{Provider: "anthropic", Model: "claude-opus-4-7"}
 
 	expected := []sdkmodel.ThinkingLevel{
 		sdkmodel.ThinkingMedium, // start
@@ -2247,7 +2248,7 @@ func TestModel_ThinkingLevelUpdatesEditorBorder(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m.currentModel = ModelEntry{Provider: "anthropic", Model: "claude-opus-4-7"}
+	m.currentModel = tuievents.ModelEntry{Provider: "anthropic", Model: "claude-opus-4-7"}
 
 	// medium -> high
 	model, _ := m.dispatchBinding(ActionThinkingCycle)
@@ -2286,9 +2287,9 @@ func TestModel_ThinkingCommand(t *testing.T) {
 
 	require.NotNil(t, cmd)
 
-	// Execute the command to get ThinkingLevelSetMsg
+	// Execute the command to get tuievents.ThinkingLevelSetMsg
 	msg := cmd()
-	setMsg, ok := msg.(ThinkingLevelSetMsg)
+	setMsg, ok := msg.(tuievents.ThinkingLevelSetMsg)
 	require.True(t, ok)
 	assert.Equal(t, sdkmodel.ThinkingHigh, setMsg.Level)
 
@@ -2358,14 +2359,14 @@ func TestModel_ThinkingCommandXHighClamped(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 10)
 
 	// Set to Sonnet (no xhigh support)
-	m.currentModel = ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
+	m.currentModel = tuievents.ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
 
 	model, cmd := m.onSubmit("/thinking xhigh")
 	m = model.(Model)
 
 	require.NotNil(t, cmd)
 	msg := cmd()
-	setMsg, ok := msg.(ThinkingLevelSetMsg)
+	setMsg, ok := msg.(tuievents.ThinkingLevelSetMsg)
 	require.True(t, ok)
 
 	model, _ = m.Update(setMsg)
@@ -2385,7 +2386,7 @@ func TestModel_ThinkingCommandAllLevels(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m.currentModel = ModelEntry{Provider: "anthropic", Model: "claude-opus-4-7"}
+	m.currentModel = tuievents.ModelEntry{Provider: "anthropic", Model: "claude-opus-4-7"}
 
 	for _, level := range sdkmodel.AllThinkingLevels {
 		m.chat = components.NewChatModel().SetSize(80, 10)
@@ -2395,7 +2396,7 @@ func TestModel_ThinkingCommandAllLevels(t *testing.T) {
 
 		require.NotNil(t, cmd, "command should return a cmd for level %s", level)
 		msg := cmd()
-		setMsg, ok := msg.(ThinkingLevelSetMsg)
+		setMsg, ok := msg.(tuievents.ThinkingLevelSetMsg)
 		require.True(t, ok)
 		assert.Equal(t, level, setMsg.Level)
 
@@ -2569,7 +2570,7 @@ func TestModel_Draw_SpinnerInPills(t *testing.T) {
 	m.height = 30
 
 	// Start streaming to show spinner
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 	model, cmd := m.Update(components.SpinnerShowMsg{})
 	m = model.(Model)
@@ -2641,10 +2642,10 @@ func TestModel_Draw_StreamingFlow(t *testing.T) {
 
 	m.AddUserMessage("question")
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageUpdateMsg{Content: "answer"})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "answer"})
 	m = model.(Model)
 
 	canvas := uv.NewScreenBuffer(m.width, m.height)
@@ -2678,9 +2679,9 @@ func TestModel_TokenUsageSetsFooterContextUsage(t *testing.T) {
 	defer sdkmodel.ResetModelRegistry()
 
 	m := newModel(nil, nil, nil, nil)
-	m.currentModel = ModelEntry{Provider: "openai", Model: "gpt-5.5"}
+	m.currentModel = tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}
 
-	updated, _ := m.Update(TokenUsageMsg{InputTokens: 1000, OutputTokens: 1200, ContextTokens: 93800})
+	updated, _ := m.Update(tuievents.TokenUsageMsg{InputTokens: 1000, OutputTokens: 1200, ContextTokens: 93800})
 	m = updated.(Model)
 
 	assert.Equal(t, 93800, m.footer.ContextTokens())
@@ -2694,16 +2695,16 @@ func TestModel_ContextUsageUpdatesOnSubmitAndMessageEnd(t *testing.T) {
 	defer sdkmodel.ResetModelRegistry()
 
 	m := newModel(nil, nil, nil, nil)
-	m.currentModel = ModelEntry{Provider: "openai", Model: "gpt-5.5"}
+	m.currentModel = tuievents.ModelEntry{Provider: "openai", Model: "gpt-5.5"}
 
 	updated, _ := m.onSubmit(strings.Repeat("u", 4000))
 	m = updated.(Model)
 
 	assert.Equal(t, 1000, m.footer.ContextTokens())
 
-	updated, _ = m.Update(MessageStartMsg{})
+	updated, _ = m.Update(tuievents.MessageStartMsg{})
 	m = updated.(Model)
-	updated, _ = m.Update(MessageEndMsg{Content: strings.Repeat("a", 2000)})
+	updated, _ = m.Update(tuievents.MessageEndMsg{Content: strings.Repeat("a", 2000)})
 	m = updated.(Model)
 
 	assert.Equal(t, 1500, m.footer.ContextTokens())
@@ -2716,10 +2717,10 @@ func TestModel_TokenRatePassedToFooter(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageUpdateMsg{Content: "hello", TokenRate: 42.5})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "hello", TokenRate: 42.5})
 	m = model.(Model)
 
 	assert.InDelta(t, 42.5, m.footer.TokenRate(), 0.01)
@@ -2731,14 +2732,14 @@ func TestModel_TokenRateClearedOnMessageEnd(t *testing.T) {
 	m.height = 20
 	m.chat = m.chat.SetSize(80, 20)
 
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageUpdateMsg{Content: "hello", TokenRate: 42.5})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "hello", TokenRate: 42.5})
 	m = model.(Model)
 	assert.InDelta(t, 42.5, m.footer.TokenRate(), 0.01)
 
-	model, _ = m.Update(MessageEndMsg{Content: "hello"})
+	model, _ = m.Update(tuievents.MessageEndMsg{Content: "hello"})
 	m = model.(Model)
 	assert.InDelta(t, 0.0, m.footer.TokenRate(), 0.001)
 }
@@ -2758,8 +2759,8 @@ func TestModel_TurnEndSetsScrollIndicator(t *testing.T) {
 	m.chat = m.chat.ScrollUp(3)
 	require.False(t, m.chat.AtBottom())
 
-	// TurnEndMsg should set the indicator
-	model, _ := m.Update(TurnEndMsg{})
+	// tuievents.TurnEndMsg should set the indicator
+	model, _ := m.Update(tuievents.TurnEndMsg{})
 	m = model.(Model)
 
 	assert.True(t, m.chat.TurnEndPending())
@@ -4653,10 +4654,10 @@ func TestModel_RichRendererPreferredOverStandard(t *testing.T) {
 	ui.RegisterRenderer("test-tool", &mockRenderer{})
 
 	// Start and end a message with a tool call
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content:   "using tool",
 		ToolCalls: []sdk.ToolCall{{ID: "tc1", Name: "test-tool", Arguments: nil}},
 	})
@@ -4942,7 +4943,7 @@ func TestModel_MessageStart_ClearsSelection(t *testing.T) {
 	assert.True(t, m.chat.HasSelection(), "selection should exist before new message")
 
 	// New assistant message should clear selection
-	model, _ = m.Update(MessageStartMsg{})
+	model, _ = m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
 	assert.False(t, m.chat.HasSelection(), "selection should be cleared on new message")
@@ -5104,10 +5105,10 @@ func TestModel_DispatchBinding_CopySelection_WithSelection(t *testing.T) {
 	require.True(t, ok, "expected tea.BatchMsg, got %T", msg)
 	require.Len(t, batch, 2, "batch should contain 2 commands")
 
-	// The second command should return a notifyTypedMsg
+	// The second command should return a tuievents.NotifyTypedMsg
 	result := batch[1]()
-	_, ok = result.(notifyTypedMsg)
-	require.True(t, ok, "expected notifyTypedMsg, got %T", result)
+	_, ok = result.(tuievents.NotifyTypedMsg)
+	require.True(t, ok, "expected tuievents.NotifyTypedMsg, got %T", result)
 }
 
 func TestModel_DispatchBinding_CopySelection_NoSelection(t *testing.T) {
@@ -5153,10 +5154,10 @@ func TestModel_MouseRelease_WithSelection_TriggersCopy(t *testing.T) {
 	require.True(t, ok, "expected tea.BatchMsg, got %T", msg)
 	require.Len(t, batch, 2, "batch should contain 2 commands")
 
-	// The second command should return a notifyTypedMsg
+	// The second command should return a tuievents.NotifyTypedMsg
 	result := batch[1]()
-	_, ok = result.(notifyTypedMsg)
-	require.True(t, ok, "expected notifyTypedMsg, got %T", result)
+	_, ok = result.(tuievents.NotifyTypedMsg)
+	require.True(t, ok, "expected tuievents.NotifyTypedMsg, got %T", result)
 }
 
 func TestModel_MouseRelease_NoSelection_NoCopy(t *testing.T) {
@@ -5188,10 +5189,10 @@ func TestCopySelectionCmd(t *testing.T) {
 	require.True(t, ok, "expected tea.BatchMsg, got %T", msg)
 	require.Len(t, batch, 2, "batch should contain 2 commands")
 
-	// The second command should return a notifyTypedMsg (success or error)
+	// The second command should return a tuievents.NotifyTypedMsg (success or error)
 	result := batch[1]()
-	_, ok = result.(notifyTypedMsg)
-	require.True(t, ok, "expected notifyTypedMsg, got %T", result)
+	_, ok = result.(tuievents.NotifyTypedMsg)
+	require.True(t, ok, "expected tuievents.NotifyTypedMsg, got %T", result)
 }
 
 func TestKeybindings_CopySelection_IsRegistered(t *testing.T) {
@@ -5218,7 +5219,7 @@ func TestModel_LoginListResult_Empty(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, m.chatHeight(24))
 
-	model, _ := m.onLoginListResult(LoginListResultMsg{Providers: nil})
+	model, _ := m.onLoginListResult(tuievents.LoginListResultMsg{Providers: nil})
 	m2 := model.(Model)
 
 	items := m2.chat.Items()
@@ -5233,11 +5234,11 @@ func TestModel_LoginListResult_ShowsDialog(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	providers := []LoginProviderEntry{
+	providers := []tuievents.LoginProviderEntry{
 		{Name: "Test Provider", ID: "test", IsOAuth: false, HasAuth: false},
 	}
 
-	model, _ := m.onLoginListResult(LoginListResultMsg{Providers: providers})
+	model, _ := m.onLoginListResult(tuievents.LoginListResultMsg{Providers: providers})
 	m2 := model.(Model)
 
 	assert.False(t, m2.dialogStack.Empty())
@@ -5250,7 +5251,7 @@ func TestModel_LogoutListResult_Empty(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, m.chatHeight(24))
 
-	model, _ := m.onLogoutListResult(LogoutListResultMsg{Providers: nil})
+	model, _ := m.onLogoutListResult(tuievents.LogoutListResultMsg{Providers: nil})
 	m2 := model.(Model)
 
 	items := m2.chat.Items()
@@ -5265,11 +5266,11 @@ func TestModel_LogoutListResult_ShowsDialog(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	providers := []LogoutProviderEntry{
+	providers := []tuievents.LogoutProviderEntry{
 		{Name: "Test Provider", ID: "test"},
 	}
 
-	model, _ := m.onLogoutListResult(LogoutListResultMsg{Providers: providers})
+	model, _ := m.onLogoutListResult(tuievents.LogoutListResultMsg{Providers: providers})
 	m2 := model.(Model)
 
 	assert.False(t, m2.dialogStack.Empty())
@@ -5294,7 +5295,7 @@ func TestModel_OnLoginDialogDone_OAuthProvider(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	m.pendingLoginProviders = []LoginProviderEntry{
+	m.pendingLoginProviders = []tuievents.LoginProviderEntry{
 		{Name: "Test OAuth", ID: "test-oauth", IsOAuth: true},
 	}
 
@@ -5316,7 +5317,7 @@ func TestModel_OnLoginDialogDone_OAuthProvider_NotFound(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, m.chatHeight(24))
 
-	m.pendingLoginProviders = []LoginProviderEntry{
+	m.pendingLoginProviders = []tuievents.LoginProviderEntry{
 		{Name: "Unknown OAuth", ID: "unknown-oauth", IsOAuth: true},
 	}
 
@@ -5363,7 +5364,7 @@ func TestModel_OnLoginDialogDone_DeviceCodeProvider(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	m.pendingLoginProviders = []LoginProviderEntry{
+	m.pendingLoginProviders = []tuievents.LoginProviderEntry{
 		{Name: "Test Device Code", ID: "test-device-code", IsOAuth: true},
 	}
 
@@ -5412,7 +5413,7 @@ func TestModel_OnLoginDialogDone_DeviceCodeProvider_RequestFails(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, m.chatHeight(24))
 
-	m.pendingLoginProviders = []LoginProviderEntry{
+	m.pendingLoginProviders = []tuievents.LoginProviderEntry{
 		{Name: "Test Device Code Fail", ID: "test-device-code-fail", IsOAuth: true},
 	}
 
@@ -5435,7 +5436,7 @@ func TestModel_OnLoginDialogDone_RegularProvider(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	m.pendingLoginProviders = []LoginProviderEntry{
+	m.pendingLoginProviders = []tuievents.LoginProviderEntry{
 		{Name: "Anthropic", ID: "anthropic", IsOAuth: false},
 	}
 
@@ -5450,7 +5451,7 @@ func TestModel_OnLoginDialogDone_RegularProvider(t *testing.T) {
 
 func TestModel_OnLoginDialogDone_Cancel(t *testing.T) {
 	m := newModelNoLanding()
-	m.pendingLoginProviders = []LoginProviderEntry{
+	m.pendingLoginProviders = []tuievents.LoginProviderEntry{
 		{Name: "Test", ID: "test"},
 	}
 
@@ -5468,7 +5469,7 @@ func TestModel_OnLogoutDialogDone_ClearsAuth(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, m.chatHeight(24))
 
-	m.pendingLogoutProviders = []LogoutProviderEntry{
+	m.pendingLogoutProviders = []tuievents.LogoutProviderEntry{
 		{Name: "Test", ID: "test"},
 	}
 
@@ -5486,7 +5487,7 @@ func TestModel_OnLogoutDialogDone_ClearsAuth(t *testing.T) {
 
 func TestModel_OnLogoutDialogDone_Cancel(t *testing.T) {
 	m := newModelNoLanding()
-	m.pendingLogoutProviders = []LogoutProviderEntry{
+	m.pendingLogoutProviders = []tuievents.LogoutProviderEntry{
 		{Name: "Test", ID: "test"},
 	}
 
@@ -5504,7 +5505,7 @@ func TestModel_HandleDialogDone_LoginLogout(t *testing.T) {
 	m.chat = m.chat.SetSize(80, m.chatHeight(24))
 
 	// Test login dialog
-	m.pendingLoginProviders = []LoginProviderEntry{
+	m.pendingLoginProviders = []tuievents.LoginProviderEntry{
 		{Name: "OpenAI", ID: "openai", IsOAuth: true},
 	}
 	sel := overlays.NewSelectorModel("Login", []overlays.SelectorItem{{Title: "OpenAI"}})
@@ -5519,8 +5520,8 @@ func TestModel_HandleDialogDone_LoginLogout(t *testing.T) {
 
 func TestModel_HandleDialogForceCancel_LoginLogout(t *testing.T) {
 	m := newModelNoLanding()
-	m.pendingLoginProviders = []LoginProviderEntry{{Name: "Test", ID: "test"}}
-	m.pendingLogoutProviders = []LogoutProviderEntry{{Name: "Test", ID: "test"}}
+	m.pendingLoginProviders = []tuievents.LoginProviderEntry{{Name: "Test", ID: "test"}}
+	m.pendingLogoutProviders = []tuievents.LogoutProviderEntry{{Name: "Test", ID: "test"}}
 
 	sel := overlays.NewSelectorModel("Login", []overlays.SelectorItem{{Title: "Test"}})
 	sel = sel.Show()
@@ -5545,7 +5546,7 @@ func TestModel_OnLoginDialogDone_RegularProvider_Masked(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	m.pendingLoginProviders = []LoginProviderEntry{
+	m.pendingLoginProviders = []tuievents.LoginProviderEntry{
 		{Name: "Anthropic", ID: "anthropic", IsOAuth: false},
 	}
 
@@ -5569,7 +5570,7 @@ func TestModel_OnProviderDialogDone_Masked(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	m.pendingProviders = []ProviderEntry{
+	m.pendingProviders = []tuievents.ProviderEntry{
 		{Name: "Anthropic", HasKey: false},
 	}
 
@@ -5712,7 +5713,7 @@ func TestModel_OnLoginFlowResult_OAuthError(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, m.chatHeight(24))
 
-	msg := LoginFlowResultMsg{
+	msg := tuievents.LoginFlowResultMsg{
 		Provider: "openai",
 		Error:    errors.New("user denied access"),
 	}
@@ -5742,7 +5743,7 @@ func TestModel_OnLoginFlowResult_Success(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, m.chatHeight(24))
 
-	msg := LoginFlowResultMsg{
+	msg := tuievents.LoginFlowResultMsg{
 		Provider: "openai",
 		Credential: sdk.OAuthCredential{
 			AccessToken: "at-test",

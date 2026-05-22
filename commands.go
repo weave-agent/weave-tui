@@ -12,6 +12,8 @@ import (
 
 	"github.com/weave-agent/weave/sdk"
 
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
+
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -211,7 +213,7 @@ type reloadMsg struct {
 
 // reloadCmd returns a tea.Cmd that reads reload env vars and returns a reloadMsg.
 // If the env vars are not set (e.g., not launched via the weave launcher), it
-// returns a notifyMsg instead.
+// returns a NotifyMsg instead.
 func reloadCmd() tea.Cmd {
 	return func() tea.Msg {
 		launcherPath := os.Getenv("WEAVE_LAUNCHER_PATH")
@@ -219,7 +221,7 @@ func reloadCmd() tea.Cmd {
 		origArgsJSON := os.Getenv("WEAVE_ORIG_ARGS")
 
 		if launcherPath == "" {
-			return notifyMsg{message: "/reload: not available — weave was not launched via the launcher"}
+			return tuievents.NotifyMsg{Message: "/reload: not available — weave was not launched via the launcher"}
 		}
 
 		// Remove the cache directory for the current build hash. The hash is
@@ -228,14 +230,14 @@ func reloadCmd() tea.Cmd {
 		// root and trick os.RemoveAll into deleting unrelated files.
 		if buildHash != "" {
 			if !isSHA256Hex(buildHash) {
-				return notifyMsg{message: fmt.Sprintf("/reload: invalid build hash %q", buildHash)}
+				return tuievents.NotifyMsg{Message: fmt.Sprintf("/reload: invalid build hash %q", buildHash)}
 			}
 
 			home, _ := os.UserHomeDir()
 			if home != "" {
 				cacheDir := filepath.Join(home, ".weave", "bin", buildHash)
 				if err := os.RemoveAll(cacheDir); err != nil { //nolint:gosec // G703 — cleaning our own cache dir
-					return notifyMsg{message: fmt.Sprintf("/reload: failed to remove cache: %v", err)}
+					return tuievents.NotifyMsg{Message: fmt.Sprintf("/reload: failed to remove cache: %v", err)}
 				}
 			}
 		}

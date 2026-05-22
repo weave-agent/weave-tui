@@ -92,11 +92,11 @@
 - [x] run `go test ./...` - must pass before next task
 
 ### Task 5: Create internal event message package
-- [ ] create `internal/events` for Bubble Tea message structs currently exposed from `bridge.go` and related root files
-- [ ] move agent, model, provider, session, tool, auth, compaction, token usage, notification, shutdown, and state-change message types into `internal/events`
-- [ ] update bridge, model, UI implementation, and tests to use `internal/events`
-- [ ] add/update tests for event translation and message handling after the package move
-- [ ] run `go test ./...` - must pass before next task
+- [x] create `internal/events` for Bubble Tea message structs currently exposed from `bridge.go` and related root files
+- [x] move agent, model, provider, session, tool, auth, compaction, token usage, notification, shutdown, and state-change message types into `internal/events`
+- [x] update bridge, model, UI implementation, and tests to use `internal/events`
+- [x] add/update tests for event translation and message handling after the package move
+- [x] run `go test ./...` - must pass before next task
 
 ### Task 6: Move bridge and layout implementation
 - [ ] move bus-to-Bubble-Tea bridge code from root to `internal/bridge`

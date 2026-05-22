@@ -6,26 +6,20 @@ import (
 
 	"github.com/weave-agent/weave/sdk"
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
-)
 
-// LoginProviderEntry describes a provider available for login.
-type LoginProviderEntry struct {
-	Name    string
-	ID      string
-	IsOAuth bool
-	HasAuth bool
-}
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
+)
 
 // buildLoginProviders returns all providers available for login: registered
 // providers (API key) plus OAuth providers.
-func buildLoginProviders() []LoginProviderEntry {
+func buildLoginProviders() []tuievents.LoginProviderEntry {
 	seen := make(map[string]bool)
-	entries := make([]LoginProviderEntry, 0)
+	entries := make([]tuievents.LoginProviderEntry, 0)
 
 	// Add OAuth providers first
 	for _, oauth := range sdk.ListOAuthProviders() {
 		seen[oauth.ID] = true
-		entries = append(entries, LoginProviderEntry{
+		entries = append(entries, tuievents.LoginProviderEntry{
 			Name:    oauth.Name,
 			ID:      oauth.ID,
 			IsOAuth: true,
@@ -40,7 +34,7 @@ func buildLoginProviders() []LoginProviderEntry {
 		}
 
 		seen[name] = true
-		entries = append(entries, LoginProviderEntry{
+		entries = append(entries, tuievents.LoginProviderEntry{
 			Name:    displayNameForProvider(name),
 			ID:      name,
 			IsOAuth: false,
@@ -56,7 +50,7 @@ func buildLoginProviders() []LoginProviderEntry {
 
 		seen[md.Provider] = true
 		_, isOAuth := sdk.GetOAuthProvider(md.Provider)
-		entries = append(entries, LoginProviderEntry{
+		entries = append(entries, tuievents.LoginProviderEntry{
 			Name:    displayNameForProvider(md.Provider),
 			ID:      md.Provider,
 			IsOAuth: isOAuth,
@@ -84,16 +78,10 @@ func displayNameForProvider(id string) string {
 	return id
 }
 
-// LogoutProviderEntry describes a provider with configured auth.
-type LogoutProviderEntry struct {
-	Name string
-	ID   string
-}
-
 // buildLogoutProviders returns only providers that have auth configured.
-func buildLogoutProviders() []LogoutProviderEntry {
+func buildLogoutProviders() []tuievents.LogoutProviderEntry {
 	seen := make(map[string]bool)
-	entries := make([]LogoutProviderEntry, 0)
+	entries := make([]tuievents.LogoutProviderEntry, 0)
 
 	for _, name := range sdk.ListProviders() {
 		if !sdkmodel.ProviderHasAuth(name) {
@@ -101,7 +89,7 @@ func buildLogoutProviders() []LogoutProviderEntry {
 		}
 
 		seen[name] = true
-		entries = append(entries, LogoutProviderEntry{
+		entries = append(entries, tuievents.LogoutProviderEntry{
 			Name: displayNameForProvider(name),
 			ID:   name,
 		})
@@ -117,7 +105,7 @@ func buildLogoutProviders() []LogoutProviderEntry {
 		}
 
 		seen[oauth.ID] = true
-		entries = append(entries, LogoutProviderEntry{
+		entries = append(entries, tuievents.LogoutProviderEntry{
 			Name: oauth.Name,
 			ID:   oauth.ID,
 		})
@@ -133,7 +121,7 @@ func buildLogoutProviders() []LogoutProviderEntry {
 		}
 
 		seen[md.Provider] = true
-		entries = append(entries, LogoutProviderEntry{
+		entries = append(entries, tuievents.LogoutProviderEntry{
 			Name: displayNameForProvider(md.Provider),
 			ID:   md.Provider,
 		})

@@ -5,6 +5,7 @@ import (
 
 	"github.com/weave-agent/weave/sdk"
 
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 	"github.com/weave-agent/weave-tui/internal/palette"
 
 	"github.com/stretchr/testify/assert"
@@ -19,25 +20,25 @@ func TestAgentStateTracker_Initial(t *testing.T) {
 func TestAgentStateTracker_TurnStartToStreaming(t *testing.T) {
 	tracker := newAgentStateTracker()
 
-	state, changed := tracker.update(TurnStartMsg{})
+	state, changed := tracker.update(tuievents.TurnStartMsg{})
 	assert.True(t, changed)
 	assert.Equal(t, palette.StateStreaming, state)
 }
 
 func TestAgentStateTracker_TurnEndToIdle(t *testing.T) {
 	tracker := newAgentStateTracker()
-	tracker.update(TurnStartMsg{}) // Idle → Streaming
+	tracker.update(tuievents.TurnStartMsg{}) // Idle → Streaming
 
-	state, changed := tracker.update(TurnEndMsg{})
+	state, changed := tracker.update(tuievents.TurnEndMsg{})
 	assert.True(t, changed)
 	assert.Equal(t, palette.StateIdle, state)
 }
 
 func TestAgentStateTracker_MessageEndWithToolCalls(t *testing.T) {
 	tracker := newAgentStateTracker()
-	tracker.update(TurnStartMsg{}) // Streaming
+	tracker.update(tuievents.TurnStartMsg{}) // Streaming
 
-	msg := MessageEndMsg{
+	msg := tuievents.MessageEndMsg{
 		Content:   "response",
 		ToolCalls: []sdk.ToolCall{{ID: "t1", Name: "bash"}, {ID: "t2", Name: "read"}},
 	}
@@ -49,51 +50,51 @@ func TestAgentStateTracker_MessageEndWithToolCalls(t *testing.T) {
 
 func TestAgentStateTracker_ToolResultDecrements(t *testing.T) {
 	tracker := newAgentStateTracker()
-	tracker.update(TurnStartMsg{})
-	tracker.update(MessageEndMsg{
+	tracker.update(tuievents.TurnStartMsg{})
+	tracker.update(tuievents.MessageEndMsg{
 		ToolCalls: []sdk.ToolCall{{ID: "t1", Name: "bash"}, {ID: "t2", Name: "read"}},
 	})
 	assert.Equal(t, palette.StateToolRunning, tracker.state)
 
 	// First tool result: still ToolRunning (one remaining)
-	state, changed := tracker.update(ToolResultMsg{ToolID: "t1"})
+	state, changed := tracker.update(tuievents.ToolResultMsg{ToolID: "t1"})
 	assert.False(t, changed) // still ToolRunning
 	assert.Equal(t, palette.StateToolRunning, state)
 
 	// Second tool result: back to Streaming
-	state, changed = tracker.update(ToolResultMsg{ToolID: "t2"})
+	state, changed = tracker.update(tuievents.ToolResultMsg{ToolID: "t2"})
 	assert.True(t, changed)
 	assert.Equal(t, palette.StateStreaming, state)
 }
 
 func TestAgentStateTracker_AgentEndWithError(t *testing.T) {
 	tracker := newAgentStateTracker()
-	tracker.update(TurnStartMsg{})
+	tracker.update(tuievents.TurnStartMsg{})
 
-	state, changed := tracker.update(AgentEndMsg{Payload: "timeout error"})
+	state, changed := tracker.update(tuievents.AgentEndMsg{Payload: "timeout error"})
 	assert.True(t, changed)
 	assert.Equal(t, palette.StateError, state)
 }
 
 func TestAgentStateTracker_AgentEndNoError(t *testing.T) {
 	tracker := newAgentStateTracker()
-	tracker.update(TurnStartMsg{})
+	tracker.update(tuievents.TurnStartMsg{})
 
-	state, changed := tracker.update(AgentEndMsg{Payload: nil})
+	state, changed := tracker.update(tuievents.AgentEndMsg{Payload: nil})
 	assert.True(t, changed)
 	assert.Equal(t, palette.StateIdle, state)
 }
 
 func TestAgentStateTracker_NoChangeOnSameState(t *testing.T) {
 	tracker := newAgentStateTracker()
-	tracker.update(TurnStartMsg{}) // Idle → Streaming
+	tracker.update(tuievents.TurnStartMsg{}) // Idle → Streaming
 
 	// MessageStart while streaming: no state change
-	_, changed := tracker.update(MessageStartMsg{})
+	_, changed := tracker.update(tuievents.MessageStartMsg{})
 	assert.False(t, changed)
 
 	// MessageUpdate: no state change
-	_, changed = tracker.update(MessageUpdateMsg{Content: "hello"})
+	_, changed = tracker.update(tuievents.MessageUpdateMsg{Content: "hello"})
 	assert.False(t, changed)
 }
 
@@ -101,28 +102,28 @@ func TestAgentStateTracker_FullCycle(t *testing.T) {
 	tracker := newAgentStateTracker()
 
 	// Turn starts: Idle → Streaming
-	state, _ := tracker.update(TurnStartMsg{})
+	state, _ := tracker.update(tuievents.TurnStartMsg{})
 	assert.Equal(t, palette.StateStreaming, state)
 
 	// Tool calls in message: Streaming → ToolRunning
-	state, _ = tracker.update(MessageEndMsg{
+	state, _ = tracker.update(tuievents.MessageEndMsg{
 		ToolCalls: []sdk.ToolCall{{ID: "t1", Name: "bash"}},
 	})
 	assert.Equal(t, palette.StateToolRunning, state)
 
 	// Tool result: ToolRunning → Streaming (no more pending tools)
-	state, _ = tracker.update(ToolResultMsg{ToolID: "t1"})
+	state, _ = tracker.update(tuievents.ToolResultMsg{ToolID: "t1"})
 	assert.Equal(t, palette.StateStreaming, state)
 
 	// Turn ends: Streaming → Idle
-	state, _ = tracker.update(TurnEndMsg{})
+	state, _ = tracker.update(tuievents.TurnEndMsg{})
 	assert.Equal(t, palette.StateIdle, state)
 }
 
 func TestAgentStateTracker_ToolStartSetsToolRunning(t *testing.T) {
 	tracker := newAgentStateTracker()
 
-	state, changed := tracker.update(ToolStartMsg{ToolID: "t1", Tool: "bash"})
+	state, changed := tracker.update(tuievents.ToolStartMsg{ToolID: "t1", Tool: "bash"})
 	assert.True(t, changed)
 	assert.Equal(t, palette.StateToolRunning, state)
 	assert.Equal(t, 1, tracker.toolCount)
@@ -130,10 +131,10 @@ func TestAgentStateTracker_ToolStartSetsToolRunning(t *testing.T) {
 
 func TestAgentStateTracker_ToolCompleteDecrements(t *testing.T) {
 	tracker := newAgentStateTracker()
-	tracker.update(ToolStartMsg{ToolID: "t1", Tool: "bash"})
+	tracker.update(tuievents.ToolStartMsg{ToolID: "t1", Tool: "bash"})
 	assert.Equal(t, 1, tracker.toolCount)
 
-	state, changed := tracker.update(ToolCompleteMsg{ToolID: "t1", Tool: "bash"})
+	state, changed := tracker.update(tuievents.ToolCompleteMsg{ToolID: "t1", Tool: "bash"})
 	assert.True(t, changed)
 	assert.Equal(t, palette.StateStreaming, state)
 	assert.Equal(t, 0, tracker.toolCount)
@@ -141,9 +142,9 @@ func TestAgentStateTracker_ToolCompleteDecrements(t *testing.T) {
 
 func TestAgentStateTracker_ToolErrorDecrements(t *testing.T) {
 	tracker := newAgentStateTracker()
-	tracker.update(ToolStartMsg{ToolID: "t1", Tool: "bash"})
+	tracker.update(tuievents.ToolStartMsg{ToolID: "t1", Tool: "bash"})
 
-	state, changed := tracker.update(ToolErrorMsg{ToolID: "t1", Tool: "bash", Error: "failed"})
+	state, changed := tracker.update(tuievents.ToolErrorMsg{ToolID: "t1", Tool: "bash", Error: "failed"})
 	assert.True(t, changed)
 	assert.Equal(t, palette.StateStreaming, state)
 	assert.Equal(t, 0, tracker.toolCount)
@@ -151,9 +152,9 @@ func TestAgentStateTracker_ToolErrorDecrements(t *testing.T) {
 
 func TestAgentStateTracker_ToolInterruptedDecrements(t *testing.T) {
 	tracker := newAgentStateTracker()
-	tracker.update(ToolStartMsg{ToolID: "t1", Tool: "bash"})
+	tracker.update(tuievents.ToolStartMsg{ToolID: "t1", Tool: "bash"})
 
-	state, changed := tracker.update(ToolInterruptedMsg{ToolID: "t1", Tool: "bash"})
+	state, changed := tracker.update(tuievents.ToolInterruptedMsg{ToolID: "t1", Tool: "bash"})
 	assert.True(t, changed)
 	assert.Equal(t, palette.StateStreaming, state)
 	assert.Equal(t, 0, tracker.toolCount)
@@ -161,12 +162,12 @@ func TestAgentStateTracker_ToolInterruptedDecrements(t *testing.T) {
 
 func TestAgentStateTracker_ToolStartWhenAlreadyToolRunning(t *testing.T) {
 	tracker := newAgentStateTracker()
-	tracker.update(ToolStartMsg{ToolID: "t1", Tool: "bash"})
+	tracker.update(tuievents.ToolStartMsg{ToolID: "t1", Tool: "bash"})
 	assert.Equal(t, 1, tracker.toolCount)
 	assert.Equal(t, palette.StateToolRunning, tracker.state)
 
 	// Second tool start while already running: count increments but no state change
-	state, changed := tracker.update(ToolStartMsg{ToolID: "t2", Tool: "read"})
+	state, changed := tracker.update(tuievents.ToolStartMsg{ToolID: "t2", Tool: "read"})
 	assert.False(t, changed)
 	assert.Equal(t, palette.StateToolRunning, state)
 	assert.Equal(t, 2, tracker.toolCount)
@@ -176,7 +177,7 @@ func TestAgentStateTracker_ToolCompleteWhenToolCountZero(t *testing.T) {
 	tracker := newAgentStateTracker()
 
 	// Stray complete without prior start should not go negative
-	state, changed := tracker.update(ToolCompleteMsg{ToolID: "t1", Tool: "bash"})
+	state, changed := tracker.update(tuievents.ToolCompleteMsg{ToolID: "t1", Tool: "bash"})
 	assert.False(t, changed)
 	assert.Equal(t, palette.StateIdle, state)
 	assert.Equal(t, 0, tracker.toolCount)
@@ -184,19 +185,19 @@ func TestAgentStateTracker_ToolCompleteWhenToolCountZero(t *testing.T) {
 
 func TestAgentStateTracker_ToolStartThenMultipleResults(t *testing.T) {
 	tracker := newAgentStateTracker()
-	tracker.update(ToolStartMsg{ToolID: "t1", Tool: "bash"})
-	tracker.update(ToolStartMsg{ToolID: "t2", Tool: "read"})
+	tracker.update(tuievents.ToolStartMsg{ToolID: "t1", Tool: "bash"})
+	tracker.update(tuievents.ToolStartMsg{ToolID: "t2", Tool: "read"})
 	assert.Equal(t, 2, tracker.toolCount)
 	assert.Equal(t, palette.StateToolRunning, tracker.state)
 
 	// First complete: still ToolRunning
-	state, changed := tracker.update(ToolCompleteMsg{ToolID: "t1", Tool: "bash"})
+	state, changed := tracker.update(tuievents.ToolCompleteMsg{ToolID: "t1", Tool: "bash"})
 	assert.False(t, changed)
 	assert.Equal(t, palette.StateToolRunning, state)
 	assert.Equal(t, 1, tracker.toolCount)
 
 	// Second complete: back to Streaming
-	state, changed = tracker.update(ToolCompleteMsg{ToolID: "t2", Tool: "read"})
+	state, changed = tracker.update(tuievents.ToolCompleteMsg{ToolID: "t2", Tool: "read"})
 	assert.True(t, changed)
 	assert.Equal(t, palette.StateStreaming, state)
 	assert.Equal(t, 0, tracker.toolCount)
@@ -204,21 +205,21 @@ func TestAgentStateTracker_ToolStartThenMultipleResults(t *testing.T) {
 
 func TestAgentStateTracker_ToolLifecycleMixedWithStreaming(t *testing.T) {
 	tracker := newAgentStateTracker()
-	tracker.update(TurnStartMsg{}) // Idle → Streaming
+	tracker.update(tuievents.TurnStartMsg{}) // Idle → Streaming
 
 	// Tool starts while streaming
-	state, changed := tracker.update(ToolStartMsg{ToolID: "t1", Tool: "bash"})
+	state, changed := tracker.update(tuievents.ToolStartMsg{ToolID: "t1", Tool: "bash"})
 	assert.True(t, changed)
 	assert.Equal(t, palette.StateToolRunning, state)
 
 	// Tool completes: back to Streaming
-	state, changed = tracker.update(ToolCompleteMsg{ToolID: "t1", Tool: "bash"})
+	state, changed = tracker.update(tuievents.ToolCompleteMsg{ToolID: "t1", Tool: "bash"})
 	assert.True(t, changed)
 	assert.Equal(t, palette.StateStreaming, state)
 }
 
 func TestTranslateEvent_AgentStateChangeNotFromBus(t *testing.T) {
-	// AgentStateChangeMsg is generated by the bridge's tracker, not from bus events.
+	// tuievents.AgentStateChangeMsg is generated by the bridge's tracker, not from bus events.
 	// translateEvent should return nil for it (it's not a bus topic).
 	msg := translateEvent(sdk.NewEvent("agent.state.change", nil))
 	assert.Nil(t, msg)
@@ -229,7 +230,7 @@ func TestModel_AgentStateChangeUpdatesTheme(t *testing.T) {
 	originalAccent := m.theme.Accent
 
 	// Streaming state
-	model, _ := m.Update(AgentStateChangeMsg{State: palette.StateStreaming})
+	model, _ := m.Update(tuievents.AgentStateChangeMsg{State: palette.StateStreaming})
 	m = model.(Model)
 
 	assert.Equal(t, palette.StateStreaming, m.agentState)
@@ -237,21 +238,21 @@ func TestModel_AgentStateChangeUpdatesTheme(t *testing.T) {
 	assert.Equal(t, "45", m.theme.Accent) // Streaming accent color
 
 	// ToolRunning state
-	model, _ = m.Update(AgentStateChangeMsg{State: palette.StateToolRunning})
+	model, _ = m.Update(tuievents.AgentStateChangeMsg{State: palette.StateToolRunning})
 	m = model.(Model)
 
 	assert.Equal(t, palette.StateToolRunning, m.agentState)
 	assert.Equal(t, "172", m.theme.Accent) // ToolRunning accent color
 
 	// Error state
-	model, _ = m.Update(AgentStateChangeMsg{State: palette.StateError})
+	model, _ = m.Update(tuievents.AgentStateChangeMsg{State: palette.StateError})
 	m = model.(Model)
 
 	assert.Equal(t, palette.StateError, m.agentState)
 	assert.Equal(t, "167", m.theme.Accent) // Error accent color
 
 	// Back to Idle
-	model, _ = m.Update(AgentStateChangeMsg{State: palette.StateIdle})
+	model, _ = m.Update(tuievents.AgentStateChangeMsg{State: palette.StateIdle})
 	m = model.(Model)
 
 	assert.Equal(t, palette.StateIdle, m.agentState)
@@ -261,7 +262,7 @@ func TestModel_AgentStateChangeUpdatesTheme(t *testing.T) {
 func TestModel_AgentStateChangeUpdatesEditorBorder(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 
-	model, _ := m.Update(AgentStateChangeMsg{State: palette.StateStreaming})
+	model, _ := m.Update(tuievents.AgentStateChangeMsg{State: palette.StateStreaming})
 	m = model.(Model)
 
 	assert.Equal(t, "45", m.editor.BorderColor) // Streaming accent
@@ -271,26 +272,26 @@ func TestModel_AgentStateChangePulseActive(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 
 	// Streaming enables pulse
-	model, _ := m.Update(AgentStateChangeMsg{State: palette.StateStreaming})
+	model, _ := m.Update(tuievents.AgentStateChangeMsg{State: palette.StateStreaming})
 	m = model.(Model)
 	assert.True(t, m.editor.PulseActive)
 
 	// ToolRunning keeps pulse active
-	model, _ = m.Update(AgentStateChangeMsg{State: palette.StateToolRunning})
+	model, _ = m.Update(tuievents.AgentStateChangeMsg{State: palette.StateToolRunning})
 	m = model.(Model)
 	assert.True(t, m.editor.PulseActive)
 
 	// Idle disables pulse
-	model, _ = m.Update(AgentStateChangeMsg{State: palette.StateIdle})
+	model, _ = m.Update(tuievents.AgentStateChangeMsg{State: palette.StateIdle})
 	m = model.(Model)
 	assert.False(t, m.editor.PulseActive)
 	assert.Equal(t, 0, m.editor.PulsePos)
 
 	// Error disables pulse
-	model, _ = m.Update(AgentStateChangeMsg{State: palette.StateStreaming})
+	model, _ = m.Update(tuievents.AgentStateChangeMsg{State: palette.StateStreaming})
 	m = model.(Model)
 	assert.True(t, m.editor.PulseActive)
-	model, _ = m.Update(AgentStateChangeMsg{State: palette.StateError})
+	model, _ = m.Update(tuievents.AgentStateChangeMsg{State: palette.StateError})
 	m = model.(Model)
 	assert.False(t, m.editor.PulseActive)
 }
@@ -332,10 +333,10 @@ func TestBridge_EmitsStateChanges(t *testing.T) {
 	<-done
 
 	// Count state change messages
-	var stateMsgs []AgentStateChangeMsg
+	var stateMsgs []tuievents.AgentStateChangeMsg
 
 	for _, msg := range sender.msgs {
-		if sc, ok := msg.(AgentStateChangeMsg); ok {
+		if sc, ok := msg.(tuievents.AgentStateChangeMsg); ok {
 			stateMsgs = append(stateMsgs, sc)
 		}
 	}

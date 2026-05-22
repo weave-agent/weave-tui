@@ -16,6 +16,7 @@ import (
 	"github.com/weave-agent/weave-tui/internal/components"
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
@@ -47,11 +48,11 @@ func TestIntegration_FullStreamingFlow(t *testing.T) {
 	assert.True(t, m.prompted)
 
 	// 3. Turn starts — spinner appears
-	model, _ = m.Update(TurnStartMsg{Turn: 1})
+	model, _ = m.Update(tuievents.TurnStartMsg{Turn: 1})
 	m = model.(Model)
 
 	// 4. Message starts — creates assistant message
-	model, _ = m.Update(MessageStartMsg{})
+	model, _ = m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 	items := m.chat.Items()
 	require.Len(t, items, 2) // user + assistant
@@ -60,16 +61,16 @@ func TestIntegration_FullStreamingFlow(t *testing.T) {
 	assert.True(t, am.IsStreaming())
 
 	// 5. Stream deltas with token rate
-	model, _ = m.Update(MessageUpdateMsg{Content: "Go is ", TokenRate: 50.0})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "Go is ", TokenRate: 50.0})
 	m = model.(Model)
 	assert.InDelta(t, 50.0, m.footer.TokenRate(), 0.01)
 
-	model, _ = m.Update(MessageUpdateMsg{Content: "a great language.", TokenRate: 75.5})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "a great language.", TokenRate: 75.5})
 	m = model.(Model)
 	assert.InDelta(t, 75.5, m.footer.TokenRate(), 0.01)
 
 	// 6. Message ends with tool calls — creates tool panels, clears token rate
-	model, _ = m.Update(MessageEndMsg{
+	model, _ = m.Update(tuievents.MessageEndMsg{
 		Content: "Go is a great language.",
 		ToolCalls: []sdk.ToolCall{
 			{ID: "tc1", Name: "bash", Arguments: map[string]any{"command": "go version"}},
@@ -86,7 +87,7 @@ func TestIntegration_FullStreamingFlow(t *testing.T) {
 	assert.Equal(t, messages.ToolPending, tp.State())
 
 	// 7. Tool result arrives
-	model, _ = m.Update(ToolResultMsg{
+	model, _ = m.Update(tuievents.ToolResultMsg{
 		ToolID: "tc1",
 		Tool:   "bash",
 		Result: sdk.ToolResult{Content: "go version go1.22.0", IsError: false},
@@ -97,7 +98,7 @@ func TestIntegration_FullStreamingFlow(t *testing.T) {
 	assert.Equal(t, messages.ToolSuccess, tp.State())
 
 	// 8. Turn ends — spinner hides
-	model, _ = m.Update(TurnEndMsg{})
+	model, _ = m.Update(tuievents.TurnEndMsg{})
 	m = model.(Model)
 	assert.False(t, m.spinner.Visible())
 
@@ -120,16 +121,16 @@ func TestIntegration_OverlayStackWithStreaming(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 10)
 
 	// Start streaming
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
-	model, _ = m.Update(MessageUpdateMsg{Content: "streaming..."})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "streaming..."})
 	m = model.(Model)
 
 	// Activate a dialog (session selector)
-	sessions := []SessionEntry{
+	sessions := []tuievents.SessionEntry{
 		{ID: "aaa11122233344455566677788899900", CWD: "/project", CreatedAt: time.Now()},
 	}
-	model, _ = m.Update(SessionListResultMsg{Sessions: sessions})
+	model, _ = m.Update(tuievents.SessionListResultMsg{Sessions: sessions})
 	m = model.(Model)
 	require.False(t, m.dialogStack.Empty())
 
@@ -161,15 +162,15 @@ func TestIntegration_ProgressiveMarkdownStreaming(t *testing.T) {
 	m.chat = m.chat.SetSize(120, 20)
 
 	// Start message
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
 	// Stream markdown content progressively
 	codeBlock := "```go\nfunc main() {\n    fmt.Println"
-	model, _ = m.Update(MessageUpdateMsg{Content: codeBlock})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: codeBlock})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageUpdateMsg{Content: "(\"hello\")\n}\n```"})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "(\"hello\")\n}\n```"})
 	m = model.(Model)
 
 	// While streaming, content should be present
@@ -179,7 +180,7 @@ func TestIntegration_ProgressiveMarkdownStreaming(t *testing.T) {
 	assert.Contains(t, am.Content(), "func main()")
 
 	// Finalize
-	model, _ = m.Update(MessageEndMsg{Content: codeBlock + "(\"hello\")\n}\n```"})
+	model, _ = m.Update(tuievents.MessageEndMsg{Content: codeBlock + "(\"hello\")\n}\n```"})
 	m = model.(Model)
 
 	am = m.chat.Items()[0].(*messages.AssistantMessage)
@@ -211,20 +212,20 @@ func TestIntegration_TokenRateDisplayAndAutoScroll(t *testing.T) {
 	require.False(t, m.chat.AtBottom())
 
 	// Start streaming with token rate
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
 
-	model, _ = m.Update(MessageUpdateMsg{Content: "response", TokenRate: 42.5})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "response", TokenRate: 42.5})
 	m = model.(Model)
 	assert.InDelta(t, 42.5, m.footer.TokenRate(), 0.01)
 
 	// End message — token rate should clear
-	model, _ = m.Update(MessageEndMsg{Content: "response"})
+	model, _ = m.Update(tuievents.MessageEndMsg{Content: "response"})
 	m = model.(Model)
 	assert.InDelta(t, 0.0, m.footer.TokenRate(), 0.001)
 
 	// Turn end while scrolled up — should set indicator
-	model, _ = m.Update(TurnEndMsg{})
+	model, _ = m.Update(tuievents.TurnEndMsg{})
 	m = model.(Model)
 	assert.True(t, m.chat.TurnEndPending(), "turn end indicator should be set when scrolled up")
 
@@ -257,7 +258,7 @@ func TestIntegration_SDKUIThroughOverlayStack(t *testing.T) {
 	assert.Equal(t, "active", m.footer.ExtStatus()["test"])
 
 	// Test Notify — banners appear in the pills area, not the chat
-	model, _ = m.Update(notifyMsg{message: "notification via UI"})
+	model, _ = m.Update(tuievents.NotifyMsg{Message: "notification via UI"})
 	m = model.(Model)
 	assert.Equal(t, "notification via UI", m.bannerMsg)
 	assert.Equal(t, sdk.NotifyInfo, m.bannerLevel)
@@ -424,10 +425,10 @@ func TestIntegration_SessionResumeFlow(t *testing.T) {
 	require.NoError(t, err)
 
 	// Show session list
-	sessions := []SessionEntry{
+	sessions := []tuievents.SessionEntry{
 		{ID: sessionID, CWD: "/project", CreatedAt: time.Now()},
 	}
-	model, _ := m.Update(SessionListResultMsg{Sessions: sessions})
+	model, _ := m.Update(tuievents.SessionListResultMsg{Sessions: sessions})
 	m = model.(Model)
 	require.False(t, m.dialogStack.Empty())
 
@@ -489,11 +490,11 @@ func TestIntegration_ModelSelectionFlow(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 10)
 
 	// Show model list
-	models := []ModelEntry{
+	models := []tuievents.ModelEntry{
 		{Provider: "anthropic", Model: "claude-sonnet-4-6"},
 		{Provider: "openai", Model: "gpt-5.5"},
 	}
-	model, _ := m.Update(ModelListResultMsg{Models: models})
+	model, _ := m.Update(tuievents.ModelListResultMsg{Models: models})
 	m = model.(Model)
 	require.False(t, m.dialogStack.Empty())
 
@@ -596,9 +597,9 @@ func TestIntegration_ScreenBufferLayout(t *testing.T) {
 			m.chat = m.chat.SetSize(sz.w, m.chatHeight(sz.h))
 			m.AddUserMessage("test message")
 
-			model, _ := m.Update(MessageStartMsg{})
+			model, _ := m.Update(tuievents.MessageStartMsg{})
 			m = model.(Model)
-			model, _ = m.Update(MessageEndMsg{Content: "response"})
+			model, _ = m.Update(tuievents.MessageEndMsg{Content: "response"})
 			m = model.(Model)
 
 			assert.NotPanics(t, func() {
@@ -622,7 +623,7 @@ func TestIntegration_ThinkingLevelCycleWithModelChange(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m.currentModel = ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
+	m.currentModel = tuievents.ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}
 
 	// Default is medium
 	assert.Equal(t, sdkmodel.ThinkingMedium, m.thinkingLevel)
@@ -634,13 +635,13 @@ func TestIntegration_ThinkingLevelCycleWithModelChange(t *testing.T) {
 	assert.Equal(t, "248", m.editor.BorderColor)
 
 	// Switch to non-reasoning model — forces thinking off
-	model, _ = m.Update(ModelChangedMsg{Entry: ModelEntry{Provider: "openai", Model: "gpt-4.1"}})
+	model, _ = m.Update(tuievents.ModelChangedMsg{Entry: tuievents.ModelEntry{Provider: "openai", Model: "gpt-4.1"}})
 	m = model.(Model)
 	assert.Equal(t, sdkmodel.ThinkingOff, m.thinkingLevel)
 	assert.Equal(t, "240", m.editor.BorderColor)
 
 	// Switch back to reasoning model — thinking stays off until user changes it
-	model, _ = m.Update(ModelChangedMsg{Entry: ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}})
+	model, _ = m.Update(tuievents.ModelChangedMsg{Entry: tuievents.ModelEntry{Provider: "anthropic", Model: "claude-sonnet-4-6"}})
 	m = model.(Model)
 	assert.Equal(t, sdkmodel.ThinkingOff, m.thinkingLevel)
 
@@ -664,9 +665,9 @@ func TestIntegration_InterruptDuringStreaming(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 10)
 
 	// Start streaming
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
-	model, _ = m.Update(MessageUpdateMsg{Content: "partial response"})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "partial response"})
 	m = model.(Model)
 
 	// First escape — interrupts
@@ -724,9 +725,9 @@ func TestIntegration_DrawWithOverlayAndStreaming(t *testing.T) {
 	m.chat = m.chat.SetSize(80, 10)
 
 	// Start streaming
-	model, _ := m.Update(MessageStartMsg{})
+	model, _ := m.Update(tuievents.MessageStartMsg{})
 	m = model.(Model)
-	model, _ = m.Update(MessageUpdateMsg{Content: "streaming text"})
+	model, _ = m.Update(tuievents.MessageUpdateMsg{Content: "streaming text"})
 	m = model.(Model)
 
 	// Push a confirm dialog

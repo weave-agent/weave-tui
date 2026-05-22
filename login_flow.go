@@ -9,44 +9,27 @@ import (
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
 
 	"github.com/weave-agent/weave-tui/internal/components/messages"
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 
 	tea "charm.land/bubbletea/v2"
 )
 
-// LoginFlowResultMsg is sent when an asynchronous OAuth login flow completes.
-type LoginFlowResultMsg struct {
-	Provider   string
-	Credential sdk.OAuthCredential
-	Error      error
-	Gen        int // generation counter to detect stale results from canceled flows
-}
-
-// LoginAuthURLMsg is sent when the authorization URL has been generated for an
-// OAuth authorization code flow. The UI should update the login dialog with the
-// full URL and then issue completeOAuthFlowCmd to finish the flow.
-type LoginAuthURLMsg struct {
-	Provider string
-	URL      string
-	Handle   *sdk.AuthorizationFlowHandle
-	Gen      int
-}
-
 // runOAuthFlowCmd returns a tea.Cmd that starts the OAuth authorization code
-// flow, opens the browser, and returns a LoginAuthURLMsg containing the full
+// flow, opens the browser, and returns a tuievents.LoginAuthURLMsg containing the full
 // authorization URL. The caller must then issue completeOAuthFlowCmd with the
 // handle to finish the flow.
 func runOAuthFlowCmd(parentCtx context.Context, provider sdk.OAuthProvider, gen int) tea.Cmd {
 	return func() tea.Msg {
 		authCodeURL, handle, err := sdk.StartAuthorizationCodeFlow(parentCtx, provider.AuthURL, provider.TokenURL, provider.ClientID, provider.RedirectURI, provider.Scopes, provider.ExtraAuthParams)
 		if err != nil {
-			return LoginFlowResultMsg{
+			return tuievents.LoginFlowResultMsg{
 				Provider: provider.ID,
 				Error:    err,
 				Gen:      gen,
 			}
 		}
 
-		return LoginAuthURLMsg{
+		return tuievents.LoginAuthURLMsg{
 			Provider: provider.ID,
 			URL:      authCodeURL,
 			Handle:   handle,
@@ -57,7 +40,7 @@ func runOAuthFlowCmd(parentCtx context.Context, provider sdk.OAuthProvider, gen 
 
 // completeOAuthFlowCmd returns a tea.Cmd that waits for the OAuth callback and
 // exchanges the authorization code for tokens. It must be called after
-// runOAuthFlowCmd returns a LoginAuthURLMsg.
+// runOAuthFlowCmd returns a tuievents.LoginAuthURLMsg.
 func completeOAuthFlowCmd(parentCtx context.Context, handle *sdk.AuthorizationFlowHandle, providerID string, gen int) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(parentCtx, 2*time.Minute)
@@ -65,7 +48,7 @@ func completeOAuthFlowCmd(parentCtx context.Context, handle *sdk.AuthorizationFl
 
 		cred, err := sdk.CompleteAuthorizationCodeFlow(ctx, handle)
 
-		return LoginFlowResultMsg{
+		return tuievents.LoginFlowResultMsg{
 			Provider:   providerID,
 			Credential: cred,
 			Error:      err,
@@ -75,7 +58,7 @@ func completeOAuthFlowCmd(parentCtx context.Context, handle *sdk.AuthorizationFl
 }
 
 // pollDeviceCodeCmd returns a tea.Cmd that polls the token endpoint for a
-// device code flow and returns a LoginFlowResultMsg.
+// device code flow and returns a tuievents.LoginFlowResultMsg.
 func pollDeviceCodeCmd(parentCtx context.Context, providerID, deviceCode string, intervalSecs int, tokenURL, clientID string, gen int) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(parentCtx, 2*time.Minute)
@@ -83,7 +66,7 @@ func pollDeviceCodeCmd(parentCtx context.Context, providerID, deviceCode string,
 
 		tokenResp, err := sdk.PollDeviceToken(ctx, tokenURL, clientID, deviceCode, intervalSecs)
 		if err != nil {
-			return LoginFlowResultMsg{
+			return tuievents.LoginFlowResultMsg{
 				Provider: providerID,
 				Error:    err,
 				Gen:      gen,
@@ -100,7 +83,7 @@ func pollDeviceCodeCmd(parentCtx context.Context, providerID, deviceCode string,
 			cred.ExpiresAt = time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
 		}
 
-		return LoginFlowResultMsg{
+		return tuievents.LoginFlowResultMsg{
 			Provider:   providerID,
 			Credential: cred,
 			Gen:        gen,
@@ -108,7 +91,7 @@ func pollDeviceCodeCmd(parentCtx context.Context, providerID, deviceCode string,
 	}
 }
 
-func (m Model) onLoginFlowResult(msg LoginFlowResultMsg) (tea.Model, tea.Cmd) {
+func (m Model) onLoginFlowResult(msg tuievents.LoginFlowResultMsg) (tea.Model, tea.Cmd) {
 	if msg.Error != nil {
 		am := messages.NewAssistantMessage()
 		am.Finalize(fmt.Sprintf("OAuth login failed for %s: %v", displayNameForProvider(msg.Provider), msg.Error))

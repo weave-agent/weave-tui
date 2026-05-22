@@ -10,6 +10,7 @@ import (
 	"github.com/weave-agent/weave/sdk"
 
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 	"github.com/weave-agent/weave-tui/internal/palette"
 
 	tea "charm.land/bubbletea/v2"
@@ -73,9 +74,9 @@ func TestTUIImpl_Notify(t *testing.T) {
 	ui.Notify("hello world")
 
 	require.Len(t, sender.msgs, 1)
-	msg, ok := sender.msgs[0].(notifyMsg)
+	msg, ok := sender.msgs[0].(tuievents.NotifyMsg)
 	require.True(t, ok)
-	assert.Equal(t, "hello world", msg.message)
+	assert.Equal(t, "hello world", msg.Message)
 }
 
 func TestTUIImpl_Notify_NoProgram(t *testing.T) {
@@ -845,10 +846,10 @@ func TestTUIImpl_NotifyTyped(t *testing.T) {
 	ui.NotifyTyped("warning text", sdk.NotifyWarning)
 
 	require.Len(t, sender.msgs, 1)
-	msg, ok := sender.msgs[0].(notifyTypedMsg)
+	msg, ok := sender.msgs[0].(tuievents.NotifyTypedMsg)
 	require.True(t, ok)
-	assert.Equal(t, "warning text", msg.message)
-	assert.Equal(t, sdk.NotifyWarning, msg.level)
+	assert.Equal(t, "warning text", msg.Message)
+	assert.Equal(t, sdk.NotifyWarning, msg.Level)
 }
 
 func TestTUIImpl_NotifyTyped_NoProgram(t *testing.T) {
@@ -865,10 +866,10 @@ func TestTUIImpl_ShowError(t *testing.T) {
 	ui.ShowError("something went wrong")
 
 	require.Len(t, sender.msgs, 1)
-	msg, ok := sender.msgs[0].(notifyTypedMsg)
+	msg, ok := sender.msgs[0].(tuievents.NotifyTypedMsg)
 	require.True(t, ok)
-	assert.Equal(t, "something went wrong", msg.message)
-	assert.Equal(t, sdk.NotifyError, msg.level)
+	assert.Equal(t, "something went wrong", msg.Message)
+	assert.Equal(t, sdk.NotifyError, msg.Level)
 }
 
 func TestTUIImpl_SetWorking(t *testing.T) {
@@ -905,7 +906,7 @@ func TestModel_NotifyTypedMsg_ErrorBanner(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	updated, cmd := m.Update(notifyTypedMsg{message: "error occurred", level: sdk.NotifyError})
+	updated, cmd := m.Update(tuievents.NotifyTypedMsg{Message: "error occurred", Level: sdk.NotifyError})
 	m = updated.(Model)
 
 	assert.Empty(t, m.chat.Items())
@@ -921,7 +922,7 @@ func TestModel_NotifyTypedMsg_InfoBanner(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	updated, cmd := m.Update(notifyTypedMsg{message: "info msg", level: sdk.NotifyInfo})
+	updated, cmd := m.Update(tuievents.NotifyTypedMsg{Message: "info msg", Level: sdk.NotifyInfo})
 	m = updated.(Model)
 
 	assert.Empty(t, m.chat.Items())
@@ -936,7 +937,7 @@ func TestModel_NotifyTypedMsg_WarningBanner(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	updated, cmd := m.Update(notifyTypedMsg{message: "warning msg", level: sdk.NotifyWarning})
+	updated, cmd := m.Update(tuievents.NotifyTypedMsg{Message: "warning msg", Level: sdk.NotifyWarning})
 	m = updated.(Model)
 
 	assert.Empty(t, m.chat.Items())
@@ -951,7 +952,7 @@ func TestModel_NotifyTypedMsg_SuccessBanner(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	updated, cmd := m.Update(notifyTypedMsg{message: "success msg", level: sdk.NotifySuccess})
+	updated, cmd := m.Update(tuievents.NotifyTypedMsg{Message: "success msg", Level: sdk.NotifySuccess})
 	m = updated.(Model)
 
 	assert.Empty(t, m.chat.Items())
@@ -977,7 +978,7 @@ func TestModel_NotifyMsg_Banner(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	updated, cmd := m.Update(notifyMsg{message: "notification text"})
+	updated, cmd := m.Update(tuievents.NotifyMsg{Message: "notification text"})
 	m = updated.(Model)
 
 	assert.Empty(t, m.chat.Items())
@@ -1024,7 +1025,7 @@ func TestModel_OutdatedNotificationAddsBanner(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	msg := OutdatedNotificationMsg{
+	msg := tuievents.OutdatedNotificationMsg{
 		Extensions: []sdk.OutdatedInfo{
 			{Name: "mcp", LocalHead: "abc", RemoteHead: "def"},
 			{Name: "diff-viewer", LocalHead: "111", RemoteHead: "222"},
@@ -1046,7 +1047,7 @@ func TestModel_OutdatedNotificationEmptyList(t *testing.T) {
 	m.width = 80
 	m.height = 24
 
-	msg := OutdatedNotificationMsg{Extensions: nil}
+	msg := tuievents.OutdatedNotificationMsg{Extensions: nil}
 
 	updated, _ := m.Update(msg)
 	m = updated.(Model)
@@ -1061,7 +1062,7 @@ func TestModel_OutdatedNotificationSingleExtension(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	msg := OutdatedNotificationMsg{
+	msg := tuievents.OutdatedNotificationMsg{
 		Extensions: []sdk.OutdatedInfo{
 			{Name: "mcp", LocalHead: "abc", RemoteHead: "def"},
 		},

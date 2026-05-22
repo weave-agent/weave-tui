@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,7 +30,7 @@ func TestPollDeviceCodeCmd_Success(t *testing.T) {
 	cmd := pollDeviceCodeCmd(context.Background(), "test-provider", "dc-123", 1, server.URL, "client-id", 1)
 	msg := cmd()
 
-	result, ok := msg.(LoginFlowResultMsg)
+	result, ok := msg.(tuievents.LoginFlowResultMsg)
 	require.True(t, ok)
 	assert.Equal(t, "test-provider", result.Provider)
 	assert.Equal(t, 1, result.Gen)
@@ -51,7 +53,7 @@ func TestPollDeviceCodeCmd_Error(t *testing.T) {
 	cmd := pollDeviceCodeCmd(context.Background(), "test-provider", "dc-123", 1, server.URL, "client-id", 2)
 	msg := cmd()
 
-	result, ok := msg.(LoginFlowResultMsg)
+	result, ok := msg.(tuievents.LoginFlowResultMsg)
 	require.True(t, ok)
 	assert.Equal(t, "test-provider", result.Provider)
 	assert.Equal(t, 2, result.Gen)

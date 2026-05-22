@@ -11,6 +11,7 @@ import (
 	"github.com/weave-agent/weave/bus"
 
 	"github.com/weave-agent/weave-tui/internal/components/messages"
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
@@ -513,9 +514,9 @@ func TestReloadCmd_NoLauncherPath(t *testing.T) {
 	cmd := reloadCmd()
 	msg := cmd()
 
-	notify, ok := msg.(notifyMsg)
-	require.True(t, ok, "expected notifyMsg when WEAVE_LAUNCHER_PATH is empty")
-	assert.Contains(t, notify.message, "not available")
+	notify, ok := msg.(tuievents.NotifyMsg)
+	require.True(t, ok, "expected tuievents.NotifyMsg when WEAVE_LAUNCHER_PATH is empty")
+	assert.Contains(t, notify.Message, "not available")
 }
 
 func TestReloadCmd_RemovesCacheDir(t *testing.T) {
@@ -601,9 +602,9 @@ func TestReloadCmd_RejectsPathTraversal(t *testing.T) {
 	cmd := reloadCmd()
 	msg := cmd()
 
-	notify, ok := msg.(notifyMsg)
-	require.True(t, ok, "expected notifyMsg for invalid hash, got %T", msg)
-	assert.Contains(t, notify.message, "invalid build hash")
+	notify, ok := msg.(tuievents.NotifyMsg)
+	require.True(t, ok, "expected tuievents.NotifyMsg for invalid hash, got %T", msg)
+	assert.Contains(t, notify.Message, "invalid build hash")
 
 	// Victim directory must still exist.
 	_, err := os.Stat(victim)
@@ -645,8 +646,8 @@ func TestCommandRegistry_DispatchLogin(t *testing.T) {
 	assert.NotNil(t, result.Command)
 
 	msg := result.Command()
-	loginResult, ok := msg.(LoginListResultMsg)
-	require.True(t, ok, "expected LoginListResultMsg, got %T", msg)
+	loginResult, ok := msg.(tuievents.LoginListResultMsg)
+	require.True(t, ok, "expected tuievents.LoginListResultMsg, got %T", msg)
 	assert.NotNil(t, loginResult.Providers)
 }
 
@@ -661,8 +662,8 @@ func TestCommandRegistry_DispatchLogout(t *testing.T) {
 	assert.NotNil(t, result.Command)
 
 	msg := result.Command()
-	logoutResult, ok := msg.(LogoutListResultMsg)
-	require.True(t, ok, "expected LogoutListResultMsg, got %T", msg)
+	logoutResult, ok := msg.(tuievents.LogoutListResultMsg)
+	require.True(t, ok, "expected tuievents.LogoutListResultMsg, got %T", msg)
 	assert.NotNil(t, logoutResult.Providers)
 }
 

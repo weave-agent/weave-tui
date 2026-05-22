@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
+
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/stretchr/testify/assert"
@@ -326,10 +328,10 @@ func TestModel_OverlayDismissStillWorks(t *testing.T) {
 	m.height = 24
 
 	// Activate an overlay
-	sessions := []SessionEntry{
+	sessions := []tuievents.SessionEntry{
 		{ID: "aaa11122233344455566677788899900", CWD: "/project", CreatedAt: time.Now()},
 	}
-	model, _ := m.Update(SessionListResultMsg{Sessions: sessions})
+	model, _ := m.Update(tuievents.SessionListResultMsg{Sessions: sessions})
 	m = model.(Model)
 	assert.False(t, m.dialogStack.Empty())
 

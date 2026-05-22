@@ -3,8 +3,6 @@ package tui
 import (
 	"fmt"
 
-	"github.com/weave-agent/weave/sdk"
-
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
 	"github.com/weave-agent/weave-tui/internal/palette"
@@ -64,15 +62,6 @@ type popupPendingMsg struct{}
 type extStatusMsg struct {
 	key  string
 	text string
-}
-
-type notifyMsg struct {
-	message string
-}
-
-type notifyTypedMsg struct {
-	message string
-	level   sdk.NotifyLevel
 }
 
 // slashCommandsUpdatedMsg is sent when commands are dynamically registered,
