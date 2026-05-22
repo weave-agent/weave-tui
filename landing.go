@@ -7,10 +7,14 @@ import (
 	"github.com/weave-agent/weave-tui/palette"
 	"github.com/weave-agent/weave-tui/styles"
 
+	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 )
 
-const landingLabelWidth = 12
+const (
+	landingLabelWidth   = 12
+	landingContentWidth = 56
+)
 
 // LandingModel renders a landing screen shown before the first prompt.
 // It displays a minimal title, current model/provider info, loaded extensions,
@@ -85,6 +89,8 @@ func (m LandingModel) Draw(scr uv.Screen, area uv.Rectangle, theme *palette.Them
 		var rendered string
 
 		switch {
+		case strings.HasPrefix(line, "logo:"):
+			rendered = accentBrightStyle.Render(strings.TrimPrefix(line, "logo:"))
 		case strings.HasPrefix(line, "title:"):
 			rendered = accentBrightStyle.Render(strings.TrimPrefix(line, "title:"))
 		case strings.HasPrefix(line, "kv:"):
@@ -97,8 +103,7 @@ func (m LandingModel) Draw(scr uv.Screen, area uv.Rectangle, theme *palette.Them
 		case strings.HasPrefix(line, "hint:"):
 			rendered = mutedStyle.Render(strings.TrimPrefix(line, "hint:"))
 		case strings.HasPrefix(line, "rule:"):
-			// Render a horizontal rule that spans most of the width
-			ruleWidth := min(w-4, 40)
+			ruleWidth := min(w, m.contentWidth())
 			if ruleWidth > 0 {
 				rendered = mutedStyle.Render(strings.Repeat("─", ruleWidth))
 			}
@@ -114,7 +119,7 @@ func (m LandingModel) Draw(scr uv.Screen, area uv.Rectangle, theme *palette.Them
 }
 
 func (m LandingModel) buildLines() []string {
-	lines := append([]string{}, m.title()...)
+	lines := append([]string{}, m.logo()...)
 
 	if m.model != "" {
 		lines = append(lines, fmt.Sprintf("kv:%-*s|%s", landingLabelWidth, "Model", m.model))
@@ -126,7 +131,7 @@ func (m LandingModel) buildLines() []string {
 	if len(m.extensions) > 0 {
 		lines = append(lines, "", "rule:")
 		lines = append(lines, fmt.Sprintf("kv:%-*s|", landingLabelWidth, "Extensions"))
-		for _, extLine := range wrapList(m.extensions, m.width) {
+		for _, extLine := range wrapList(m.extensions, m.contentWidth()) {
 			lines = append(lines, "muted:"+extLine)
 		}
 	}
@@ -168,7 +173,7 @@ func wrapList(items []string, width int) []string {
 	}
 
 	text := b.String()
-	maxLine := max(width-len(prefix), 10)
+	maxLine := max(width-lipgloss.Width(prefix), 10)
 
 	for text != "" {
 		if len(text) <= maxLine {
@@ -192,10 +197,23 @@ func wrapList(items []string, width int) []string {
 	return lines
 }
 
-func (m LandingModel) title() []string {
+func (m LandingModel) contentWidth() int {
+	if m.width > 0 {
+		return min(m.width, landingContentWidth)
+	}
+
+	return landingContentWidth
+}
+
+func (m LandingModel) logo() []string {
 	return []string{
 		"",
-		"title:  weave",
+		"logo: █████ ███ █████  ██████   ██████   █████ █████  ██████ ",
+		"logo:░░███ ░███░░███  ███░░███ ░░░░░███ ░░███ ░░███  ███░░███",
+		"logo: ░███ ░███ ░███ ░███████   ███████  ░███  ░███ ░███████ ",
+		"logo: ░░███████████  ░███░░░   ███░░███  ░░███ ███  ░███░░░  ",
+		"logo:  ░░████░████   ░░██████ ░░████████  ░░█████   ░░██████ ",
+		"logo:   ░░░░ ░░░░     ░░░░░░   ░░░░░░░░    ░░░░░     ░░░░░░ ",
 		"",
 	}
 }

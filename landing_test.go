@@ -4,7 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -12,13 +14,13 @@ import (
 	"github.com/weave-agent/weave-tui/styles"
 )
 
-func TestLandingModel_DrawRendersTitle(t *testing.T) {
+func TestLandingModel_DrawRendersLogo(t *testing.T) {
 	m := NewLandingModel("glm-5.1", "anthropic", nil)
 	scr := uv.NewScreenBuffer(60, 24)
 	m.Draw(scr, scr.Bounds(), nil)
 	rendered := scr.Render()
 
-	assert.Contains(t, rendered, "weave")
+	assert.Contains(t, rendered, "█████ ███ █████")
 }
 
 func TestLandingModel_DrawRendersModelInfo(t *testing.T) {
@@ -64,8 +66,8 @@ func TestLandingModel_DrawNoModel(t *testing.T) {
 	m.Draw(scr, scr.Bounds(), nil)
 	rendered := scr.Render()
 
-	// Should still render title and hints but no model/provider info
-	assert.Contains(t, rendered, "weave")
+	// Should still render logo and hints but no model/provider info
+	assert.Contains(t, rendered, "█████ ███ █████")
 	assert.NotContains(t, rendered, "glm-5.1")
 	assert.NotContains(t, rendered, "Model")
 	assert.NotContains(t, rendered, "Provider")
@@ -78,7 +80,7 @@ func TestLanding_ShownInitially(t *testing.T) {
 	require.True(t, m.showLanding, "landing should be shown initially")
 
 	view := m.View()
-	assert.Contains(t, view.Content, "weave", "view should contain landing title")
+	assert.Contains(t, view.Content, "█████ ███ █████", "view should contain landing logo")
 	// Horizontal rule should be present between info and hints
 	assert.Contains(t, view.Content, "─", "view should contain horizontal rule")
 }
@@ -118,7 +120,7 @@ func TestLanding_ReShownOnClear(t *testing.T) {
 
 	assert.True(t, m.showLanding, "landing should re-show after /clear")
 	view := m.View()
-	assert.Contains(t, view.Content, "weave")
+	assert.Contains(t, view.Content, "█████ ███ █████")
 }
 
 func TestLanding_ReShownOnNew(t *testing.T) {
@@ -204,6 +206,21 @@ func TestLandingModel_DrawRendersExtensions(t *testing.T) {
 	assert.Contains(t, rendered, "read")
 }
 
+func TestLandingModel_DrawWrapsExtensionsToContentWidth(t *testing.T) {
+	exts := []string{
+		"agent", "tui", "bash", "read", "edit", "write", "grep", "find", "ls", "search", "webfetch", "subagent",
+	}
+	m := NewLandingModel("glm-5.1", "anthropic", exts).SetSize(120, 30)
+	scr := uv.NewScreenBuffer(120, 30)
+	m.Draw(scr, scr.Bounds(), nil)
+
+	for _, line := range strings.Split(ansi.Strip(scr.Render()), "\n") {
+		if strings.HasPrefix(line, "    ") {
+			assert.LessOrEqual(t, lipgloss.Width(line), landingContentWidth)
+		}
+	}
+}
+
 func TestLandingModel_DrawNoExtensions(t *testing.T) {
 	m := NewLandingModel("glm-5.1", "anthropic", nil)
 	scr := uv.NewScreenBuffer(60, 24)
@@ -256,8 +273,8 @@ func TestLandingModel_DrawNarrowTerminal(t *testing.T) {
 	m.Draw(scr, scr.Bounds(), nil)
 	rendered := scr.Render()
 
-	// Title and labels should still render
-	assert.Contains(t, rendered, "weave")
+	// Logo and labels should still render
+	assert.Contains(t, rendered, "█████")
 	assert.Contains(t, rendered, "Model")
 	assert.Contains(t, rendered, "Provider")
 	assert.Contains(t, rendered, "Extensions")
@@ -272,8 +289,8 @@ func TestLandingModel_DrawShortTerminal(t *testing.T) {
 	m.Draw(scr, scr.Bounds(), nil)
 	rendered := scr.Render()
 
-	// Should render at least the title without panicking
-	assert.Contains(t, rendered, "weave")
+	// Should render at least the logo without panicking
+	assert.Contains(t, rendered, "█████")
 }
 
 func TestLandingModel_SetStyles(t *testing.T) {
