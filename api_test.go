@@ -119,6 +119,46 @@ func TestPublicAPI_AutocompleteTypes(t *testing.T) {
 	assert.Equal(t, "hi", sugg.Label)
 }
 
+func TestPublicAPI_GoDocHidesImplementationInternals(t *testing.T) {
+	cmd := exec.Command("go", "doc", ".")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	doc := string(out)
+	for _, symbol := range []string{
+		"RegisterTUIExtension",
+		"GetTUIExtension",
+		"ListTUIExtensions",
+		"TUIConfig",
+		"TUIExtension",
+		"TUIExtAPI",
+		"PanelConfig",
+		"PanelDrawer",
+		"AutocompleteProvider",
+		"ThemeDef",
+	} {
+		assert.Contains(t, doc, symbol)
+	}
+
+	for _, symbol := range []string{
+		"ErrNoTTY",
+		"NewTUI",
+		"type TUI ",
+		"type Model",
+		"type TUIImpl",
+		"type CommandRegistry",
+		"type BindingRegistry",
+		"type PanelManager",
+		"type PanelTray ",
+		"type Bridge",
+		"type Layout",
+		"type SessionEntry",
+		"type ProviderEntry",
+	} {
+		assert.NotContains(t, doc, symbol)
+	}
+}
+
 func TestPackageVisibility_RenderingSupportIsInternal(t *testing.T) {
 	cmd := exec.Command("go", "list", "./...")
 	out, err := cmd.CombinedOutput()

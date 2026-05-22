@@ -18,6 +18,15 @@ func TestNewSpinnerModel(t *testing.T) {
 	assert.False(t, s.Visible())
 }
 
+func TestSpinnerModel_DefaultFunctionalOptions(t *testing.T) {
+	s := NewSpinnerModel(palette.DefaultTheme())
+	assert.False(t, s.Visible())
+
+	s = s.Show()
+	assert.True(t, s.Visible())
+	assert.Contains(t, s.View(), "Thinking...")
+}
+
 func TestSpinnerModel_Show(t *testing.T) {
 	s := NewSpinnerModel(palette.DefaultTheme()).Show()
 	assert.True(t, s.Visible())

@@ -1,4 +1,4 @@
-package tui
+package styles
 
 import (
 	"strings"
@@ -8,9 +8,7 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
-	"github.com/weave-agent/weave-tui/internal/components"
 	"github.com/weave-agent/weave-tui/internal/palette"
 )
 
@@ -59,7 +57,7 @@ func TestLipglossV2_BorderRendering(t *testing.T) {
 
 	rendered := style.Render("content")
 	assert.Contains(t, rendered, "content")
-	// Border should add visual characters
+	// Border should add visual characters.
 	assert.Contains(t, rendered, "╭")
 }
 
@@ -168,17 +166,4 @@ func TestScreenBuffer_MultiStyleRendering(t *testing.T) {
 
 	assert.Contains(t, output, "red")
 	assert.Contains(t, output, "green")
-}
-
-// TestSpinnerV2_FunctionalOptions verifies that spinner.New with v2
-// functional options creates a working spinner model.
-func TestSpinnerV2_FunctionalOptions(t *testing.T) {
-	s := components.NewSpinnerModel(palette.DefaultTheme())
-	require.False(t, s.Visible())
-
-	s = s.Show()
-	require.True(t, s.Visible())
-
-	view := s.View()
-	assert.Contains(t, view, "Thinking...")
 }

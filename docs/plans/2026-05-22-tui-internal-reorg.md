@@ -142,12 +142,12 @@
 - [x] run `go test ./...` - must pass before next task
 
 ### Task 12: Clean root package and verify public surface
-- [ ] remove or internalize remaining root files that expose implementation-only symbols
-- [ ] ensure root package contains only public API facade, registration facade, config, and extension registration
-- [ ] run `go doc .` and verify accidental public internals are gone
-- [ ] run `go list ./...` and verify top-level public implementation packages no longer exist
-- [ ] update/add root public API tests for the final supported surface
-- [ ] run `go test ./...` - must pass before next task
+- [x] remove or internalize remaining root files that expose implementation-only symbols
+- [x] ensure root package contains only public API facade, registration facade, config, and extension registration
+- [x] run `go doc .` and verify accidental public internals are gone
+- [x] run `go list ./...` and verify top-level public implementation packages no longer exist
+- [x] update/add root public API tests for the final supported surface
+- [x] run `go test ./...` - must pass before next task
 
 ### Task 13: Update documentation
 - [ ] update `README.md` to document root-only public API and note that rendering internals are private
