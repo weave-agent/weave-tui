@@ -84,6 +84,7 @@ func TestStyleHelpers_UseProvidedTheme_NotDefault(t *testing.T) {
 
 	// Verify that styles carry the custom theme's colors by checking
 	// the rendered output contains ANSI escape sequences.
+	assertCustomColor(t, s.UserMarkerRendered(), custom.Foreground)
 	assertCustomColor(t, s.Foreground().Render("x"), custom.Foreground)
 	assertCustomColor(t, s.ForegroundDim().Render("x"), custom.ForegroundDim)
 	assertCustomColor(t, s.Muted().Render("x"), custom.Muted)

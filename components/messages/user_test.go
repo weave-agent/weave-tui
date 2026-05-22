@@ -232,16 +232,13 @@ func TestUserMessage_Styling_SkillHasMarker(t *testing.T) {
 
 func TestUserMessage_SetStyles_UsesCustomTheme(t *testing.T) {
 	custom := &palette.Theme{
-		AccentDim:  "99",
 		Foreground: "88",
 	}
 	m := NewUserMessage("hello")
 	m.SetStyles(styles.New(custom))
 	view := m.View(80)
 
-	// The rendered view should contain ANSI color codes for the custom theme
-	assert.Contains(t, view, "99", "marker should use custom theme accent dim color")
-	assert.Contains(t, view, "88", "content should use custom theme foreground color")
+	assert.Contains(t, view, "88", "marker and content should use custom theme foreground color")
 }
 
 func TestUserMessage_View_SingleLineSkillInvocation(t *testing.T) {

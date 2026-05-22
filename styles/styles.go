@@ -46,7 +46,7 @@ func (s *Styles) Theme() *palette.Theme {
 
 // UserMarkerStyle returns the style for the user message marker glyph.
 func (s *Styles) UserMarkerStyle() lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color(s.theme.AccentDim))
+	return lipgloss.NewStyle().Foreground(lipgloss.Color(s.theme.Foreground))
 }
 
 // UserMarkerRendered returns the styled user marker string.
