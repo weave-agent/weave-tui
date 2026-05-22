@@ -1,24 +1,26 @@
-package tui
+package panels
 
 import (
 	"slices"
 	"sync"
 
+	"github.com/weave-agent/weave-tui/internal/contract"
+
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 )
 
-// panelEntry holds a registered panel's state.
-type panelEntry struct {
-	Config  PanelConfig
-	Drawer  PanelDrawer
+// Entry holds a registered panel's state.
+type Entry struct {
+	Config  contract.PanelConfig
+	Drawer  contract.PanelDrawer
 	Visible bool
 }
 
 // PanelManager tracks registered panels (show/hide/remove/visible).
 type PanelManager struct {
 	mu     sync.RWMutex
-	panels map[string]*panelEntry
+	panels map[string]*Entry
 	order  []string
 	active string
 }
@@ -26,13 +28,13 @@ type PanelManager struct {
 // NewPanelManager creates a new PanelManager.
 func NewPanelManager() *PanelManager {
 	return &PanelManager{
-		panels: make(map[string]*panelEntry),
+		panels: make(map[string]*Entry),
 	}
 }
 
 // Register registers a panel. If a panel with the same ID exists, it is replaced.
 // Returns false if drawer is nil (panel not registered).
-func (pm *PanelManager) Register(config PanelConfig, drawer PanelDrawer) bool {
+func (pm *PanelManager) Register(config contract.PanelConfig, drawer contract.PanelDrawer) bool {
 	if drawer == nil {
 		return false
 	}
@@ -45,7 +47,7 @@ func (pm *PanelManager) Register(config PanelConfig, drawer PanelDrawer) bool {
 		visible = old.Visible
 	}
 
-	pm.panels[config.ID] = &panelEntry{
+	pm.panels[config.ID] = &Entry{
 		Config:  config,
 		Drawer:  drawer,
 		Visible: visible,
@@ -170,6 +172,27 @@ func (pm *PanelManager) Active() string {
 	return pm.active
 }
 
+// SetActive sets the active panel without changing visibility.
+// Empty ID clears the active panel; non-empty IDs must refer to a visible panel.
+func (pm *PanelManager) SetActive(id string) bool {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
+	if id == "" {
+		pm.active = ""
+		return true
+	}
+
+	entry, ok := pm.panels[id]
+	if !ok || !entry.Visible {
+		return false
+	}
+
+	pm.active = id
+
+	return true
+}
+
 // VisiblePanels returns IDs of all visible panels in tab order.
 func (pm *PanelManager) VisiblePanels() []string {
 	pm.mu.RLock()
@@ -198,13 +221,13 @@ func (pm *PanelManager) AllPanels() []string {
 }
 
 // Get returns a copy of a panel entry by ID.
-func (pm *PanelManager) Get(id string) (panelEntry, bool) {
+func (pm *PanelManager) Get(id string) (Entry, bool) {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
 
 	entry, ok := pm.panels[id]
 	if !ok {
-		return panelEntry{}, false
+		return Entry{}, false
 	}
 
 	return *entry, true
@@ -326,17 +349,17 @@ func (pm *PanelManager) GetOrder() []string {
 }
 
 // ActivePanelPlacement returns the placement of the active panel.
-func (pm *PanelManager) ActivePanelPlacement() PanelPlacement {
+func (pm *PanelManager) ActivePanelPlacement() contract.PanelPlacement {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
 
 	if pm.active == "" {
-		return AsOverlay
+		return contract.AsOverlay
 	}
 
 	entry, ok := pm.panels[pm.active]
 	if !ok {
-		return AsOverlay
+		return contract.AsOverlay
 	}
 
 	return entry.Config.Placement

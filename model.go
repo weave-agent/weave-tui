@@ -24,6 +24,7 @@ import (
 	"github.com/weave-agent/weave-tui/internal/extensionregistry"
 	tuilayout "github.com/weave-agent/weave-tui/internal/layout"
 	"github.com/weave-agent/weave-tui/internal/palette"
+	"github.com/weave-agent/weave-tui/internal/panels"
 	"github.com/weave-agent/weave-tui/internal/styles"
 
 	"charm.land/bubbles/v2/spinner"
@@ -173,8 +174,8 @@ type Model struct {
 	pulseGen int
 
 	// panel system
-	panelManager    *PanelManager
-	panelTray       PanelTray
+	panelManager    *panels.PanelManager
+	panelTray       panels.PanelTray
 	focus           FocusTarget
 	expandedPanelID string
 
@@ -284,7 +285,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		theme:             palette.DefaultTheme(),
 		styles:            styles.New(palette.DefaultTheme()),
 		panelManager:      ui.panelManager,
-		panelTray:         NewPanelTray(),
+		panelTray:         panels.NewPanelTray(),
 		focus:             FocusEditor,
 		editingAttachment: -1,
 	}
@@ -3379,7 +3380,7 @@ func (m *Model) syncPanelTray() {
 	}
 
 	visible := m.panelManager.VisiblePanels()
-	tabs := make([]PanelTab, len(visible))
+	tabs := make([]panels.PanelTab, len(visible))
 	activeIdx := -1
 
 	for i, id := range visible {
@@ -3389,7 +3390,7 @@ func (m *Model) syncPanelTray() {
 				title = id
 			}
 
-			tabs[i] = PanelTab{ID: id, Title: title}
+			tabs[i] = panels.PanelTab{ID: id, Title: title}
 			if id == m.panelManager.Active() {
 				activeIdx = i
 			}

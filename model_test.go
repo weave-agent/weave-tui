@@ -4098,7 +4098,8 @@ func TestModel_TrayNavigation_EnterShowsVisiblePanelWhenNoPanelActive(t *testing
 
 	drawer := &mockPanelDrawer{}
 	m.panelManager.Register(PanelConfig{ID: "subagent-agent-1", Title: "agent"}, drawer)
-	m.panelManager.panels["subagent-agent-1"].Visible = true
+	m.panelManager.Show("subagent-agent-1")
+	m.panelManager.SetActive("")
 	m.focus = FocusTray
 
 	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -4342,7 +4343,8 @@ func TestModel_SyncPanelTray_NoVisualFallbackWhenNoActivePanel(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 
 	m.panelManager.Register(PanelConfig{ID: "my-panel"}, &mockPanelDrawer{})
-	m.panelManager.panels["my-panel"].Visible = true
+	m.panelManager.Show("my-panel")
+	m.panelManager.SetActive("")
 
 	m.syncPanelTray()
 

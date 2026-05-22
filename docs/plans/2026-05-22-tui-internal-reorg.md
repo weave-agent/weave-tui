@@ -106,11 +106,11 @@
 - [x] run `go test ./...` - must pass before next task
 
 ### Task 7: Move panels and panel tray implementation
-- [ ] move panel manager and tray implementation to `internal/panels`
-- [ ] keep only public panel API shapes in `internal/contract` and root aliases
-- [ ] update UI/model callers to depend on `internal/panels` for state management and `internal/contract` for public drawer/config types
-- [ ] move panel and tray tests with their package and update imports
-- [ ] run `go test ./...` - must pass before next task
+- [x] move panel manager and tray implementation to `internal/panels`
+- [x] keep only public panel API shapes in `internal/contract` and root aliases
+- [x] update UI/model callers to depend on `internal/panels` for state management and `internal/contract` for public drawer/config types
+- [x] move panel and tray tests with their package and update imports
+- [x] run `go test ./...` - must pass before next task
 
 ### Task 8: Move commands and keybindings implementation
 - [ ] move slash command registry and built-ins to `internal/commands`

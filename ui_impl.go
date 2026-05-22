@@ -14,6 +14,7 @@ import (
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	tuievents "github.com/weave-agent/weave-tui/internal/events"
 	"github.com/weave-agent/weave-tui/internal/palette"
+	"github.com/weave-agent/weave-tui/internal/panels"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -48,7 +49,7 @@ type TUIImpl struct {
 	themeRegistry map[string]*palette.Theme
 	activeTheme   string
 
-	panelManager *PanelManager
+	panelManager *panels.PanelManager
 	width        int
 	height       int
 
@@ -72,7 +73,7 @@ func NewTUIImpl(commands *CommandRegistry, bindings *BindingRegistry) *TUIImpl {
 			"default": palette.DefaultTheme(),
 		},
 		activeTheme:   "default",
-		panelManager:  NewPanelManager(),
+		panelManager:  panels.NewPanelManager(),
 		richRenderers: make(map[string]RichToolRenderer),
 	}
 }

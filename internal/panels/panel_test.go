@@ -1,7 +1,9 @@
-package tui
+package panels
 
 import (
 	"testing"
+
+	"github.com/weave-agent/weave-tui/internal/contract"
 
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
@@ -23,7 +25,7 @@ func (m *mockPanelDrawer) Draw(_ uv.Screen, area uv.Rectangle) {
 	m.lastArea = area
 }
 
-func (m *mockPanelDrawer) Update(msg tea.Msg) (PanelDrawer, tea.Cmd) {
+func (m *mockPanelDrawer) Update(msg tea.Msg) (contract.PanelDrawer, tea.Cmd) {
 	m.updateCount++
 	m.lastMsg = msg
 
@@ -46,7 +48,7 @@ func TestPanelManager_Register(t *testing.T) {
 	assert.Empty(t, pm.AllPanels())
 
 	drawer := &mockPanelDrawer{id: "test"}
-	pm.Register(PanelConfig{ID: "p1", Title: "Panel 1"}, drawer)
+	pm.Register(contract.PanelConfig{ID: "p1", Title: "Panel 1"}, drawer)
 
 	assert.True(t, pm.IsRegistered("p1"))
 	assert.Equal(t, []string{"p1"}, pm.AllPanels())
@@ -57,8 +59,8 @@ func TestPanelManager_Register_Replace(t *testing.T) {
 	d1 := &mockPanelDrawer{id: "old"}
 	d2 := &mockPanelDrawer{id: "new"}
 
-	pm.Register(PanelConfig{ID: "p1", Title: "Old"}, d1)
-	pm.Register(PanelConfig{ID: "p1", Title: "New"}, d2)
+	pm.Register(contract.PanelConfig{ID: "p1", Title: "Old"}, d1)
+	pm.Register(contract.PanelConfig{ID: "p1", Title: "New"}, d2)
 
 	entry, ok := pm.Get("p1")
 	require.True(t, ok)
@@ -67,16 +69,16 @@ func TestPanelManager_Register_Replace(t *testing.T) {
 
 func TestPanelManager_Register_Multiple(t *testing.T) {
 	pm := NewPanelManager()
-	pm.Register(PanelConfig{ID: "p1"}, &mockPanelDrawer{})
-	pm.Register(PanelConfig{ID: "p2"}, &mockPanelDrawer{})
-	pm.Register(PanelConfig{ID: "p3"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p1"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p2"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p3"}, &mockPanelDrawer{})
 
 	assert.Equal(t, []string{"p1", "p2", "p3"}, pm.AllPanels())
 }
 
 func TestPanelManager_Show(t *testing.T) {
 	pm := NewPanelManager()
-	pm.Register(PanelConfig{ID: "p1"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p1"}, &mockPanelDrawer{})
 
 	assert.False(t, pm.PanelVisible("p1"))
 
@@ -91,9 +93,33 @@ func TestPanelManager_Show_Unknown(t *testing.T) {
 	assert.Empty(t, pm.Active())
 }
 
+func TestPanelManager_SetActive(t *testing.T) {
+	pm := NewPanelManager()
+	pm.Register(contract.PanelConfig{ID: "p1"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p2"}, &mockPanelDrawer{})
+	pm.Show("p1")
+	pm.Show("p2")
+
+	assert.True(t, pm.SetActive("p1"))
+	assert.Equal(t, "p1", pm.Active())
+
+	assert.True(t, pm.SetActive(""))
+	assert.Empty(t, pm.Active())
+	assert.False(t, pm.SetActive("missing"))
+	assert.Empty(t, pm.Active())
+}
+
+func TestPanelManager_SetActive_RejectsHiddenPanel(t *testing.T) {
+	pm := NewPanelManager()
+	pm.Register(contract.PanelConfig{ID: "p1"}, &mockPanelDrawer{})
+
+	assert.False(t, pm.SetActive("p1"))
+	assert.Empty(t, pm.Active())
+}
+
 func TestPanelManager_Hide(t *testing.T) {
 	pm := NewPanelManager()
-	pm.Register(PanelConfig{ID: "p1"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p1"}, &mockPanelDrawer{})
 	pm.Show("p1")
 
 	assert.True(t, pm.PanelVisible("p1"))
@@ -105,8 +131,8 @@ func TestPanelManager_Hide(t *testing.T) {
 
 func TestPanelManager_Hide_ActiveSelectsNextVisible(t *testing.T) {
 	pm := NewPanelManager()
-	pm.Register(PanelConfig{ID: "p1"}, &mockPanelDrawer{})
-	pm.Register(PanelConfig{ID: "p2"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p1"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p2"}, &mockPanelDrawer{})
 	pm.Show("p1")
 	pm.Show("p2")
 
@@ -118,7 +144,7 @@ func TestPanelManager_Hide_ActiveSelectsNextVisible(t *testing.T) {
 
 func TestPanelManager_Hide_LastVisibleClearsActive(t *testing.T) {
 	pm := NewPanelManager()
-	pm.Register(PanelConfig{ID: "p1"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p1"}, &mockPanelDrawer{})
 	pm.Show("p1")
 
 	pm.Hide("p1")
@@ -127,8 +153,8 @@ func TestPanelManager_Hide_LastVisibleClearsActive(t *testing.T) {
 
 func TestPanelManager_Remove(t *testing.T) {
 	pm := NewPanelManager()
-	pm.Register(PanelConfig{ID: "p1"}, &mockPanelDrawer{})
-	pm.Register(PanelConfig{ID: "p2"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p1"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p2"}, &mockPanelDrawer{})
 	pm.Show("p1")
 
 	pm.Remove("p1")
@@ -139,9 +165,9 @@ func TestPanelManager_Remove(t *testing.T) {
 
 func TestPanelManager_Remove_ActiveSelectsNextVisible(t *testing.T) {
 	pm := NewPanelManager()
-	pm.Register(PanelConfig{ID: "p1"}, &mockPanelDrawer{})
-	pm.Register(PanelConfig{ID: "p2"}, &mockPanelDrawer{})
-	pm.Register(PanelConfig{ID: "p3"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p1"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p2"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p3"}, &mockPanelDrawer{})
 	pm.Show("p1")
 	pm.Show("p2")
 	pm.Show("p3")
@@ -153,7 +179,7 @@ func TestPanelManager_Remove_ActiveSelectsNextVisible(t *testing.T) {
 
 func TestPanelManager_Remove_LastVisibleClearsActive(t *testing.T) {
 	pm := NewPanelManager()
-	pm.Register(PanelConfig{ID: "p1"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p1"}, &mockPanelDrawer{})
 	pm.Show("p1")
 
 	pm.Remove("p1")
@@ -167,9 +193,9 @@ func TestPanelManager_Remove_Unknown(t *testing.T) {
 
 func TestPanelManager_VisiblePanels(t *testing.T) {
 	pm := NewPanelManager()
-	pm.Register(PanelConfig{ID: "p1"}, &mockPanelDrawer{})
-	pm.Register(PanelConfig{ID: "p2"}, &mockPanelDrawer{})
-	pm.Register(PanelConfig{ID: "p3"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p1"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p2"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p3"}, &mockPanelDrawer{})
 
 	pm.Show("p1")
 	pm.Show("p3")
@@ -184,9 +210,9 @@ func TestPanelManager_VisiblePanels_Empty(t *testing.T) {
 
 func TestPanelManager_SetOrder_FiltersUnknownAndPreservesOmitted(t *testing.T) {
 	pm := NewPanelManager()
-	pm.Register(PanelConfig{ID: "p1"}, &mockPanelDrawer{})
-	pm.Register(PanelConfig{ID: "p2"}, &mockPanelDrawer{})
-	pm.Register(PanelConfig{ID: "p3"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p1"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p2"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p3"}, &mockPanelDrawer{})
 	pm.Show("p1")
 	pm.Show("p2")
 	pm.Show("p3")
@@ -201,7 +227,7 @@ func TestPanelManager_SetOrder_FiltersUnknownAndPreservesOmitted(t *testing.T) {
 func TestPanelManager_Get(t *testing.T) {
 	pm := NewPanelManager()
 	drawer := &mockPanelDrawer{id: "d1"}
-	pm.Register(PanelConfig{ID: "p1", Title: "Test", Height: 5}, drawer)
+	pm.Register(contract.PanelConfig{ID: "p1", Title: "Test", Height: 5}, drawer)
 
 	entry, ok := pm.Get("p1")
 	require.True(t, ok)
@@ -220,7 +246,7 @@ func TestPanelManager_Get_Unknown(t *testing.T) {
 
 func TestPanelManager_ActivePanelHeight(t *testing.T) {
 	pm := NewPanelManager()
-	pm.Register(PanelConfig{ID: "p1", Height: 15}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p1", Height: 15}, &mockPanelDrawer{})
 	pm.Show("p1")
 
 	assert.Equal(t, 15, pm.ActivePanelHeight())
@@ -228,7 +254,7 @@ func TestPanelManager_ActivePanelHeight(t *testing.T) {
 
 func TestPanelManager_ActivePanelHeight_Default(t *testing.T) {
 	pm := NewPanelManager()
-	pm.Register(PanelConfig{ID: "p1"}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p1"}, &mockPanelDrawer{})
 	pm.Show("p1")
 
 	assert.Equal(t, 10, pm.ActivePanelHeight())
@@ -241,28 +267,28 @@ func TestPanelManager_ActivePanelHeight_NoActive(t *testing.T) {
 
 func TestPanelManager_ActivePanelPlacement(t *testing.T) {
 	pm := NewPanelManager()
-	pm.Register(PanelConfig{ID: "p1", Placement: BelowEditor}, &mockPanelDrawer{})
+	pm.Register(contract.PanelConfig{ID: "p1", Placement: contract.BelowEditor}, &mockPanelDrawer{})
 	pm.Show("p1")
 
-	assert.Equal(t, BelowEditor, pm.ActivePanelPlacement())
+	assert.Equal(t, contract.BelowEditor, pm.ActivePanelPlacement())
 }
 
 func TestPanelManager_ActivePanelPlacement_Default(t *testing.T) {
 	pm := NewPanelManager()
-	assert.Equal(t, AsOverlay, pm.ActivePanelPlacement())
+	assert.Equal(t, contract.AsOverlay, pm.ActivePanelPlacement())
 }
 
 func TestPanelPlacement_Constants(t *testing.T) {
-	assert.Equal(t, AsOverlay, PanelPlacement(0))
-	assert.Equal(t, AboveEditor, PanelPlacement(1))
-	assert.Equal(t, BelowEditor, PanelPlacement(2))
-	assert.Equal(t, TrayOnly, PanelPlacement(3))
+	assert.Equal(t, contract.AsOverlay, contract.PanelPlacement(0))
+	assert.Equal(t, contract.AboveEditor, contract.PanelPlacement(1))
+	assert.Equal(t, contract.BelowEditor, contract.PanelPlacement(2))
+	assert.Equal(t, contract.TrayOnly, contract.PanelPlacement(3))
 }
 
 func TestPanelConfig_ZeroValues(t *testing.T) {
-	cfg := PanelConfig{ID: "test"}
+	cfg := contract.PanelConfig{ID: "test"}
 	assert.Equal(t, "test", cfg.ID)
-	assert.Equal(t, AsOverlay, cfg.Placement)
+	assert.Equal(t, contract.AsOverlay, cfg.Placement)
 	assert.Equal(t, 0, cfg.Width)
 	assert.Equal(t, 0, cfg.Height)
 	assert.Empty(t, cfg.Title)
