@@ -123,6 +123,29 @@ func TestToolPanel_ExpandShowsAll(t *testing.T) {
 	assert.Equal(t, 30, strings.Count(view, "line of output"))
 }
 
+func TestToolPanel_View_ReadOutputCollapsedByDefault(t *testing.T) {
+	p := NewToolPanel("tc1", "read", `{"path":"main.go"}`)
+	p.SetResult("package main\n\nfunc main() {}", false)
+
+	view := p.View(80)
+
+	assert.Contains(t, view, "3 lines (collapsed)")
+	assert.NotContains(t, view, "package main")
+	assert.False(t, p.Expanded())
+}
+
+func TestToolPanel_View_ReadOutputExpandedShowsAll(t *testing.T) {
+	p := NewToolPanel("tc1", "read", `{"path":"main.go"}`)
+	p.SetResult("package main\n\nfunc main() {}", false)
+	p.ToggleExpanded()
+
+	view := p.View(80)
+
+	assert.Contains(t, view, "package main")
+	assert.Contains(t, view, "func main() {}")
+	assert.NotContains(t, view, "collapsed")
+}
+
 func TestToolPanel_ShortOutputNotCollapsed(t *testing.T) {
 	output := "short output\njust two lines"
 	p := NewToolPanel("tc1", "bash", "echo hi")

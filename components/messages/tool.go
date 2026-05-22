@@ -259,6 +259,10 @@ func (p *ToolPanel) renderBody(width int) string {
 		}
 	}
 
+	if p.toolName == "read" && !p.expanded {
+		return mutedStyle.Render(formatCollapsedReadOutput(p.output))
+	}
+
 	// Use custom renderer if registered.
 	if p.customRenderer != nil {
 		return p.customRenderer.Render(p.output, width)
@@ -289,6 +293,15 @@ func (p *ToolPanel) renderBody(width int) string {
 	}
 
 	return body
+}
+
+func formatCollapsedReadOutput(output string) string {
+	lineCount := len(strings.Split(strings.TrimRight(output, "\n"), "\n"))
+	if lineCount == 1 {
+		return "1 line (collapsed)"
+	}
+
+	return fmt.Sprintf("%d lines (collapsed)", lineCount)
 }
 
 func (p *ToolPanel) borderColorForState() string {
