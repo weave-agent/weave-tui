@@ -15,12 +15,14 @@ import (
 	"github.com/weave-agent/weave/sdk"
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
 
+	tuibridge "github.com/weave-agent/weave-tui/internal/bridge"
 	"github.com/weave-agent/weave-tui/internal/components"
 	"github.com/weave-agent/weave-tui/internal/components/attachments"
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
 	tuievents "github.com/weave-agent/weave-tui/internal/events"
 	"github.com/weave-agent/weave-tui/internal/extensionregistry"
+	tuilayout "github.com/weave-agent/weave-tui/internal/layout"
 	"github.com/weave-agent/weave-tui/internal/palette"
 	"github.com/weave-agent/weave-tui/internal/styles"
 
@@ -95,7 +97,7 @@ type Model struct {
 	commands         *CommandRegistry
 	bindings         *BindingRegistry
 	ui               *TUIImpl
-	layout           LayoutEngine
+	layout           tuilayout.LayoutEngine
 
 	pendingSessions        []tuievents.SessionEntry
 	pendingModels          []tuievents.ModelEntry
@@ -269,7 +271,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		commands:          commands,
 		bindings:          bindings,
 		ui:                ui,
-		layout:            NewLayoutEngine(),
+		layout:            tuilayout.NewLayoutEngine(),
 		currentModel:      cur,
 		sessionDir:        sdir,
 		thinkingLevel:     initialThinkingLevel(ps),
@@ -338,7 +340,7 @@ func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
 
 	if m.bus != nil {
-		cmds = append(cmds, PublishModelChange(m.bus, m.currentModel))
+		cmds = append(cmds, tuibridge.PublishModelChange(m.bus, m.currentModel))
 	}
 
 	// Flush status updates buffered during UI extension wiring
@@ -1386,7 +1388,7 @@ func (m Model) handleEscape() (tea.Model, tea.Cmd) {
 
 	// Always publish interrupt
 	if m.bus != nil {
-		cmds = append(cmds, PublishInterrupt(m.bus))
+		cmds = append(cmds, tuibridge.PublishInterrupt(m.bus))
 	}
 
 	// First press — interrupt streaming if active, start timeout.
@@ -2042,7 +2044,7 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 		m.showLanding = false
 
 		if m.bus != nil {
-			m.bus.Publish(sdk.NewEvent(topicPrompt, promptText))
+			m.bus.Publish(sdk.NewEvent(tuibridge.TopicPrompt, promptText))
 		}
 
 		if !m.spinner.Visible() {
@@ -2058,7 +2060,7 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 	}
 
 	if m.bus != nil {
-		m.bus.Publish(sdk.NewEvent(topicFollowup, promptText))
+		m.bus.Publish(sdk.NewEvent(tuibridge.TopicFollowup, promptText))
 	}
 
 	if !m.spinner.Visible() {
@@ -2173,10 +2175,10 @@ func (m Model) onModelChanged(msg tuievents.ModelChangedMsg) (tea.Model, tea.Cmd
 	if m.bus != nil {
 		var cmds []tea.Cmd
 
-		cmds = append(cmds, PublishModelChange(m.bus, msg.Entry))
+		cmds = append(cmds, tuibridge.PublishModelChange(m.bus, msg.Entry))
 
 		if thinkingChanged {
-			cmds = append(cmds, PublishThinkingChange(m.bus, m.thinkingLevel))
+			cmds = append(cmds, tuibridge.PublishThinkingChange(m.bus, m.thinkingLevel))
 		}
 
 		if m.cfg != nil {
@@ -2222,7 +2224,7 @@ func (m Model) onModelChangeFailed(msg tuievents.ModelChangeFailedMsg) (tea.Mode
 	m.chat = m.chat.AddItem(am)
 
 	if m.bus != nil {
-		return m, PublishThinkingChange(m.bus, m.thinkingLevel)
+		return m, tuibridge.PublishThinkingChange(m.bus, m.thinkingLevel)
 	}
 
 	return m, nil
@@ -2410,12 +2412,12 @@ func (m Model) onKeyInputDialogDone(result overlays.DialogResult, pendingCmd tea
 	cmds = append(cmds, pendingCmd)
 
 	if m.bus != nil {
-		cmds = append(cmds, PublishAuthLoginSuccess(m.bus, providerName))
+		cmds = append(cmds, tuibridge.PublishAuthLoginSuccess(m.bus, providerName))
 
 		// If we transitioned out of noConfigured, publish model.change so the
 		// agent loop switches to the newly available provider.
 		if !m.noConfigured {
-			cmds = append(cmds, PublishModelChange(m.bus, m.currentModel))
+			cmds = append(cmds, tuibridge.PublishModelChange(m.bus, m.currentModel))
 		}
 	}
 
@@ -2531,7 +2533,7 @@ func (m Model) onLogoutDialogDone(result overlays.DialogResult, pendingCmd tea.C
 	cmds = append(cmds, pendingCmd)
 
 	if m.bus != nil {
-		cmds = append(cmds, PublishAuthLogout(m.bus, selected.ID))
+		cmds = append(cmds, tuibridge.PublishAuthLogout(m.bus, selected.ID))
 	}
 
 	// Re-evaluate noConfigured state and switch to the next available provider.
@@ -2549,7 +2551,7 @@ func (m Model) onLogoutDialogDone(result overlays.DialogResult, pendingCmd tea.C
 	}
 
 	if m.bus != nil && !m.noConfigured && m.currentModel != oldModel {
-		cmds = append(cmds, PublishModelChange(m.bus, m.currentModel))
+		cmds = append(cmds, tuibridge.PublishModelChange(m.bus, m.currentModel))
 	}
 
 	return m, tea.Batch(cmds...)
@@ -2675,7 +2677,7 @@ func (m Model) onSessionDialogDone(result overlays.DialogResult, pendingCmd tea.
 		m.showLanding = false
 		m.prompted = true
 
-		return m, tea.Batch(pendingCmd, PublishSessionResume(m.bus, payload))
+		return m, tea.Batch(pendingCmd, tuibridge.PublishSessionResume(m.bus, payload))
 	}
 
 	return m, pendingCmd
@@ -2906,7 +2908,7 @@ func (m Model) applyThinkingLevel(level sdkmodel.ThinkingLevel) (tea.Model, tea.
 	var cmds []tea.Cmd
 
 	if m.bus != nil {
-		cmds = append(cmds, PublishThinkingChange(m.bus, level))
+		cmds = append(cmds, tuibridge.PublishThinkingChange(m.bus, level))
 
 		if m.cfg != nil {
 			cmds = append(cmds, saveSettingsCmd(m.ps, m.currentModel, level))
@@ -3432,7 +3434,7 @@ func (m Model) Draw(scr uv.Screen, area uv.Rectangle) {
 // drawNormalUI renders the standard TUI layout without dialogs.
 // When dockedRows > 0, allocates space for a docked overlay dialog.
 // Returns the computed layout for caller use (e.g., dialog placement).
-func (m Model) drawNormalUI(scr uv.Screen, area uv.Rectangle, dockedRows int) Layout {
+func (m Model) drawNormalUI(scr uv.Screen, area uv.Rectangle, dockedRows int) tuilayout.Layout {
 	headerRows, pillRows, trayRows, abovePanelRows, belowPanelRows := m.layoutRows()
 
 	editorH := m.editor.Height()

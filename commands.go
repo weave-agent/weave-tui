@@ -12,6 +12,7 @@ import (
 
 	"github.com/weave-agent/weave/sdk"
 
+	tuibridge "github.com/weave-agent/weave-tui/internal/bridge"
 	tuievents "github.com/weave-agent/weave-tui/internal/events"
 
 	tea "charm.land/bubbletea/v2"
@@ -84,11 +85,11 @@ func NewCommandRegistry(bus sdk.Bus, sessionDir string) *CommandRegistry {
 			payload = "compact " + args
 		}
 
-		return CommandResult{Command: PublishSteer(bus, payload)}
+		return CommandResult{Command: tuibridge.PublishSteer(bus, payload)}
 	})
 
 	r.register("/name", "Set conversation name", false, func(args string) CommandResult {
-		return CommandResult{Command: PublishSteer(bus, "name "+args)}
+		return CommandResult{Command: tuibridge.PublishSteer(bus, "name "+args)}
 	})
 
 	r.register("/resume", "View a previous session", false, func(_ string) CommandResult {

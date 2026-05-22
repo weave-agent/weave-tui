@@ -1,8 +1,8 @@
-package tui
+package layout
 
 import (
 	uv "github.com/charmbracelet/ultraviolet"
-	"github.com/charmbracelet/ultraviolet/layout"
+	uvlayout "github.com/charmbracelet/ultraviolet/layout"
 )
 
 const (
@@ -91,56 +91,56 @@ func (e LayoutEngine) ComputeWithPanels(width, height, editorLines, headerRows, 
 	}
 
 	var (
-		constraints []layout.Constraint
+		constraints []uvlayout.Constraint
 		targets     []*uv.Rectangle
 	)
 
 	var header, main, separator, tray, abovePanel, docked, pills, editor, belowPanel, footer uv.Rectangle
 
 	if headerRows > 0 {
-		constraints = append(constraints, layout.Len(headerRows))
+		constraints = append(constraints, uvlayout.Len(headerRows))
 		targets = append(targets, &header)
 	}
 
-	constraints = append(constraints, layout.Fill(1))
+	constraints = append(constraints, uvlayout.Fill(1))
 	targets = append(targets, &main)
 
-	constraints = append(constraints, layout.Len(chatSeparatorRows))
+	constraints = append(constraints, uvlayout.Len(chatSeparatorRows))
 	targets = append(targets, &separator)
 
 	if pillRows > 0 {
-		constraints = append(constraints, layout.Len(pillRows))
+		constraints = append(constraints, uvlayout.Len(pillRows))
 		targets = append(targets, &pills)
 	}
 
 	if trayRows > 0 {
-		constraints = append(constraints, layout.Len(trayRows))
+		constraints = append(constraints, uvlayout.Len(trayRows))
 		targets = append(targets, &tray)
 	}
 
 	if abovePanelRows > 0 {
-		constraints = append(constraints, layout.Len(abovePanelRows))
+		constraints = append(constraints, uvlayout.Len(abovePanelRows))
 		targets = append(targets, &abovePanel)
 	}
 
 	if dockedRows > 0 {
-		constraints = append(constraints, layout.Len(dockedRows))
+		constraints = append(constraints, uvlayout.Len(dockedRows))
 		targets = append(targets, &docked)
 	}
 
-	constraints = append(constraints, layout.Len(editorRows))
+	constraints = append(constraints, uvlayout.Len(editorRows))
 	targets = append(targets, &editor)
 
 	if belowPanelRows > 0 {
-		constraints = append(constraints, layout.Len(belowPanelRows))
+		constraints = append(constraints, uvlayout.Len(belowPanelRows))
 		targets = append(targets, &belowPanel)
 	}
 
-	constraints = append(constraints, layout.Len(footerRows))
+	constraints = append(constraints, uvlayout.Len(footerRows))
 	targets = append(targets, &footer)
 
 	area := uv.Rect(0, 0, width, height)
-	layout.Vertical(constraints...).Split(area).Assign(targets...)
+	uvlayout.Vertical(constraints...).Split(area).Assign(targets...)
 
 	return Layout{
 		Header:     header,

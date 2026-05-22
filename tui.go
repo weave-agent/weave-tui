@@ -8,6 +8,8 @@ import (
 
 	"github.com/weave-agent/weave/sdk"
 
+	tuibridge "github.com/weave-agent/weave-tui/internal/bridge"
+
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -111,7 +113,7 @@ func (t *TUI) Subscribe(bus sdk.Bus) error {
 	// Wire the UI implementation to the program.
 	t.ui.SetProgram(t.program)
 
-	go Bridge(t.program, events)
+	go tuibridge.Bridge(t.program, events)
 
 	_, err := t.program.Run()
 
@@ -130,7 +132,7 @@ func (t *TUI) Subscribe(bus sdk.Bus) error {
 
 	// Signal shutdown so the launcher's select (waiting on agent.end)
 	// can unblock and proceed to wired.Close().
-	bus.Publish(sdk.NewEvent(topicEnd, endPayload))
+	bus.Publish(sdk.NewEvent(tuibridge.TopicEnd, endPayload))
 
 	close(t.done)
 

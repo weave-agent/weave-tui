@@ -8,6 +8,7 @@ import (
 	"github.com/weave-agent/weave/sdk"
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
 
+	tuibridge "github.com/weave-agent/weave-tui/internal/bridge"
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	tuievents "github.com/weave-agent/weave-tui/internal/events"
 
@@ -138,12 +139,12 @@ func (m Model) onLoginFlowResult(msg tuievents.LoginFlowResultMsg) (tea.Model, t
 	var cmds []tea.Cmd
 
 	if m.bus != nil {
-		cmds = append(cmds, PublishAuthLoginSuccess(m.bus, msg.Provider))
+		cmds = append(cmds, tuibridge.PublishAuthLoginSuccess(m.bus, msg.Provider))
 
 		// If we transitioned out of noConfigured, publish model.change so the
 		// agent loop switches to the newly available provider.
 		if !m.noConfigured {
-			cmds = append(cmds, PublishModelChange(m.bus, m.currentModel))
+			cmds = append(cmds, tuibridge.PublishModelChange(m.bus, m.currentModel))
 		}
 	}
 

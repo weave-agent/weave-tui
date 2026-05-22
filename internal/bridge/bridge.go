@@ -1,4 +1,4 @@
-package tui
+package bridge
 
 import (
 	"strings"
@@ -16,38 +16,71 @@ import (
 
 // Bus event topics (matching agent-loop topics).
 const (
-	topicPrompt    = "agent.prompt"
-	topicSteer     = "agent.steer"
-	topicFollowup  = "agent.followup"
-	topicInterrupt = "agent.interrupt"
+	TopicPrompt    = "agent.prompt"
+	TopicSteer     = "agent.steer"
+	TopicFollowup  = "agent.followup"
+	TopicInterrupt = "agent.interrupt"
 
-	topicTurnStart  = "agent.turn_start"
-	topicTurnEnd    = "agent.turn_end"
-	topicMsgStart   = "agent.message_start"
-	topicMsgUpdate  = "agent.message_update"
-	topicMsgEnd     = "agent.message_end"
-	topicToolResult = "agent.tool_result"
-	topicUsage      = "agent.usage"
-	topicEnd        = "agent.end"
+	TopicTurnStart  = "agent.turn_start"
+	TopicTurnEnd    = "agent.turn_end"
+	TopicMsgStart   = "agent.message_start"
+	TopicMsgUpdate  = "agent.message_update"
+	TopicMsgEnd     = "agent.message_end"
+	TopicToolResult = "agent.tool_result"
+	TopicUsage      = "agent.usage"
+	TopicEnd        = "agent.end"
 
-	topicSessionList       = "session.list"
-	topicSessionResume     = "session.resume"
-	topicModelChange       = "model.change"
-	topicModelChangeFailed = "model.change_failed"
-	topicThinkingChange    = "thinking.change"
+	TopicSessionList       = "session.list"
+	TopicSessionResume     = "session.resume"
+	TopicModelChange       = "model.change"
+	TopicModelChangeFailed = "model.change_failed"
+	TopicThinkingChange    = "thinking.change"
 
-	topicCompacted = "agent.compacted"
+	TopicCompacted = "agent.compacted"
 
-	topicExtOutdated = "extension.outdated"
+	TopicExtOutdated = "extension.outdated"
 
-	topicAuthLoginSuccess = "auth.login.success"
-	topicAuthLogout       = "auth.logout"
+	TopicAuthLoginSuccess = "auth.login.success"
+	TopicAuthLogout       = "auth.logout"
 
-	topicToolStart       = "tool.start"
-	topicToolProgress    = "tool.progress"
-	topicToolComplete    = "tool.complete"
-	topicToolError       = "tool.error"
-	topicToolInterrupted = "tool.interrupted"
+	TopicToolStart       = "tool.start"
+	TopicToolProgress    = "tool.progress"
+	TopicToolComplete    = "tool.complete"
+	TopicToolError       = "tool.error"
+	TopicToolInterrupted = "tool.interrupted"
+
+	topicPrompt    = TopicPrompt
+	topicSteer     = TopicSteer
+	topicFollowup  = TopicFollowup
+	topicInterrupt = TopicInterrupt
+
+	topicTurnStart  = TopicTurnStart
+	topicTurnEnd    = TopicTurnEnd
+	topicMsgStart   = TopicMsgStart
+	topicMsgUpdate  = TopicMsgUpdate
+	topicMsgEnd     = TopicMsgEnd
+	topicToolResult = TopicToolResult
+	topicUsage      = TopicUsage
+	topicEnd        = TopicEnd
+
+	topicSessionList       = TopicSessionList
+	topicSessionResume     = TopicSessionResume
+	topicModelChange       = TopicModelChange
+	topicModelChangeFailed = TopicModelChangeFailed
+	topicThinkingChange    = TopicThinkingChange
+
+	topicCompacted = TopicCompacted
+
+	topicExtOutdated = TopicExtOutdated
+
+	topicAuthLoginSuccess = TopicAuthLoginSuccess
+	topicAuthLogout       = TopicAuthLogout
+
+	topicToolStart       = TopicToolStart
+	topicToolProgress    = TopicToolProgress
+	topicToolComplete    = TopicToolComplete
+	topicToolError       = TopicToolError
+	topicToolInterrupted = TopicToolInterrupted
 
 	keyProvider = "provider"
 	keyModel    = "model"
@@ -644,33 +677,5 @@ func PublishAuthLogout(bus sdk.Bus, provider string) tea.Cmd {
 		}
 
 		return nil
-	}
-}
-
-// listModelsCmd returns a tea.Cmd that lists available models.
-func listModelsCmd() tea.Cmd {
-	return func() tea.Msg {
-		return tuievents.ModelListResultMsg{Models: listModels()}
-	}
-}
-
-// listProvidersCmd returns a tea.Cmd that lists providers with key status.
-func listProvidersCmd() tea.Cmd {
-	return func() tea.Msg {
-		return tuievents.ProviderListResultMsg{Providers: listProviders()}
-	}
-}
-
-// loginCmd returns a tea.Cmd that lists providers available for login.
-func loginCmd() tea.Cmd {
-	return func() tea.Msg {
-		return tuievents.LoginListResultMsg{Providers: buildLoginProviders()}
-	}
-}
-
-// logoutCmd returns a tea.Cmd that lists providers with configured auth.
-func logoutCmd() tea.Cmd {
-	return func() tea.Msg {
-		return tuievents.LogoutListResultMsg{Providers: buildLogoutProviders()}
 	}
 }

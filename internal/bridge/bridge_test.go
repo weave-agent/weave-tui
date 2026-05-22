@@ -1,4 +1,4 @@
-package tui
+package bridge
 
 import (
 	"strings"
@@ -15,6 +15,23 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// subscribeToChan creates an internal channel and registers an On handler
+// for the given topic that forwards events to the channel.
+func subscribeToChan(b *bus.Bus, topic string) <-chan sdk.Event {
+	ch := make(chan sdk.Event, 64)
+
+	b.On(topic, func(ev sdk.Event) error {
+		select {
+		case ch <- ev:
+		default:
+		}
+
+		return nil
+	})
+
+	return ch
+}
 
 func TestTranslateEvent_TurnStart(t *testing.T) {
 	msg := translateEvent(sdk.NewEvent(topicTurnStart, 3))

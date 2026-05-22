@@ -10,6 +10,7 @@ import (
 
 	"github.com/weave-agent/weave/sdk"
 
+	tuibridge "github.com/weave-agent/weave-tui/internal/bridge"
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	tuievents "github.com/weave-agent/weave-tui/internal/events"
 	"github.com/weave-agent/weave-tui/internal/palette"
@@ -32,7 +33,7 @@ type pendingStatus struct {
 // TUIImpl implements sdk.UI and TUIExtAPI by delegating to the TUI's internal
 // registries and overlay components.
 type TUIImpl struct {
-	program   Sender
+	program   tuibridge.Sender
 	commands  *CommandRegistry
 	bindings  *BindingRegistry
 	renderers map[string]sdk.ToolRenderer
@@ -77,7 +78,7 @@ func NewTUIImpl(commands *CommandRegistry, bindings *BindingRegistry) *TUIImpl {
 }
 
 // SetProgram sets the Bubble Tea program for sending overlay requests.
-func (u *TUIImpl) SetProgram(p Sender) {
+func (u *TUIImpl) SetProgram(p tuibridge.Sender) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 

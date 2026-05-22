@@ -99,11 +99,11 @@
 - [x] run `go test ./...` - must pass before next task
 
 ### Task 6: Move bridge and layout implementation
-- [ ] move bus-to-Bubble-Tea bridge code from root to `internal/bridge`
-- [ ] move layout engine code from root to `internal/layout`
-- [ ] update app/model callers to import `internal/bridge` and `internal/layout`
-- [ ] move bridge and layout tests with their packages
-- [ ] run `go test ./...` - must pass before next task
+- [x] move bus-to-Bubble-Tea bridge code from root to `internal/bridge`
+- [x] move layout engine code from root to `internal/layout`
+- [x] update app/model callers to import `internal/bridge` and `internal/layout`
+- [x] move bridge and layout tests with their packages
+- [x] run `go test ./...` - must pass before next task
 
 ### Task 7: Move panels and panel tray implementation
 - [ ] move panel manager and tray implementation to `internal/panels`
