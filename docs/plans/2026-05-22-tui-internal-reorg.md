@@ -69,11 +69,11 @@
 - [x] run `go test ./...` - must pass before next task
 
 ### Task 2: Move extension registry behind an internal boundary
-- [ ] move TUI extension registry implementation to an internal package such as `internal/extensionregistry`
-- [ ] update root registry functions to delegate to the internal registry while preserving `RegisterTUIExtension`, `GetTUIExtension`, `ListTUIExtensions`, `TUIExtensionRegistered`, and `ResetTUIExtensionRegistry`
-- [ ] update internal callers to use the internal registry package instead of root package globals
-- [ ] update registry tests to separate root facade behavior from internal registry behavior
-- [ ] run `go test ./...` - must pass before next task
+- [x] move TUI extension registry implementation to an internal package such as `internal/extensionregistry`
+- [x] update root registry functions to delegate to the internal registry while preserving `RegisterTUIExtension`, `GetTUIExtension`, `ListTUIExtensions`, `TUIExtensionRegistered`, and `ResetTUIExtensionRegistry`
+- [x] update internal callers to use the internal registry package instead of root package globals
+- [x] update registry tests to separate root facade behavior from internal registry behavior
+- [x] run `go test ./...` - must pass before next task
 
 ### Task 3: Internalize rendering support packages
 - [ ] move `palette/` to `internal/palette/` and update imports

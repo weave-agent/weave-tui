@@ -22,6 +22,7 @@ func TestPublicAPI_TUIConfig(t *testing.T) {
 
 func TestPublicAPI_RegisterAndGetTUIExtension(t *testing.T) {
 	tui.ResetTUIExtensionRegistry()
+	t.Cleanup(tui.ResetTUIExtensionRegistry)
 
 	ext := &publicExt{name: "pub-ext"}
 
@@ -38,6 +39,7 @@ func TestPublicAPI_RegisterAndGetTUIExtension(t *testing.T) {
 
 func TestPublicAPI_ListTUIExtensions(t *testing.T) {
 	tui.ResetTUIExtensionRegistry()
+	t.Cleanup(tui.ResetTUIExtensionRegistry)
 
 	tui.RegisterTUIExtension("zebra", func(_ sdk.Config, _ sdk.PreferenceReader, _ struct{}) (tui.TUIExtension, error) {
 		return &publicExt{name: "zebra"}, nil
@@ -48,6 +50,30 @@ func TestPublicAPI_ListTUIExtensions(t *testing.T) {
 
 	names := tui.ListTUIExtensions()
 	assert.Equal(t, []string{"alpha", "zebra"}, names)
+}
+
+func TestPublicAPI_GetTUIExtensionNotRegistered(t *testing.T) {
+	tui.ResetTUIExtensionRegistry()
+	t.Cleanup(tui.ResetTUIExtensionRegistry)
+
+	_, err := tui.GetTUIExtension("missing", sdk.NoopConfig{})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, sdk.ErrNotRegistered)
+}
+
+func TestPublicAPI_ResetTUIExtensionRegistry(t *testing.T) {
+	tui.ResetTUIExtensionRegistry()
+	t.Cleanup(tui.ResetTUIExtensionRegistry)
+
+	tui.RegisterTUIExtension("temporary", func(_ sdk.Config, _ sdk.PreferenceReader, _ struct{}) (tui.TUIExtension, error) {
+		return &publicExt{name: "temporary"}, nil
+	})
+
+	require.True(t, tui.TUIExtensionRegistered("temporary"))
+
+	tui.ResetTUIExtensionRegistry()
+
+	assert.Empty(t, tui.ListTUIExtensions())
 }
 
 func TestPublicAPI_PanelTypes(t *testing.T) {

@@ -19,6 +19,7 @@ import (
 	"github.com/weave-agent/weave-tui/components/attachments"
 	"github.com/weave-agent/weave-tui/components/messages"
 	"github.com/weave-agent/weave-tui/components/overlays"
+	"github.com/weave-agent/weave-tui/internal/extensionregistry"
 	"github.com/weave-agent/weave-tui/palette"
 	"github.com/weave-agent/weave-tui/styles"
 
@@ -324,7 +325,7 @@ func listLoadedComponents() []string {
 	add(sdk.ListTools())
 	add(sdk.ListProviders())
 	add(sdk.ListUIExtensions())
-	add(ListTUIExtensions())
+	add(extensionregistry.List())
 
 	slices.Sort(names)
 
@@ -354,7 +355,7 @@ func (m Model) Init() tea.Cmd {
 	// call Send-based APIs like SetFooter or ShowPanel during RegisterTUI.
 	if m.ui != nil {
 		cmds = append(cmds, func() tea.Msg {
-			for _, ext := range GetTUIExtensions(m.cfg) {
+			for _, ext := range extensionregistry.GetAll(m.cfg) {
 				ext.RegisterTUI(m.ui)
 			}
 
