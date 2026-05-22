@@ -13,13 +13,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/weave-agent/weave/bus"
+	"github.com/weave-agent/weave/sdk"
+	sdkmodel "github.com/weave-agent/weave/sdk/model"
+
 	"github.com/weave-agent/weave-tui/components"
 	"github.com/weave-agent/weave-tui/components/attachments"
 	"github.com/weave-agent/weave-tui/components/messages"
 	"github.com/weave-agent/weave-tui/components/overlays"
-	"github.com/weave-agent/weave/bus"
-	"github.com/weave-agent/weave/sdk"
-	sdkmodel "github.com/weave-agent/weave/sdk/model"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -956,7 +957,9 @@ func TestModel_AdvanceToolSpinners(t *testing.T) {
 
 	// Spinner frame should have advanced (visible in view)
 	view1 := panel.View(80)
+
 	m.advanceToolSpinners()
+
 	view2 := panel.View(80)
 
 	// After advancing twice, the header should contain a different spinner frame
@@ -1703,9 +1706,7 @@ func TestModel_InterruptStreaming(t *testing.T) {
 	m = model.(Model)
 
 	// Trigger interrupt — interruptStreaming only handles UI, not event publish.
-	model, cmd := m.interruptStreaming()
-	m = model.(Model)
-
+	m = m.interruptStreaming()
 	// Verify message was interrupted
 	items := m.chat.Items()
 	require.Len(t, items, 1)
@@ -1718,9 +1719,6 @@ func TestModel_InterruptStreaming(t *testing.T) {
 
 	// Verify spinner is hidden
 	assert.False(t, m.spinner.Visible())
-
-	// interruptStreaming no longer publishes the event; handleEscape does.
-	assert.Nil(t, cmd)
 }
 
 func TestModel_EscapeWithNoStreamingMessage(t *testing.T) {
@@ -2676,6 +2674,7 @@ func TestModel_Draw_LayoutSyncsChatSize(t *testing.T) {
 func TestModel_TokenUsageSetsFooterContextUsage(t *testing.T) {
 	sdkmodel.ResetModelRegistry()
 	sdkmodel.RegisterModel(sdkmodel.ModelDef{ID: "gpt-5.5", Provider: "openai", ContextWindow: 1000000})
+
 	defer sdkmodel.ResetModelRegistry()
 
 	m := newModel(nil, nil, nil, nil)
@@ -2691,6 +2690,7 @@ func TestModel_TokenUsageSetsFooterContextUsage(t *testing.T) {
 func TestModel_ContextUsageUpdatesOnSubmitAndMessageEnd(t *testing.T) {
 	sdkmodel.ResetModelRegistry()
 	sdkmodel.RegisterModel(sdkmodel.ModelDef{ID: "gpt-5.5", Provider: "openai", ContextWindow: 1000000})
+
 	defer sdkmodel.ResetModelRegistry()
 
 	m := newModel(nil, nil, nil, nil)
@@ -2864,7 +2864,7 @@ func TestModel_AttachmentsPanel_Remove(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m = addTestAttachment(m, "a.go", "aaa", 1)
+	m = addTestAttachment(m, "a.go", "aaa")
 	m = m.syncAttachmentPanel()
 
 	model, _ := m.Update(removeAttachmentMsg{index: 0})
@@ -2879,7 +2879,7 @@ func TestModel_AttachmentsPanel_EditReturnsFocusToEditor(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m = addTestAttachment(m, "a.go", "old", 1)
+	m = addTestAttachment(m, "a.go", "old")
 	m = m.syncAttachmentPanel()
 	m.focus = FocusPanel
 
@@ -2901,7 +2901,7 @@ func TestModel_AttachmentEditorDoneIgnoresStaleInvalidIndex(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m = addTestAttachment(m, "a.go", "old", 1)
+	m = addTestAttachment(m, "a.go", "old")
 	m.editingAttachment = 0
 
 	model, _ := m.openAttachmentEditor(99)
@@ -2916,7 +2916,7 @@ func TestModel_AttachmentsPanel_ExternalEditReturnsFocusToEditor(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m = addTestAttachment(m, "a.go", "old", 1)
+	m = addTestAttachment(m, "a.go", "old")
 	m = m.syncAttachmentPanel()
 	m.focus = FocusPanel
 
@@ -2934,7 +2934,7 @@ func TestModel_SubmitWithAttachments(t *testing.T) {
 	m := newModel(b, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m = addTestAttachment(m, "test.go", "package main", 1)
+	m = addTestAttachment(m, "test.go", "package main")
 	m.prompted = true // followup mode
 
 	text := "review this"
@@ -3002,7 +3002,7 @@ func TestModel_NewSessionClearsAttachments(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m = addTestAttachment(m, "a.go", "aaa", 1)
+	m = addTestAttachment(m, "a.go", "aaa")
 
 	model, _ := m.dispatchBinding(ActionNewSession)
 	m = model.(Model)
@@ -3327,7 +3327,7 @@ func TestModel_Draw_CompletionWithAttachments(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80
 	m.height = 24
-	m = addTestAttachment(m, "test.go", "package main", 1)
+	m = addTestAttachment(m, "test.go", "package main")
 	m = m.syncAttachmentPanel()
 	m.syncPanelTray()
 
@@ -3367,8 +3367,8 @@ func TestModel_RefreshEditorCompletion_MultilineSlashCommand(t *testing.T) {
 }
 
 // addTestAttachment is a helper to add a test attachment to the model.
-func addTestAttachment(m Model, path, content string, lines int) Model {
-	m.attach = m.attach.Add(attachments.Attachment{Path: path, Content: content, Lines: lines})
+func addTestAttachment(m Model, path, content string) Model {
+	m.attach = m.attach.Add(attachments.Attachment{Path: path, Content: content, Lines: 1})
 	return m
 }
 

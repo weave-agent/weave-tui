@@ -59,11 +59,13 @@ func (m LandingModel) Draw(scr uv.Screen, area uv.Rectangle, theme *palette.Them
 	}
 
 	var s *styles.Styles
-	if theme != nil {
+
+	switch {
+	case theme != nil:
 		s = styles.New(theme)
-	} else if m.styles != nil {
+	case m.styles != nil:
 		s = m.styles
-	} else {
+	default:
 		s = styles.New(palette.DefaultTheme())
 	}
 
@@ -124,13 +126,13 @@ func (m LandingModel) buildLines() []string {
 	if m.model != "" {
 		lines = append(lines, fmt.Sprintf("kv:%-*s|%s", landingLabelWidth, "Model", m.model))
 	}
+
 	if m.provider != "" {
 		lines = append(lines, fmt.Sprintf("kv:%-*s|%s", landingLabelWidth, "Provider", m.provider))
 	}
 
 	if len(m.extensions) > 0 {
-		lines = append(lines, "", "rule:")
-		lines = append(lines, fmt.Sprintf("kv:%-*s|", landingLabelWidth, "Extensions"))
+		lines = append(lines, "", "rule:", fmt.Sprintf("kv:%-*s|", landingLabelWidth, "Extensions"))
 		for _, extLine := range wrapList(m.extensions, m.contentWidth()) {
 			lines = append(lines, "muted:"+extLine)
 		}

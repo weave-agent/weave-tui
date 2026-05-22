@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -301,7 +302,7 @@ func (m FooterModel) renderLine2(theme *palette.Theme) string {
 		if m.contextLimit > 0 {
 			rightParts = append(rightParts, contextStyle.Render(fmt.Sprintf("Context: %s/%s", formatTokenCount(m.contextTokens), formatTokenCount(m.contextLimit))))
 		} else {
-			rightParts = append(rightParts, contextStyle.Render(fmt.Sprintf("Context: %s", formatTokenCount(m.contextTokens))))
+			rightParts = append(rightParts, contextStyle.Render("Context: "+formatTokenCount(m.contextTokens)))
 		}
 	} else if m.contextPct > 0 {
 		rightParts = append(rightParts, contextStyleForPct(m.contextPct, theme).Render(fmt.Sprintf("ctx:%.0f%%", m.contextPct)))
@@ -338,9 +339,11 @@ func contextStyleForPct(pct float64, theme *palette.Theme) lipgloss.Style {
 	if pct > 90 {
 		return style.Foreground(lipgloss.Color(theme.Error))
 	}
+
 	if pct > 70 {
 		return style.Foreground(lipgloss.Color(theme.Warning))
 	}
+
 	return style.Foreground(lipgloss.Color(theme.Success))
 }
 
@@ -353,7 +356,7 @@ func formatTokenCount(tokens int) string {
 		value := float64(tokens) / 1_000
 		return strings.TrimSuffix(strings.TrimSuffix(fmt.Sprintf("%.1f", value), "0"), ".") + "k"
 	default:
-		return fmt.Sprintf("%d", tokens)
+		return strconv.Itoa(tokens)
 	}
 }
 

@@ -240,5 +240,6 @@ func executeCmd(t *testing.T, cmd tea.Cmd) tea.Msg {
 			}
 		}
 	}
+
 	return msg
 }

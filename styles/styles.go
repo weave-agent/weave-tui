@@ -34,6 +34,7 @@ func New(theme *palette.Theme) *Styles {
 	if theme == nil {
 		theme = palette.DefaultTheme()
 	}
+
 	return &Styles{theme: theme}
 }
 

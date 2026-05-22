@@ -86,6 +86,7 @@ func TestPathCompletionsNestedPaths(t *testing.T) {
 	tmp := t.TempDir()
 	srcDir := filepath.Join(tmp, "src")
 	releaseDir := filepath.Join(tmp, "release")
+
 	require.NoError(t, os.MkdirAll(srcDir, 0o755))
 	require.NoError(t, os.MkdirAll(releaseDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "main.go"), []byte(""), 0o644))
@@ -236,6 +237,7 @@ func TestPathCompletionsSkipsHugeDirectories(t *testing.T) {
 	tmp := t.TempDir()
 	hugeDir := filepath.Join(tmp, "huge")
 	smallDir := filepath.Join(tmp, "small")
+
 	require.NoError(t, os.MkdirAll(hugeDir, 0o755))
 	require.NoError(t, os.MkdirAll(smallDir, 0o755))
 
@@ -243,6 +245,7 @@ func TestPathCompletionsSkipsHugeDirectories(t *testing.T) {
 	for i := range pathCompletionMaxDirEntries + 1 {
 		require.NoError(t, os.WriteFile(filepath.Join(hugeDir, fmt.Sprintf("file-%04d.go", i)), []byte(""), 0o644))
 	}
+
 	require.NoError(t, os.WriteFile(filepath.Join(smallDir, "found.go"), []byte(""), 0o644))
 
 	// Recursive mode should skip the huge directory entirely

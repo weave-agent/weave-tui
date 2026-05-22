@@ -60,6 +60,7 @@ func (d *attachmentsPanelDrawer) Draw(scr uv.Screen, area uv.Rectangle) {
 	if len(d.items) == 0 {
 		drawLine(scr, area, 2, styleSet.Muted().Render("No attachments"))
 		drawLine(scr, area, area.Dy()-1, styleSet.Muted().Render("Esc editor"))
+
 		return
 	}
 
@@ -69,6 +70,7 @@ func (d *attachmentsPanelDrawer) Draw(scr uv.Screen, area uv.Rectangle) {
 	for row := 0; row < listHeight && start+row < len(d.items); row++ {
 		idx := start + row
 		item := d.items[idx]
+
 		label := fmt.Sprintf("%s   %d lines", filepath.Base(item.Path), item.Lines)
 		if idx == d.selected {
 			label = styleSet.SelectedRow().Render("› " + label)

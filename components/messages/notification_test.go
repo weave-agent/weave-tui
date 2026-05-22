@@ -3,8 +3,9 @@ package messages
 import (
 	"testing"
 
-	"github.com/weave-agent/weave-tui/palette"
 	"github.com/weave-agent/weave/sdk"
+
+	"github.com/weave-agent/weave-tui/palette"
 
 	"github.com/stretchr/testify/assert"
 )

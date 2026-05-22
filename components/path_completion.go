@@ -32,9 +32,11 @@ func readDirCapped(dir string) ([]os.DirEntry, bool) {
 	if err != nil {
 		return nil, false
 	}
+
 	if len(entries) > pathCompletionMaxDirEntries {
 		return nil, false
 	}
+
 	return entries, true
 }
 
@@ -64,6 +66,7 @@ func currentDirectoryPathCompletions(searchDir, dirPart, filter string) []Comple
 	}
 
 	filterLower := strings.ToLower(filter)
+
 	var items []CompletionItem
 
 	for _, entry := range entries {
@@ -92,6 +95,7 @@ func currentDirectoryPathCompletions(searchDir, dirPart, filter string) []Comple
 	}
 
 	sortCompletionItems(items)
+
 	return items
 }
 
@@ -101,6 +105,7 @@ func recursivePathCompletions(searchDir, valuePrefix, filter string) []Completio
 
 	scored := make([]scoredPathCompletion, 0, len(matches))
 	filterLower := strings.ToLower(filter)
+
 	for _, match := range matches {
 		item := items[match.Index]
 		scored = append(scored, scoredPathCompletion{
@@ -115,9 +120,11 @@ func recursivePathCompletions(searchDir, valuePrefix, filter string) []Completio
 		if tierCompare := cmp.Compare(a.tier, b.tier); tierCompare != 0 {
 			return tierCompare
 		}
+
 		if scoreCompare := cmp.Compare(b.score, a.score); scoreCompare != 0 {
 			return scoreCompare
 		}
+
 		return cmp.Compare(a.matchIndex, b.matchIndex)
 	})
 
@@ -125,12 +132,14 @@ func recursivePathCompletions(searchDir, valuePrefix, filter string) []Completio
 	for i, item := range scored {
 		result[i] = item.item
 	}
+
 	return result
 }
 
 func collectRecursivePathCompletions(baseDir, valuePrefix string) []CompletionItem {
 	items := make([]CompletionItem, 0)
 	walkRecursivePathCompletions(baseDir, valuePrefix, "", 0, &items)
+
 	return items
 }
 
@@ -246,6 +255,7 @@ func hasHiddenSegment(dirPart string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -298,5 +308,6 @@ func isSubPath(parent, child string) bool {
 	if err != nil {
 		return false
 	}
+
 	return !strings.HasPrefix(rel, "..")
 }

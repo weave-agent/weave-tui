@@ -573,10 +573,12 @@ func TestToolPanel_View_HeaderBodySpacing(t *testing.T) {
 
 	// Find the header line (contains "bash") and the body line (contains "output")
 	var headerIdx, bodyIdx int
+
 	for i, line := range lines {
 		if strings.Contains(line, "bash") {
 			headerIdx = i
 		}
+
 		if strings.Contains(line, "output line") {
 			bodyIdx = i
 		}
@@ -597,6 +599,7 @@ func TestToolPanel_View_NoBodyWhenEmpty(t *testing.T) {
 
 func assertCustomColorInString(t *testing.T, s, colorCode string) {
 	t.Helper()
+
 	fgParam := "38;5;" + colorCode
 	bgParam := "48;5;" + colorCode
 	assert.True(t, strings.Contains(s, fgParam) || strings.Contains(s, bgParam),

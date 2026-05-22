@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/weave-agent/weave/sdk"
+
 	"github.com/weave-agent/weave-tui/palette"
 	"github.com/weave-agent/weave-tui/styles"
-	"github.com/weave-agent/weave/sdk"
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
@@ -85,6 +87,7 @@ func (p *ToolPanel) Expanded() bool {
 // SetResult updates the panel with a tool result.
 func (p *ToolPanel) SetResult(output string, isError bool) {
 	p.output = output
+
 	p.progress = ""
 	if isError {
 		p.state = ToolError
@@ -392,12 +395,12 @@ func formatArgValue(value any) string {
 		return fmt.Sprintf("%q", val)
 	case float64:
 		if val == float64(int64(val)) {
-			return fmt.Sprintf("%d", int64(val))
+			return strconv.FormatInt(int64(val), 10)
 		}
 
 		return fmt.Sprintf("%g", val)
 	case bool:
-		return fmt.Sprintf("%t", val)
+		return strconv.FormatBool(val)
 	case nil:
 		return "null"
 	default:

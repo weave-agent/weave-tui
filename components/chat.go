@@ -565,6 +565,7 @@ func (m *ChatModel) allContentLines() []string {
 	m.ensureCache()
 
 	var lines []string
+
 	visibleCount := 0
 
 	for i, item := range m.items {

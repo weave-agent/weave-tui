@@ -102,8 +102,8 @@ func TestThinkingBlock_View_NoBarIndent(t *testing.T) {
 	view := b.View(80)
 	lines := strings.Split(view, "\n")
 	require.GreaterOrEqual(t, len(lines), 3)
-	assert.True(t, strings.Contains(lines[1], "first line"))
-	assert.True(t, strings.Contains(lines[2], "second line"))
+	assert.Contains(t, lines[1], "first line")
+	assert.Contains(t, lines[2], "second line")
 	assert.False(t, strings.HasPrefix(lines[1], "  "))
 	assert.False(t, strings.HasPrefix(lines[2], "  "))
 }

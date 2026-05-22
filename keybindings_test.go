@@ -442,6 +442,7 @@ func TestBindingRegistry_AllBindingsUsesResolvedKeys(t *testing.T) {
 	r.Register("app.custom", []string{"ctrl+d"}, "Custom action")
 
 	bindings := r.AllBindings()
+
 	byAction := make(map[BindingAction]Binding, len(bindings))
 	for _, binding := range bindings {
 		byAction[binding.Action] = binding

@@ -5,9 +5,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/weave-agent/weave-tui/palette"
 	"github.com/weave-agent/weave/sdk"
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
+
+	"github.com/weave-agent/weave-tui/palette"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -205,9 +206,11 @@ func (t *agentStateTracker) addTool(id string) {
 	if id == "" {
 		return
 	}
+
 	if t.activeTools == nil {
 		t.activeTools = make(map[string]struct{})
 	}
+
 	if _, exists := t.activeTools[id]; !exists {
 		t.activeTools[id] = struct{}{}
 		t.toolCount = len(t.activeTools)
@@ -219,6 +222,7 @@ func (t *agentStateTracker) removeTool(id string) {
 	if id == "" {
 		return
 	}
+
 	if _, exists := t.activeTools[id]; exists {
 		delete(t.activeTools, id)
 		t.toolCount = len(t.activeTools)
@@ -256,21 +260,25 @@ func (t *agentStateTracker) update(msg tea.Msg) (palette.State, bool) {
 		for _, tc := range msg.ToolCalls {
 			t.addTool(tc.ID)
 		}
+
 		if t.toolCount > 0 {
 			t.state = palette.StateToolRunning
 		}
 	case ToolStartMsg:
 		t.addTool(msg.ToolID)
+
 		if t.toolCount > 0 {
 			t.state = palette.StateToolRunning
 		}
 	case ToolProgressMsg:
 		t.addTool(msg.ToolID)
+
 		if t.toolCount > 0 {
 			t.state = palette.StateToolRunning
 		}
 	case ToolCompleteMsg, ToolErrorMsg, ToolInterruptedMsg:
 		var id string
+
 		switch m := msg.(type) {
 		case ToolCompleteMsg:
 			id = m.ToolID
@@ -279,6 +287,7 @@ func (t *agentStateTracker) update(msg tea.Msg) (palette.State, bool) {
 		case ToolInterruptedMsg:
 			id = m.ToolID
 		}
+
 		t.removeTool(id)
 		t.maybeReturnToStreaming()
 	case TurnEndMsg:

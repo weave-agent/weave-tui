@@ -11,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
+//nolint:gochecknoinits // Extension registration requires init-time side effects for SDK discovery
 func init() {
 	sdk.RegisterExtensionWithScopeAndWriter("tui", "ui", func(cfg sdk.Config, ps sdk.PreferenceWriter, tuiCfg TUIConfig) (sdk.Extension, error) {
 		t, err := NewTUI(cfg, ps, tuiCfg)

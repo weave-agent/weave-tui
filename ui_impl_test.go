@@ -6,10 +6,11 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/weave-agent/weave-tui/components/overlays"
-	"github.com/weave-agent/weave-tui/palette"
 	"github.com/weave-agent/weave/bus"
 	"github.com/weave-agent/weave/sdk"
+
+	"github.com/weave-agent/weave-tui/components/overlays"
+	"github.com/weave-agent/weave-tui/palette"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"

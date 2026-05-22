@@ -12,14 +12,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/weave-agent/weave/sdk"
+	sdkmodel "github.com/weave-agent/weave/sdk/model"
+
 	"github.com/weave-agent/weave-tui/components"
 	"github.com/weave-agent/weave-tui/components/attachments"
 	"github.com/weave-agent/weave-tui/components/messages"
 	"github.com/weave-agent/weave-tui/components/overlays"
 	"github.com/weave-agent/weave-tui/palette"
 	"github.com/weave-agent/weave-tui/styles"
-	"github.com/weave-agent/weave/sdk"
-	sdkmodel "github.com/weave-agent/weave/sdk/model"
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
@@ -1015,6 +1016,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.theme != nil {
 			m.theme = msg.theme
 		}
+
 		m.styles = styles.New(m.theme)
 		m.editor = m.editor.SetStyles(m.styles)
 
@@ -1387,9 +1389,7 @@ func (m Model) handleEscape() (tea.Model, tea.Cmd) {
 
 	// First press — interrupt streaming if active, start timeout.
 	// interruptStreaming safely handles the no-streaming-assistant case.
-	model, cmd := m.interruptStreaming()
-	m = model.(Model)
-	cmds = append(cmds, cmd)
+	m = m.interruptStreaming()
 
 	return m, tea.Batch(append(cmds, tea.Tick(doublePressWindow, func(_ time.Time) tea.Msg {
 		return doublePressTimeoutMsg{kind: doublePressEscape, gen: m.doublePressGen}
@@ -1776,6 +1776,7 @@ func (m *Model) onToolProgress(msg ToolProgressMsg) {
 		if p.State() == messages.ToolPending {
 			p.SetRunning()
 		}
+
 		p.SetProgress(msg.Content)
 	})
 }
@@ -1868,10 +1869,10 @@ func (m Model) activeToolName() string {
 
 // interruptStreaming finalizes the current streaming assistant message with
 // an [interrupted] tag, hides the spinner, and clears the token rate.
-func (m Model) interruptStreaming() (tea.Model, tea.Cmd) {
+func (m Model) interruptStreaming() Model {
 	am, idx := m.findStreamingAssistant()
 	if am == nil {
-		return m, nil
+		return m
 	}
 
 	am.Interrupt()
@@ -1880,7 +1881,7 @@ func (m Model) interruptStreaming() (tea.Model, tea.Cmd) {
 	m.syncChatViewport()
 	m.footer = m.footer.SetTokenRate(0)
 
-	return m, nil
+	return m
 }
 
 // AddUserMessage adds a user message to the chat.
@@ -1894,6 +1895,7 @@ func (m *Model) AddUserMessage(content string) {
 func (m Model) newAssistantMessage() *messages.AssistantMessage {
 	am := messages.NewAssistantMessage()
 	am.SetStyles(m.styles)
+
 	return am
 }
 
@@ -1901,6 +1903,7 @@ func (m Model) newAssistantMessage() *messages.AssistantMessage {
 func (m Model) newUserMessage(content string) *messages.UserMessage {
 	um := messages.NewUserMessage(content)
 	um.SetStyles(m.styles)
+
 	return um
 }
 
@@ -1908,6 +1911,7 @@ func (m Model) newUserMessage(content string) *messages.UserMessage {
 func (m Model) newThinkingBlock(content string) *messages.ThinkingBlock {
 	tb := messages.NewThinkingBlock(content)
 	tb.SetStyles(m.styles)
+
 	return tb
 }
 
@@ -1915,6 +1919,7 @@ func (m Model) newThinkingBlock(content string) *messages.ThinkingBlock {
 func (m Model) newToolPanel(id, tool, input string) *messages.ToolPanel {
 	panel := messages.NewToolPanel(id, tool, input)
 	panel.SetStyles(m.styles)
+
 	return panel
 }
 
@@ -1946,15 +1951,16 @@ func formatOutdatedBanner(names []string) string {
 
 	var text string
 	if len(names) == 1 {
-		text = fmt.Sprintf("`weave update <name>`: %s", nameList)
+		text = "`weave update <name>`: " + nameList
 	} else {
-		text = fmt.Sprintf("`weave update`: %s", nameList)
+		text = "`weave update`: " + nameList
 	}
 
 	runes := []rune(text)
 	if len(runes) > maxLen {
 		return string(runes[:maxLen-1]) + "…"
 	}
+
 	return text
 }
 
@@ -3622,6 +3628,7 @@ func (m Model) onAttachmentAdded(path string, lines int) (tea.Model, tea.Cmd) {
 
 func (m Model) openAttachmentEditor(index int) (tea.Model, tea.Cmd) {
 	m.editingAttachment = -1
+
 	items := m.attach.Items()
 	if index < 0 || index >= len(items) {
 		return m, nil
@@ -3709,7 +3716,9 @@ func (m Model) drawPills(scr uv.Screen, area uv.Rectangle) {
 	if m.bannerMsg != "" && y < area.Max.Y {
 		s := m.styles
 		marker := bannerMarkerForLevel(m.bannerLevel)
+
 		var bannerStyle lipgloss.Style
+
 		switch m.bannerLevel {
 		case sdk.NotifySuccess:
 			bannerStyle = s.BannerSuccess()
@@ -3720,6 +3729,7 @@ func (m Model) drawPills(scr uv.Screen, area uv.Rectangle) {
 		default:
 			bannerStyle = s.BannerInfo()
 		}
+
 		bnArea := uv.Rect(area.Min.X+1, y, max(area.Dx()-1, 0), 1)
 		uv.NewStyledString(bannerStyle.Render(marker+" "+m.bannerMsg)).Draw(scr, bnArea)
 

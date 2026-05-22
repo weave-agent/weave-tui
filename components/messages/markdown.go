@@ -14,9 +14,12 @@ import (
 
 const chromaFormatterName = "weave"
 
-// init registers the custom Chroma formatter so glamour can use it by name.
-func init() {
-	formatters.Register(chromaFormatterName, xchroma.NewFormatter())
+var registerFormatterOnce sync.Once
+
+func registerFormatter() {
+	registerFormatterOnce.Do(func() {
+		formatters.Register(chromaFormatterName, xchroma.NewFormatter())
+	})
 }
 
 // MarkdownRenderer wraps a glamour renderer for terminal-aware markdown rendering.
@@ -28,6 +31,8 @@ type MarkdownRenderer struct {
 
 // NewMarkdownRenderer creates a new markdown renderer with the given width.
 func NewMarkdownRenderer(width int) *MarkdownRenderer {
+	registerFormatter()
+
 	r := &MarkdownRenderer{width: width}
 	r.rebuild()
 

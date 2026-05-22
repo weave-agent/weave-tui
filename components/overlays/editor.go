@@ -174,6 +174,7 @@ func (m EditorModel) View() string {
 	}
 
 	theme := palette.DefaultTheme()
+
 	boxWidth := editorBoxWidth(m.width)
 	if boxWidth == 0 {
 		return ""

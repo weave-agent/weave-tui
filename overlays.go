@@ -3,10 +3,11 @@ package tui
 import (
 	"fmt"
 
+	"github.com/weave-agent/weave/sdk"
+
 	"github.com/weave-agent/weave-tui/components/messages"
 	"github.com/weave-agent/weave-tui/components/overlays"
 	"github.com/weave-agent/weave-tui/palette"
-	"github.com/weave-agent/weave/sdk"
 
 	tea "charm.land/bubbletea/v2"
 )

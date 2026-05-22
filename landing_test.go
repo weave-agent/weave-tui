@@ -214,7 +214,7 @@ func TestLandingModel_DrawWrapsExtensionsToContentWidth(t *testing.T) {
 	scr := uv.NewScreenBuffer(120, 30)
 	m.Draw(scr, scr.Bounds(), nil)
 
-	for _, line := range strings.Split(ansi.Strip(scr.Render()), "\n") {
+	for line := range strings.SplitSeq(ansi.Strip(scr.Render()), "\n") {
 		if strings.HasPrefix(line, "    ") {
 			assert.LessOrEqual(t, lipgloss.Width(line), landingContentWidth)
 		}

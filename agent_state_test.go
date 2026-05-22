@@ -3,8 +3,9 @@ package tui
 import (
 	"testing"
 
-	"github.com/weave-agent/weave-tui/palette"
 	"github.com/weave-agent/weave/sdk"
+
+	"github.com/weave-agent/weave-tui/palette"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

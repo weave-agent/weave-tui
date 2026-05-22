@@ -4,9 +4,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/weave-agent/weave/sdk"
+
 	"github.com/weave-agent/weave-tui/palette"
 	"github.com/weave-agent/weave-tui/styles"
-	"github.com/weave-agent/weave/sdk"
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"

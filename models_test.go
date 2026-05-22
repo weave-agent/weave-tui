@@ -7,11 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/weave-agent/weave-tui/components/messages"
-	"github.com/weave-agent/weave-tui/components/overlays"
 	"github.com/weave-agent/weave/bus"
 	"github.com/weave-agent/weave/sdk"
 	sdkmodel "github.com/weave-agent/weave/sdk/model"
+
+	"github.com/weave-agent/weave-tui/components/messages"
+	"github.com/weave-agent/weave-tui/components/overlays"
 
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"

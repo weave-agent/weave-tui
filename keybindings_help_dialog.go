@@ -38,6 +38,7 @@ func (d *keybindingsHelpDialog) Result() overlays.DialogResult { return d.result
 func (d *keybindingsHelpDialog) SetSize(width, height int) overlays.Dialog {
 	d.width = width
 	d.height = height
+
 	return d
 }
 
@@ -117,6 +118,7 @@ func (d *keybindingsHelpDialog) View() string {
 	for len(lines) < contentHeight+1 {
 		lines = append(lines, "")
 	}
+
 	lines = append(lines, footerStyle.Render(footer))
 
 	box := borderStyle.Render(strings.Join(lines, "\n"))
@@ -137,18 +139,21 @@ func (d *keybindingsHelpDialog) rows(width int, keyStyle, descStyle, actionStyle
 	for _, binding := range d.bindings {
 		keyWidth = max(keyWidth, lipgloss.Width(strings.Join(binding.Keys, ", ")))
 	}
+
 	keyWidth = min(keyWidth, max(10, width/2))
 	descriptionWidth := max(8, width-keyWidth-3)
 
 	rows := make([]string, 0, len(d.bindings))
 	for _, binding := range d.bindings {
 		keys := truncateDisplayWidth(strings.Join(binding.Keys, ", "), keyWidth)
+
 		description := binding.Description
 		if description == "" {
 			description = string(binding.Action)
 		}
 
 		description = truncateDisplayWidth(description, descriptionWidth)
+
 		row := lipgloss.NewStyle().Width(keyWidth).Render(keyStyle.Render(keys)) + "  " + descStyle.Render(description)
 		if binding.Description != "" && lipgloss.Width(row)+lipgloss.Width(string(binding.Action))+3 <= width {
 			row += actionStyle.Render(" · " + string(binding.Action))

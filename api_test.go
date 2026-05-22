@@ -7,7 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/weave-agent/weave/sdk"
-	"github.com/weave-agent/weave-tui"
+
+	tui "github.com/weave-agent/weave-tui"
 )
 
 // Verify that the public API surface is usable from an external package.
@@ -95,7 +96,7 @@ type publicExt struct {
 	name string
 }
 
-func (e *publicExt) Name() string            { return e.name }
+func (e *publicExt) Name() string                { return e.name }
 func (e *publicExt) RegisterTUI(_ tui.TUIExtAPI) {}
 
 // Verify that publicExt actually implements TUIExtension.

@@ -215,8 +215,8 @@ func TestUserMessage_Styling_MultilineMarkerOnlyOnFirstLine(t *testing.T) {
 	// First line has the marker
 	assert.Contains(t, lines[0], styles.UserMarker, "first line should have user marker")
 	// Continuation lines have spaces instead of marker
-	assert.False(t, strings.Contains(lines[1], styles.UserMarker), "second line should not repeat marker")
-	assert.False(t, strings.Contains(lines[2], styles.UserMarker), "third line should not repeat marker")
+	assert.NotContains(t, lines[1], styles.UserMarker, "second line should not repeat marker")
+	assert.NotContains(t, lines[2], styles.UserMarker, "third line should not repeat marker")
 	// Continuation lines start with two spaces for alignment
 	assert.True(t, strings.HasPrefix(lines[1], "  "), "second line should start with alignment spaces")
 	assert.True(t, strings.HasPrefix(lines[2], "  "), "third line should start with alignment spaces")
@@ -252,14 +252,16 @@ func TestUserMessage_View_SingleLineSkillInvocation(t *testing.T) {
 	assert.Contains(t, view, "[skill analyze]")
 	// Body should start with spaces for alignment, no marker
 	bodyLine := ""
+
 	for _, line := range lines[1:] {
 		if strings.Contains(line, "code review") {
 			bodyLine = line
 			break
 		}
 	}
+
 	require.NotEmpty(t, bodyLine, "body line should contain 'code review'")
-	assert.False(t, strings.Contains(bodyLine, styles.UserMarker), "body line should not repeat marker")
+	assert.NotContains(t, bodyLine, styles.UserMarker, "body line should not repeat marker")
 }
 
 func TestUserMessage_View_EmptyMessageHasMarker(t *testing.T) {

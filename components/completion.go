@@ -61,6 +61,7 @@ func (m CompletionModel) themeStyles() *styles.Styles {
 	if m.styles != nil {
 		return m.styles
 	}
+
 	return styles.New(palette.DefaultTheme())
 }
 
@@ -102,6 +103,7 @@ func (m CompletionModel) SetFilter(filter string) CompletionModel {
 		m.filtered = append(m.filtered[:0], m.items...)
 	} else {
 		matches := fuzzy.FindFrom(filter, completionItems(m.items))
+
 		m.filtered = m.filtered[:0]
 		for _, match := range matches {
 			m.filtered = append(m.filtered, m.items[match.Index])

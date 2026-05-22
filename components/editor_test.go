@@ -416,6 +416,7 @@ func TestEditorCompletionTabPreservesTrailingText(t *testing.T) {
 	for _, ch := range "text @sr more" {
 		m, _ = m.Update(tea.KeyPressMsg{Text: string(ch), Code: ch})
 	}
+
 	for range 5 {
 		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
 	}

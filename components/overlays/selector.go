@@ -64,6 +64,7 @@ func (m SelectorModel) themeStyles() *styles.Styles {
 	if m.styles != nil {
 		return m.styles
 	}
+
 	return styles.New(palette.DefaultTheme())
 }
 

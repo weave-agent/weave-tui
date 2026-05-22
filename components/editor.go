@@ -79,26 +79,26 @@ func NewEditorModel() EditorModel {
 	ta.SetHeight(3)
 	ta.Focus()
 
-	styles := textarea.DefaultStyles(false)
-	styles.Focused.Base = borderStyle(palette.DefaultTheme().Accent)
-	styles.Blurred.Base = borderStyle(palette.DefaultTheme().Border)
-	styles.Focused.Text = lipgloss.NewStyle()
-	styles.Blurred.Text = lipgloss.NewStyle()
-	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color(palette.DefaultTheme().Muted))
+	taStyles := textarea.DefaultStyles(false)
+	taStyles.Focused.Base = borderStyle(palette.DefaultTheme().Accent)
+	taStyles.Blurred.Base = borderStyle(palette.DefaultTheme().Border)
+	taStyles.Focused.Text = lipgloss.NewStyle()
+	taStyles.Blurred.Text = lipgloss.NewStyle()
+	taStyles.Focused.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color(palette.DefaultTheme().Muted))
 
 	// Override light-mode defaults that cause white background on cursor line
 	// and visible end-of-buffer characters.
 	base := lipgloss.NewStyle()
-	styles.Focused.CursorLine = base
-	styles.Focused.CursorLineNumber = base
-	styles.Focused.EndOfBuffer = base
-	styles.Focused.LineNumber = base
-	styles.Blurred.CursorLine = base
-	styles.Blurred.CursorLineNumber = base
-	styles.Blurred.EndOfBuffer = base
-	styles.Blurred.LineNumber = base
+	taStyles.Focused.CursorLine = base
+	taStyles.Focused.CursorLineNumber = base
+	taStyles.Focused.EndOfBuffer = base
+	taStyles.Focused.LineNumber = base
+	taStyles.Blurred.CursorLine = base
+	taStyles.Blurred.CursorLineNumber = base
+	taStyles.Blurred.EndOfBuffer = base
+	taStyles.Blurred.LineNumber = base
 
-	ta.SetStyles(styles)
+	ta.SetStyles(taStyles)
 
 	return EditorModel{
 		ta:          ta,
@@ -186,10 +186,10 @@ func (m EditorModel) SetMaxHeight(n int) EditorModel {
 func (m EditorModel) SetBorderColor(color string) EditorModel {
 	m.BorderColor = color
 
-	styles := m.ta.Styles()
-	styles.Focused.Base = borderStyle(color)
-	styles.Blurred.Base = borderStyle(palette.DefaultTheme().Border)
-	m.ta.SetStyles(styles)
+	taStyles := m.ta.Styles()
+	taStyles.Focused.Base = borderStyle(color)
+	taStyles.Blurred.Base = borderStyle(palette.DefaultTheme().Border)
+	m.ta.SetStyles(taStyles)
 
 	return m
 }

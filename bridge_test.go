@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/weave-agent/weave-tui/palette"
 	"github.com/weave-agent/weave/bus"
 	"github.com/weave-agent/weave/sdk"
+
+	"github.com/weave-agent/weave-tui/palette"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
@@ -532,21 +533,26 @@ func TestBridge_ToolLifecycleEvents(t *testing.T) {
 	<-done
 
 	// Should have: state change (Idle→ToolRunning) + ToolStart + ToolProgress + state change (ToolRunning→Streaming) + ToolComplete + Shutdown
-	var toolStartFound, toolProgressFound, toolCompleteFound bool
-	var stateChanges []AgentStateChangeMsg
+	var (
+		toolStartFound, toolProgressFound, toolCompleteFound bool
+		stateChanges                                         []AgentStateChangeMsg
+	)
 
 	for _, msg := range sender.msgs {
 		switch m := msg.(type) {
 		case ToolStartMsg:
 			toolStartFound = true
+
 			assert.Equal(t, "tc1", m.ToolID)
 			assert.Equal(t, "bash", m.Tool)
 			assert.Equal(t, "ls", m.Input)
 		case ToolProgressMsg:
 			toolProgressFound = true
+
 			assert.Equal(t, "partial output", m.Content)
 		case ToolCompleteMsg:
 			toolCompleteFound = true
+
 			assert.Equal(t, "final output", m.Content)
 		case AgentStateChangeMsg:
 			stateChanges = append(stateChanges, m)
@@ -586,13 +592,16 @@ func TestBridge_ToolErrorEvent(t *testing.T) {
 	close(events)
 	<-done
 
-	var toolErrorFound bool
-	var stateChanges []AgentStateChangeMsg
+	var (
+		toolErrorFound bool
+		stateChanges   []AgentStateChangeMsg
+	)
 
 	for _, msg := range sender.msgs {
 		switch m := msg.(type) {
 		case ToolErrorMsg:
 			toolErrorFound = true
+
 			assert.Equal(t, "command not found", m.Error)
 		case AgentStateChangeMsg:
 			stateChanges = append(stateChanges, m)
@@ -629,13 +638,16 @@ func TestBridge_ToolInterruptedEvent(t *testing.T) {
 	close(events)
 	<-done
 
-	var toolInterruptedFound bool
-	var stateChanges []AgentStateChangeMsg
+	var (
+		toolInterruptedFound bool
+		stateChanges         []AgentStateChangeMsg
+	)
 
 	for _, msg := range sender.msgs {
 		switch m := msg.(type) {
 		case ToolInterruptedMsg:
 			toolInterruptedFound = true
+
 			assert.Equal(t, "tc1", m.ToolID)
 		case AgentStateChangeMsg:
 			stateChanges = append(stateChanges, m)
