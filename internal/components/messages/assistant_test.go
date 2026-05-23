@@ -150,6 +150,19 @@ func TestAssistantMessage_View_Finalized_CodeBlock(t *testing.T) {
 	assert.Contains(t, view, "fmt.Println")
 }
 
+func TestAssistantMessage_SetStyles_SameStylesPreservesRenderState(t *testing.T) {
+	m := NewAssistantMessage()
+	ss := styles.New(palette.DefaultTheme())
+	m.SetStyles(ss)
+	m.Append("# Hello")
+	view := m.View(80)
+
+	m.SetStyles(ss)
+
+	assert.False(t, m.dirty)
+	assert.Equal(t, view, m.View(80))
+}
+
 func TestAssistantMessage_SetStyles_ThemesMarkdownBody(t *testing.T) {
 	m := NewAssistantMessage()
 	custom := palette.DefaultTheme()

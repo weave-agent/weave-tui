@@ -48,6 +48,10 @@ func (m *AssistantMessage) SetStyles(s *styles.Styles) {
 		s = styles.New(palette.DefaultTheme())
 	}
 
+	if m.styles == s {
+		return
+	}
+
 	m.styles = s
 	m.renderer.SetTheme(s.Theme())
 	m.cachedRender = ""
