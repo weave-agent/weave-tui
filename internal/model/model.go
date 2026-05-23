@@ -75,6 +75,10 @@ type pulseTickMsg struct {
 
 type themeSelectMsg struct{}
 
+type startupThemeReadyMsg struct {
+	Name string
+}
+
 const defaultThemeName = "default"
 
 type themePreferences struct {
@@ -182,6 +186,7 @@ type Model struct {
 
 	themeEntries      []themecatalog.Entry
 	themeBeforeSelect string
+	configuredTheme   string
 
 	contextTokens int
 
@@ -319,6 +324,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		theme:             startupTheme,
 		styles:            startupStyles,
 		themeEntries:      themeEntries,
+		configuredTheme:   strings.TrimSpace(tuiCfg.Theme),
 		panelManager:      ui.PanelManager(),
 		panelTray:         panels.NewPanelTray(),
 		focus:             FocusEditor,
@@ -461,6 +467,15 @@ func (m Model) Init() tea.Cmd {
 		cmds = append(cmds, func() tea.Msg {
 			for _, ext := range extensionregistry.GetAll(m.cfg) {
 				ext.RegisterTUI(m.ui)
+			}
+
+			name := strings.TrimSpace(m.configuredTheme)
+			if name == "" || name == defaultThemeName {
+				return nil
+			}
+
+			if _, ok := m.ui.PaletteTheme(name); ok {
+				return startupThemeReadyMsg{Name: name}
 			}
 
 			return nil
@@ -1113,6 +1128,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, nil
+
+	case startupThemeReadyMsg:
+		if m.ui == nil {
+			return m, nil
+		}
+
+		if msg.Name == "" || msg.Name == m.ui.Theme().Name {
+			return m, nil
+		}
+
+		updated, err := m.applyThemeByName(msg.Name)
+		if err != nil {
+			slog.Warn("failed to apply extension-registered startup theme", "theme", msg.Name, "error", err)
+
+			return m, nil
+		}
+
+		return updated, nil
 
 	case panelChangedMsg:
 		m.syncPanelTray()
