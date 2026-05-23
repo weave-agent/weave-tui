@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -31,6 +32,7 @@ import (
 	tuiproviders "github.com/weave-agent/weave-tui/internal/providers"
 	tuisessions "github.com/weave-agent/weave-tui/internal/sessions"
 	"github.com/weave-agent/weave-tui/internal/styles"
+	"github.com/weave-agent/weave-tui/internal/themecatalog"
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
@@ -270,6 +272,8 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 	}
 
 	messages.GetThemeInfo = ui.Theme
+	startupTheme := applyStartupTheme(ui, tuiCfg.Theme)
+	startupStyles := styles.New(startupTheme)
 
 	m := Model{
 		width:             80,
@@ -280,7 +284,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		chat:              components.NewChatModel(),
 		editor:            editor,
 		footer:            components.NewFooterModel(),
-		spinner:           components.NewSpinnerModel(palette.DefaultTheme()),
+		spinner:           components.NewSpinnerModel(startupTheme),
 		toolPanels:        make(map[string]*messages.ToolPanel),
 		pendingToolCalls:  make(map[string]string),
 		commands:          commands,
@@ -296,8 +300,8 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		landing:           NewLandingModel(cur.Model, cur.Provider, listLoadedComponents()),
 		dialogStack:       overlays.NewDialogStack(),
 		popupChans:        make(map[string]chan overlayResponse),
-		theme:             palette.DefaultTheme(),
-		styles:            styles.New(palette.DefaultTheme()),
+		theme:             startupTheme,
+		styles:            startupStyles,
 		panelManager:      ui.PanelManager(),
 		panelTray:         panels.NewPanelTray(),
 		focus:             FocusEditor,
@@ -308,6 +312,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 	m.footer = m.footer.SetThinkingLevel(string(m.thinkingLevel))
 	m.editor = m.editor.SetBorderColor(palette.ThinkingBorderColor(m.thinkingLevel))
 	m.editor = m.editor.SetStyles(m.styles)
+	m.editor = m.editor.SetPulseColors(m.theme.Accent, m.theme.AccentBright)
 
 	if m.noConfigured {
 		m.statusMsg = "No providers configured. Use /providers to set an API key."
@@ -320,6 +325,62 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 	}
 
 	return m
+}
+
+func applyStartupTheme(ui *TUIImpl, configured string) *palette.Theme {
+	catalog, err := themecatalog.Load(defaultThemesDir())
+	if err != nil {
+		slog.Warn("failed to load theme catalog", "error", err)
+		theme := palette.DefaultTheme()
+		_ = ui.SetTheme("default")
+		return theme
+	}
+
+	for _, entry := range catalog.List() {
+		if err := ui.RegisterPaletteTheme(entry.Name, entry.Theme); err != nil {
+			slog.Warn("failed to register theme", "theme", entry.Name, "error", err)
+		}
+	}
+
+	name := strings.TrimSpace(configured)
+	if name == "" {
+		name = "default"
+	}
+
+	theme, err := catalog.Theme(name)
+	if err != nil {
+		slog.Warn("configured theme is unavailable; falling back to default", "theme", name, "error", err)
+		name = "default"
+		theme, err = catalog.Theme(name)
+		if err != nil {
+			slog.Warn("default theme is unavailable; using built-in fallback", "error", err)
+			theme = palette.DefaultTheme()
+		}
+	}
+
+	if err := ui.SetTheme(name); err != nil {
+		slog.Warn("failed to apply startup theme", "theme", name, "error", err)
+		if name != "default" {
+			name = "default"
+			_ = ui.SetTheme(name)
+			if fallback, err := catalog.Theme(name); err == nil {
+				theme = fallback
+			} else {
+				theme = palette.DefaultTheme()
+			}
+		}
+	}
+
+	return theme
+}
+
+func defaultThemesDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return ""
+	}
+
+	return filepath.Join(home, ".weave", "themes")
 }
 
 // listLoadedComponents returns a deduplicated, sorted list of all registered

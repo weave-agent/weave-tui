@@ -71,14 +71,14 @@
 - [x] run theme catalog tests - must pass before task 2
 
 ### Task 2: Wire catalog into TUI startup
-- [ ] load the theme catalog during TUI model construction in `internal/model/model.go`
-- [ ] register built-in and user themes into the existing `TUIImpl` theme registry
-- [ ] apply `TUIConfig.Theme` at startup when it resolves to a known theme
-- [ ] fall back safely to `default` when the configured theme is empty or unknown
-- [ ] ensure startup theme application updates `Model.theme`, `Model.styles`, editor styles, spinner theme, and UI theme registry consistently
-- [ ] write tests for startup applying `ui.theme`
-- [ ] write tests for unknown configured themes falling back without crashing
-- [ ] run startup/model tests - must pass before task 3
+- [x] load the theme catalog during TUI model construction in `internal/model/model.go`
+- [x] register built-in and user themes into the existing `TUIImpl` theme registry
+- [x] apply `TUIConfig.Theme` at startup when it resolves to a known theme
+- [x] fall back safely to `default` when the configured theme is empty or unknown
+- [x] ensure startup theme application updates `Model.theme`, `Model.styles`, editor styles, spinner theme, and UI theme registry consistently
+- [x] write tests for startup applying `ui.theme`
+- [x] write tests for unknown configured themes falling back without crashing
+- [x] run startup/model tests - must pass before task 3
 
 ### Task 3: Add `/theme` selector command
 - [ ] register `/theme` in `newModelWithConfig` with description `Select TUI theme`
