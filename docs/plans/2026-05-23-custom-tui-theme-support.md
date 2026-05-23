@@ -129,10 +129,10 @@
 - [x] run linter if configured for the TUI extension
 
 ### Task 8: Update documentation
-- [ ] document the JSON theme file location and schema in existing TUI docs or README if present
-- [ ] document `/theme` usage and v1 limitations
-- [ ] add a minimal example custom theme JSON
-- [ ] run documentation-related checks if present
+- [x] document the JSON theme file location and schema in existing TUI docs or README if present
+- [x] document `/theme` usage and v1 limitations
+- [x] add a minimal example custom theme JSON
+- [x] run documentation-related checks if present
 
 ## Technical Details
 - Theme file location: `~/.weave/themes/*.json`.

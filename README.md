@@ -77,6 +77,57 @@ The editor supports completion popups for slash commands and file references:
 - Use Up/Down to move through suggestions, Escape to dismiss, and Tab to accept the selected completion.
 - Enter accepts the selected completion and immediately submits the message.
 
+## Custom themes
+
+The TUI loads custom themes from JSON files in `~/.weave/themes/*.json`. Each
+file defines one full theme. The theme name is the filename without `.json`;
+for example, `~/.weave/themes/ocean.json` registers a theme named `ocean`.
+
+Use `/theme` in the TUI to open the theme selector. Moving through the selector
+previews each theme immediately. Press Enter to apply the highlighted theme and
+persist it to `ui.theme`; press Escape to cancel and restore the previously
+active theme. A persisted `ui.theme` value is applied the next time the TUI
+starts. If the configured theme is missing or invalid, the TUI falls back to
+`default`.
+
+Theme names must be safe filenames or identifiers. They may contain letters,
+digits, `-`, `_`, and `.`, but not path separators, control characters, `.`, or
+`..`. A user theme with the same name as a built-in theme overrides the built-in
+theme.
+
+Theme files must include every semantic color field shown below. The optional
+`name` field must match the filename if present. For v1, user theme colors must
+use `#RRGGBB` hex values; partial themes, inheritance, theme installation
+commands, gallery management, CLI flags, and a dedicated theme keybinding are
+not supported.
+
+Minimal example:
+
+```json
+{
+  "name": "ocean",
+  "foreground": "#d8dee9",
+  "foregroundDim": "#a7b1c2",
+  "foregroundBright": "#ffffff",
+  "muted": "#65758b",
+  "mutedBright": "#9aa8ba",
+  "background": "#08111f",
+  "backgroundTint": "#101c2e",
+  "backgroundTint2": "#17263b",
+  "border": "#31425c",
+  "borderFocused": "#88c0d0",
+  "success": "#a3be8c",
+  "error": "#bf616a",
+  "warning": "#ebcb8b",
+  "backgroundTintPending": "#13243a",
+  "backgroundTintSuccess": "#17351f",
+  "backgroundTintError": "#391d24",
+  "accent": "#88c0d0",
+  "accentDim": "#5e81ac",
+  "accentBright": "#8fbcbb"
+}
+```
+
 ## Development
 
 ```bash
