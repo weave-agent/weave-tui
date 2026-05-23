@@ -441,16 +441,15 @@ func (u *TUIImpl) RegisterTheme(name string, theme ThemeDef) error {
 		return errors.New("cannot override default theme")
 	}
 
-	u.mu.Lock()
-	defer u.mu.Unlock()
-
-	u.themeRegistry[name] = toPaletteTheme(theme)
-
-	return nil
+	return u.registerPaletteTheme(name, toPaletteTheme(theme))
 }
 
 // RegisterPaletteTheme registers or replaces an internal palette theme.
 func (u *TUIImpl) RegisterPaletteTheme(name string, theme *palette.Theme) error {
+	return u.registerPaletteTheme(name, theme)
+}
+
+func (u *TUIImpl) registerPaletteTheme(name string, theme *palette.Theme) error {
 	if name == "" {
 		return errors.New("theme name cannot be empty")
 	}
@@ -467,6 +466,21 @@ func (u *TUIImpl) RegisterPaletteTheme(name string, theme *palette.Theme) error 
 	u.themeRegistry[name] = &t
 
 	return nil
+}
+
+// PaletteTheme returns a copy of a registered internal palette theme.
+func (u *TUIImpl) PaletteTheme(name string) (*palette.Theme, bool) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	theme, ok := u.themeRegistry[name]
+	if !ok || theme == nil {
+		return nil, false
+	}
+
+	t := *theme
+
+	return &t, true
 }
 
 // Theme implements TUIExtAPI.

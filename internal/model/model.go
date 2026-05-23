@@ -2424,15 +2424,7 @@ func (m Model) onLogoutListResult(msg tuievents.LogoutListResultMsg) (tea.Model,
 }
 
 func (m Model) openThemeSelector() Model {
-	entries := m.themeEntries
-	if len(entries) == 0 && m.ui != nil {
-		names := m.ui.ListThemes()
-
-		entries = make([]themecatalog.Entry, len(names))
-		for i, name := range names {
-			entries[i] = themecatalog.Entry{Name: name, Source: themecatalog.SourceBuiltin}
-		}
-	}
+	entries := m.availableThemeEntries()
 
 	if len(entries) == 0 {
 		return m
@@ -2470,8 +2462,55 @@ func (m Model) openThemeSelector() Model {
 	sel := overlays.NewSelectorModel("Select Theme", items).SetStyles(m.styles)
 	sel = sel.SetSize(m.width, m.height).Show().SetCursor(cursor)
 	m.dialogStack = m.dialogStack.Push(overlays.NewSelectorDialog(dialogThemeSelect, sel))
+	m.themeEntries = entries
 
 	return m
+}
+
+func (m Model) availableThemeEntries() []themecatalog.Entry {
+	entries := make([]themecatalog.Entry, 0, len(m.themeEntries))
+	seen := make(map[string]bool, len(m.themeEntries))
+
+	for _, entry := range m.themeEntries {
+		if entry.Name == "" || seen[entry.Name] {
+			continue
+		}
+
+		if entry.Theme == nil && m.ui != nil {
+			if theme, ok := m.ui.PaletteTheme(entry.Name); ok {
+				entry.Theme = theme
+			}
+		}
+
+		entries = append(entries, entry)
+		seen[entry.Name] = true
+	}
+
+	if m.ui != nil {
+		for _, name := range m.ui.ListThemes() {
+			if seen[name] {
+				continue
+			}
+
+			theme, ok := m.ui.PaletteTheme(name)
+			if !ok {
+				continue
+			}
+
+			entries = append(entries, themecatalog.Entry{
+				Name:   name,
+				Theme:  theme,
+				Source: themecatalog.SourceBuiltin,
+			})
+			seen[name] = true
+		}
+	}
+
+	slices.SortFunc(entries, func(a, b themecatalog.Entry) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+
+	return entries
 }
 
 func (m Model) shouldPreviewThemeSelection(msg tea.Msg) bool {
@@ -2583,6 +2622,12 @@ func (m Model) themeEntry(name string) (themecatalog.Entry, bool) {
 	for _, entry := range m.themeEntries {
 		if entry.Name == name && entry.Theme != nil {
 			return entry, true
+		}
+	}
+
+	if m.ui != nil {
+		if theme, ok := m.ui.PaletteTheme(name); ok {
+			return themecatalog.Entry{Name: name, Theme: theme, Source: themecatalog.SourceBuiltin}, true
 		}
 	}
 

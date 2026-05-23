@@ -262,6 +262,51 @@ func TestModel_ThemeSelectorIncludesBuiltInAndUserThemes(t *testing.T) {
 	assert.Equal(t, 1, dlg.Model().Cursor())
 }
 
+func TestModel_ThemeSelectorIncludesExtensionRegisteredThemes(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	ui := NewTUIImpl(nil, nil)
+	m := NewModelWithConfig(nil, nil, nil, ui, TUIConfig{})
+	require.NoError(t, ui.RegisterTheme("extension-theme", ThemeDef{
+		Accent:                "#445566",
+		AccentDim:             "#223344",
+		AccentBright:          "#667788",
+		Success:               "#00aa66",
+		Error:                 "#cc3333",
+		Warning:               "#cc9900",
+		Muted:                 "#909090",
+		MutedBright:           "#a0a0a0",
+		Border:                "#303030",
+		BorderFocused:         "#404040",
+		BackgroundTint:        "#101010",
+		BackgroundTintPending: "#111111",
+		BackgroundTintSuccess: "#112211",
+		BackgroundTintError:   "#221111",
+		Foreground:            "#f0f0f0",
+		ForegroundDim:         "#c0c0c0",
+		ForegroundBright:      "#ffffff",
+		Background:            "#000000",
+		BackgroundTint2:       "#202020",
+	}))
+
+	m.width = 80
+	m.height = 24
+	m = m.openThemeSelector()
+
+	dlg, ok := m.dialogStack.Peek().(*overlays.SelectorDialog)
+	require.True(t, ok)
+	assert.Contains(t, dlg.Model().View(), "extension-theme")
+
+	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, cmd := model.(Model).Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	require.NotNil(t, cmd)
+	model, _ = model.(Model).Update(cmd())
+	m2 := model.(Model)
+
+	assert.Equal(t, "extension-theme", ui.Theme().Name)
+	assert.Equal(t, "#445566", m2.theme.Accent)
+}
+
 func TestModel_ThemeSelectorPreviewsHighlightedTheme(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -400,5 +445,57 @@ func TestModel_ThemeSelectorConfirmNotifiesPersistenceFailure(t *testing.T) {
 
 	assert.Equal(t, "user-theme", ui.Theme().Name)
 	assert.Contains(t, m2.bannerMsg, "Theme applied, but preferences were not saved")
+	assert.Equal(t, sdk.NotifyError, m2.bannerLevel)
+}
+
+func TestModel_ThemeSelectorConfirmNotifiesNilPreferenceStore(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	theme := startupTestTheme("#445566")
+	theme["name"] = "user-theme"
+	writeStartupTheme(t, home, "user-theme", theme)
+
+	ui := NewTUIImpl(nil, nil)
+	m := NewModelWithConfig(nil, nil, nil, ui, TUIConfig{})
+	m.width = 80
+	m.height = 24
+	m = m.openThemeSelector()
+
+	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, cmd := model.(Model).Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	require.NotNil(t, cmd)
+	model, _ = model.(Model).Update(cmd())
+	m2 := model.(Model)
+
+	assert.Equal(t, "user-theme", ui.Theme().Name)
+	assert.Contains(t, m2.bannerMsg, "preference store is unavailable")
+	assert.Equal(t, sdk.NotifyError, m2.bannerLevel)
+}
+
+func TestModel_ThemeSelectorConfirmNotifiesPreferenceLoadFailure(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	theme := startupTestTheme("#445566")
+	theme["name"] = "user-theme"
+	writeStartupTheme(t, home, "user-theme", theme)
+
+	ps := &mockConfig{preferencesError: assert.AnError}
+
+	ui := NewTUIImpl(nil, nil)
+	m := NewModelWithConfig(nil, nil, ps, ui, TUIConfig{})
+	m.width = 80
+	m.height = 24
+	m = m.openThemeSelector()
+
+	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, cmd := model.(Model).Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	require.NotNil(t, cmd)
+	model, _ = model.(Model).Update(cmd())
+	m2 := model.(Model)
+
+	assert.Equal(t, "user-theme", ui.Theme().Name)
+	assert.Contains(t, m2.bannerMsg, "load preferences")
 	assert.Equal(t, sdk.NotifyError, m2.bannerLevel)
 }

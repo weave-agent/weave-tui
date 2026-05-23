@@ -136,6 +136,30 @@ func TestLoadRejectsInvalidColor(t *testing.T) {
 	assert.Contains(t, err.Error(), `field "accent" must be a #RRGGBB color`)
 }
 
+func TestLoadRejectsUnknownField(t *testing.T) {
+	dir := t.TempDir()
+	theme := validThemeJSON("unknown", "#808080")
+	theme["extra"] = "#ffffff"
+	writeJSON(t, filepath.Join(dir, "unknown.json"), theme)
+
+	_, err := Load(dir)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `unknown field "extra"`)
+}
+
+func TestLoadRejectsTrailingJSON(t *testing.T) {
+	dir := t.TempDir()
+	data, err := json.Marshal(validThemeJSON("trailing", "#808080"))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "trailing.json"), append(data, []byte(` {}`)...), 0o600))
+
+	_, err = Load(dir)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unexpected trailing JSON")
+}
+
 func TestValidateName(t *testing.T) {
 	tests := []struct {
 		name    string

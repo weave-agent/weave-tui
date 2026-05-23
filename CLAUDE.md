@@ -50,14 +50,14 @@ Do not expose Bubble Tea model internals, runtime lifecycle types, registries, r
 - `internal/app` owns the SDK extension lifecycle. It checks for a terminal, creates the `tea.Program`, wires SDK UI extensions into `internal/ui.TUIImpl`, starts `internal/bridge`, closes the UI implementation, and publishes `agent.end` on shutdown.
 - `internal/bridge` translates weave bus events into Bubble Tea messages from `internal/events`. It also batches streaming `agent.message_update` deltas and tracks coarse agent state so the UI can update spinner/accent/pulse state. The agent state tracker counts pending tool calls and transitions through idle, streaming, tool-running, and error states.
 - `internal/events` owns message structs shared by bridge, model, and UI implementation.
-- `internal/model` contains the Bubble Tea `Model`. It coordinates chat, editor, footer, overlays, provider/model state, command dispatch, keybindings, attachments, panels, and extension callbacks. It tracks in-flight tool panels and handles tool lifecycle messages.
+- `internal/model` contains the Bubble Tea `Model`. It coordinates chat, editor, footer, overlays, provider/model state, command dispatch, keybindings, attachments, panels, and extension callbacks. It tracks in-flight tool panels and handles tool lifecycle messages. At startup it loads the theme catalog, registers themes with `TUIImpl`, applies configured `ui.theme`, and falls back to `default`.
 - `internal/layout` computes terminal regions for header/main/pills/panel tray/panels/docked overlays/editor/footer using Ultraviolet's layout solver.
 - `internal/model/landing.go` renders the pre-prompt boot/status screen showing model, provider, loaded extensions, and keybinding hints in a muted label/accent value layout.
 
 ### User input, commands, and keybindings
 
 - `internal/components/editor.go` wraps `bubbles/v2/textarea` and emits `components.SubmitMsg` on Enter. The model decides whether submitted text is a slash command, initial prompt, or followup.
-- `internal/commands` owns slash command registration and dispatch. Built-ins include `/new`, `/clear`, `/quit`, `/help`, `/compact`, `/name`, `/resume`, `/reload`, `/login`, and `/logout`; `/model`, `/providers`, and `/thinking` are registered during model construction.
+- `internal/commands` owns slash command registration and dispatch. Built-ins include `/new`, `/clear`, `/quit`, `/help`, `/compact`, `/name`, `/resume`, `/reload`, `/login`, and `/logout`; `/model`, `/providers`, `/thinking`, and `/theme` are registered during model construction.
 - `internal/keybindings` maps terminal key strings to action names. Resolution priority is user config > extension registrations > built-in defaults. User keybindings are loaded from `keybindings.yaml` near the weave config or from `~/.weave/keybindings.yaml`.
 - Escape key behavior: first press always publishes an `agent.interrupt` event (interrupting both streaming assistants and running tools); second press within the double-press window clears the editor.
 - Completion logic is split between `internal/components/completion.go` and `internal/components/path_completion.go`. Slash command and file-reference completions are refreshed by the model when editor content or cursor position changes.
@@ -71,6 +71,7 @@ Rendering internals are private implementation packages. Do not add external doc
 - `internal/components/overlays/` contains reusable modal/dialog models for selectors, confirmation, input, editor, multiselect, OAuth login, and dialog stacking.
 - `internal/components/attachments/` manages prompt attachments created from large pasted content or explicit attachment actions.
 - `internal/styles` provides a structured design grammar that maps `internal/palette.Theme` tokens into product-specific render styles. It defines fixed glyph constants (user marker `❯`, assistant `◆`, thinking `∴`, tool pending `○`, success `✓`, error `×`, interrupted `■`) and reusable style helpers for role markers, text, accents, borders, selection rows, tabs, pills, tool states, overlays, and notification banners. Custom themes are treated as color-token changes only; glyphs, spacing, and layout grammar remain fixed in code. Components should use `styles.New(theme)` rather than calling `palette.DefaultTheme()` directly in render paths.
+- Theme changes flow through `Model.applyThemeToDependents`, which updates editor, spinner, chat/style-aware items, landing, and themed dialogs. Dialogs that render theme colors should implement `overlays.ThemedDialog`; chat items that cache styles should implement `components.StyleAwareChatItem`.
 - `internal/palette` defines themes and agent activity colors. Agent state changes from the bridge adjust accent colors and editor border pulse behavior; tool-running state uses amber tones.
 - `internal/xchroma` contains Chroma formatting support used by message/tool rendering.
 
@@ -108,6 +109,7 @@ Focus states follow type-specific grammar defined in the style set:
 - `internal/ui`: SDK UI and TUI extension API implementation
 - `internal/commands`: slash command registry, built-ins, reload handling
 - `internal/keybindings`: binding registry, config loading, help dialog
+- `internal/themecatalog`: built-in and `~/.weave/themes/*.json` theme loading, full JSON theme validation, user-theme overrides, and sorted catalog entries
 - `internal/panels`: panel manager and tray state
 - `internal/layout`: terminal region layout engine
 - `internal/auth`, `internal/providers`, `internal/sessions`: feature-specific state helpers

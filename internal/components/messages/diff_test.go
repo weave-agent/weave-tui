@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/weave-agent/weave-tui/internal/palette"
+	"github.com/weave-agent/weave-tui/internal/styles"
 
 	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/assert"
@@ -196,4 +197,44 @@ func TestDiffRenderer_UsesThemeColors(t *testing.T) {
 	assert.Equal(t, lipgloss.Color(theme.Muted), r.contextStyle.GetForeground())
 	assert.Equal(t, lipgloss.Color(theme.Accent), r.headerStyle.GetForeground())
 	assert.Equal(t, lipgloss.Color(theme.AccentBright), r.hunkStyle.GetForeground())
+}
+
+func TestDiffRendererWithTheme_UsesCustomThemeColors(t *testing.T) {
+	theme := &palette.Theme{
+		Success:      "42",
+		Error:        "160",
+		Muted:        "244",
+		Accent:       "33",
+		AccentBright: "51",
+	}
+	r := NewDiffRendererWithTheme(theme)
+
+	assert.Equal(t, lipgloss.Color("42"), r.addedStyle.GetForeground())
+	assert.Equal(t, lipgloss.Color("160"), r.removedStyle.GetForeground())
+	assert.Equal(t, lipgloss.Color("244"), r.contextStyle.GetForeground())
+	assert.Equal(t, lipgloss.Color("33"), r.headerStyle.GetForeground())
+	assert.Equal(t, lipgloss.Color("51"), r.hunkStyle.GetForeground())
+}
+
+func TestToolPanelSetStyles_RethemesDiffRenderer(t *testing.T) {
+	custom := &palette.Theme{
+		Success:      "42",
+		Error:        "160",
+		Muted:        "244",
+		Accent:       "33",
+		AccentBright: "51",
+		AccentDim:    "99",
+		Border:       "55",
+	}
+
+	p := NewToolPanel("tc1", "bash", "git diff")
+	p.SetDiffRenderer(NewDiffRenderer())
+	p.SetStyles(styles.New(custom))
+	p.SetResult(sampleDiff, false)
+
+	view := p.View(120)
+	assert.Contains(t, view, "newLine")
+	assert.Contains(t, view, "oldLine")
+	assertCustomColorInString(t, view, "42")
+	assertCustomColorInString(t, view, "160")
 }

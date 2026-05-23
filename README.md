@@ -90,10 +90,25 @@ active theme. A persisted `ui.theme` value is applied the next time the TUI
 starts. If the configured theme is missing or invalid, the TUI falls back to
 `default`.
 
+You can also set the theme manually in preferences:
+
+```json
+{
+  "ui": {
+    "theme": "ocean"
+  }
+}
+```
+
+The value must match a built-in theme or a loaded user theme name. Theme files
+are loaded when the TUI starts, so add, edit, or remove files and then restart
+the TUI. If a theme file is malformed or has invalid fields, user themes are
+skipped and the TUI falls back to `default`; check logs for the file error.
+
 Theme names must be safe filenames or identifiers. They may contain letters,
-digits, `-`, `_`, and `.`, but not path separators, control characters, `.`, or
-`..`. A user theme with the same name as a built-in theme overrides the built-in
-theme.
+digits, `-`, `_`, and `.`, but not path separators or control characters, and
+the full name cannot be `.` or `..`. A user theme with the same name as a
+built-in theme overrides the built-in theme.
 
 Theme files must include every semantic color field shown below. The optional
 `name` field must match the filename if present. For v1, user theme colors must

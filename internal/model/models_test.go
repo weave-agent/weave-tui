@@ -901,10 +901,11 @@ func TestSaveSettings_NilConfig(t *testing.T) {
 
 // mockConfig is a test-double for sdk.Config.
 type mockConfig struct {
-	filePath        string
-	preferences     any // JSON-marshalable value returned by Preferences
-	savePreferences func(target any) error
-	uiConfig        any // JSON-marshalable value returned by UIConfig
+	filePath         string
+	preferences      any // JSON-marshalable value returned by Preferences
+	preferencesError error
+	savePreferences  func(target any) error
+	uiConfig         any // JSON-marshalable value returned by UIConfig
 }
 
 func (m *mockConfig) FilePath() string   { return m.filePath }
@@ -929,6 +930,10 @@ func (m *mockConfig) ExtensionConfig(_, _ string, target any) error {
 func (m *mockConfig) IsHeadless() bool { return true }
 
 func (m *mockConfig) Preferences(target any) error {
+	if m.preferencesError != nil {
+		return m.preferencesError
+	}
+
 	if m.preferences == nil {
 		return nil
 	}

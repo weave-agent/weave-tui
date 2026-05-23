@@ -138,7 +138,7 @@
 - Theme file location: `~/.weave/themes/*.json`.
 - Theme file format: full JSON object, no partial inheritance for v1.
 - Theme identity: filename without `.json` should be the canonical theme name unless a `name` field is included and matches it.
-- Built-ins: include `default`, plus a small set such as `dracula`, `catppuccin-mocha`, `nord`, and `gruvbox-dark` if their palettes are added in this change.
+- Built-ins: `default` only in this change.
 - Runtime flow:
   1. Build catalog.
   2. Register built-ins and user themes into `TUIImpl`.

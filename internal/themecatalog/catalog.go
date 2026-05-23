@@ -165,10 +165,9 @@ func loadUserTheme(path string) (Entry, error) {
 		return Entry{}, fmt.Errorf("read theme file %q: %w", path, err)
 	}
 
-	var file userThemeFile
+	var file map[string]string
 
 	dec := json.NewDecoder(strings.NewReader(string(data)))
-	dec.DisallowUnknownFields()
 
 	if decodeErr := dec.Decode(&file); decodeErr != nil {
 		return Entry{}, fmt.Errorf("parse theme file %q: %w", path, decodeErr)
@@ -180,17 +179,17 @@ func loadUserTheme(path string) (Entry, error) {
 		return Entry{}, fmt.Errorf("parse theme file %q: unexpected trailing JSON", path)
 	}
 
-	if file.Name != "" {
-		if nameErr := ValidateName(file.Name); nameErr != nil {
-			return Entry{}, fmt.Errorf("invalid theme name %q: %w", file.Name, nameErr)
+	if fileName := file["name"]; fileName != "" {
+		if nameErr := ValidateName(fileName); nameErr != nil {
+			return Entry{}, fmt.Errorf("invalid theme name %q: %w", fileName, nameErr)
 		}
 
-		if file.Name != name {
-			return Entry{}, fmt.Errorf("theme name %q must match filename %q", file.Name, name)
+		if fileName != name {
+			return Entry{}, fmt.Errorf("theme name %q must match filename %q", fileName, name)
 		}
 	}
 
-	theme, err := file.theme()
+	theme, err := themeFromFile(file)
 	if err != nil {
 		return Entry{}, fmt.Errorf("invalid theme file %q: %w", path, err)
 	}
@@ -230,85 +229,71 @@ func isThemeNameRune(r rune) bool {
 	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == '.'
 }
 
-type userThemeFile struct {
-	Name                  string  `json:"name,omitempty"`
-	Foreground            *string `json:"foreground"`
-	ForegroundDim         *string `json:"foregroundDim"`
-	ForegroundBright      *string `json:"foregroundBright"`
-	Muted                 *string `json:"muted"`
-	MutedBright           *string `json:"mutedBright"`
-	Background            *string `json:"background"`
-	BackgroundTint        *string `json:"backgroundTint"`
-	BackgroundTint2       *string `json:"backgroundTint2"`
-	Border                *string `json:"border"`
-	BorderFocused         *string `json:"borderFocused"`
-	Success               *string `json:"success"`
-	Error                 *string `json:"error"`
-	Warning               *string `json:"warning"`
-	BackgroundTintPending *string `json:"backgroundTintPending"`
-	BackgroundTintSuccess *string `json:"backgroundTintSuccess"`
-	BackgroundTintError   *string `json:"backgroundTintError"`
-	Accent                *string `json:"accent"`
-	AccentDim             *string `json:"accentDim"`
-	AccentBright          *string `json:"accentBright"`
+var themeColorFields = []string{
+	"foreground",
+	"foregroundDim",
+	"foregroundBright",
+	"muted",
+	"mutedBright",
+	"background",
+	"backgroundTint",
+	"backgroundTint2",
+	"border",
+	"borderFocused",
+	"success",
+	"error",
+	"warning",
+	"backgroundTintPending",
+	"backgroundTintSuccess",
+	"backgroundTintError",
+	"accent",
+	"accentDim",
+	"accentBright",
 }
 
-func (f userThemeFile) theme() (*palette.Theme, error) {
-	fields := []struct {
-		name  string
-		value *string
-	}{
-		{"foreground", f.Foreground},
-		{"foregroundDim", f.ForegroundDim},
-		{"foregroundBright", f.ForegroundBright},
-		{"muted", f.Muted},
-		{"mutedBright", f.MutedBright},
-		{"background", f.Background},
-		{"backgroundTint", f.BackgroundTint},
-		{"backgroundTint2", f.BackgroundTint2},
-		{"border", f.Border},
-		{"borderFocused", f.BorderFocused},
-		{"success", f.Success},
-		{"error", f.Error},
-		{"warning", f.Warning},
-		{"backgroundTintPending", f.BackgroundTintPending},
-		{"backgroundTintSuccess", f.BackgroundTintSuccess},
-		{"backgroundTintError", f.BackgroundTintError},
-		{"accent", f.Accent},
-		{"accentDim", f.AccentDim},
-		{"accentBright", f.AccentBright},
+func themeFromFile(values map[string]string) (*palette.Theme, error) {
+	allowed := map[string]bool{"name": true}
+	for _, field := range themeColorFields {
+		allowed[field] = true
 	}
 
-	for _, field := range fields {
-		if field.value == nil {
-			return nil, fmt.Errorf("missing required field %q", field.name)
+	for field := range values {
+		if !allowed[field] {
+			return nil, fmt.Errorf("unknown field %q", field)
+		}
+	}
+
+	for _, field := range themeColorFields {
+		value, ok := values[field]
+		if !ok {
+			return nil, fmt.Errorf("missing required field %q", field)
 		}
 
-		if !hexColorPattern.MatchString(*field.value) {
-			return nil, fmt.Errorf("field %q must be a #RRGGBB color", field.name)
+		if !hexColorPattern.MatchString(value) {
+			return nil, fmt.Errorf("field %q must be a #RRGGBB color", field)
 		}
 	}
 
 	return &palette.Theme{
-		Foreground:            *f.Foreground,
-		ForegroundDim:         *f.ForegroundDim,
-		ForegroundBright:      *f.ForegroundBright,
-		Muted:                 *f.Muted,
-		MutedBright:           *f.MutedBright,
-		Background:            *f.Background,
-		BackgroundTint:        *f.BackgroundTint,
-		BackgroundTint2:       *f.BackgroundTint2,
-		Border:                *f.Border,
-		BorderFocused:         *f.BorderFocused,
-		Success:               *f.Success,
-		Error:                 *f.Error,
-		Warning:               *f.Warning,
-		BackgroundTintPending: *f.BackgroundTintPending,
-		BackgroundTintSuccess: *f.BackgroundTintSuccess,
-		BackgroundTintError:   *f.BackgroundTintError,
-		Accent:                *f.Accent,
-		AccentDim:             *f.AccentDim,
-		AccentBright:          *f.AccentBright,
+		Foreground:            values["foreground"],
+		ForegroundDim:         values["foregroundDim"],
+		ForegroundBright:      values["foregroundBright"],
+		Muted:                 values["muted"],
+		MutedBright:           values["mutedBright"],
+		Background:            values["background"],
+		BackgroundTint:        values["backgroundTint"],
+		BackgroundTint2:       values["backgroundTint2"],
+		Border:                values["border"],
+		BorderFocused:         values["borderFocused"],
+		Success:               values["success"],
+		Error:                 values["error"],
+		Warning:               values["warning"],
+		BackgroundTintPending: values["backgroundTintPending"],
+		BackgroundTintSuccess: values["backgroundTintSuccess"],
+		BackgroundTintError:   values["backgroundTintError"],
+		Accent:                values["accent"],
+		AccentDim:             values["accentDim"],
+		AccentBright:          values["accentBright"],
 	}, nil
 }
 
