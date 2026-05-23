@@ -65,6 +65,8 @@ func Load(themesDir string) (*Catalog, error) {
 		return nil, fmt.Errorf("read theme directory: %w", err)
 	}
 
+	var loadErrs []error
+
 	for _, info := range infos {
 		if info.IsDir() || strings.ToLower(filepath.Ext(info.Name())) != jsonExt {
 			continue
@@ -72,7 +74,8 @@ func Load(themesDir string) (*Catalog, error) {
 
 		fileInfo, err := info.Info()
 		if err != nil {
-			return nil, fmt.Errorf("stat theme file %q: %w", info.Name(), err)
+			loadErrs = append(loadErrs, fmt.Errorf("stat theme file %q: %w", info.Name(), err))
+			continue
 		}
 
 		if !fileInfo.Mode().IsRegular() {
@@ -83,13 +86,14 @@ func Load(themesDir string) (*Catalog, error) {
 
 		entry, err := loadUserTheme(path)
 		if err != nil {
-			return nil, err
+			loadErrs = append(loadErrs, err)
+			continue
 		}
 
 		c.entries[entry.Name] = entry
 	}
 
-	return c, nil
+	return c, errors.Join(loadErrs...)
 }
 
 // BuiltinThemes returns the trusted built-in themes.

@@ -72,10 +72,11 @@ func TestLoadRejectsMalformedJSON(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "bad.json"), []byte(`{"accent":`), 0o600))
 
-	_, err := Load(dir)
+	catalog, err := Load(dir)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parse theme file")
+	assert.NotNil(t, catalog)
 }
 
 func TestLoadRejectsMissingRequiredField(t *testing.T) {
@@ -84,20 +85,22 @@ func TestLoadRejectsMissingRequiredField(t *testing.T) {
 	delete(theme, "accentBright")
 	writeJSON(t, filepath.Join(dir, "missing.json"), theme)
 
-	_, err := Load(dir)
+	catalog, err := Load(dir)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `missing required field "accentBright"`)
+	assert.NotNil(t, catalog)
 }
 
 func TestLoadRejectsInvalidFilenameThemeName(t *testing.T) {
 	dir := t.TempDir()
 	writeJSON(t, filepath.Join(dir, "bad name.json"), validThemeJSON("bad name", "#505050"))
 
-	_, err := Load(dir)
+	catalog, err := Load(dir)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid theme filename")
+	assert.NotNil(t, catalog)
 }
 
 func TestLoadRejectsInvalidJSONThemeName(t *testing.T) {
@@ -106,10 +109,11 @@ func TestLoadRejectsInvalidJSONThemeName(t *testing.T) {
 	theme["name"] = "../bad"
 	writeJSON(t, filepath.Join(dir, "good.json"), theme)
 
-	_, err := Load(dir)
+	catalog, err := Load(dir)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid theme name")
+	assert.NotNil(t, catalog)
 }
 
 func TestLoadRejectsNameMismatch(t *testing.T) {
@@ -118,10 +122,11 @@ func TestLoadRejectsNameMismatch(t *testing.T) {
 	theme["name"] = "two"
 	writeJSON(t, filepath.Join(dir, "one.json"), theme)
 
-	_, err := Load(dir)
+	catalog, err := Load(dir)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `must match filename "one"`)
+	assert.NotNil(t, catalog)
 }
 
 func TestLoadRejectsInvalidColor(t *testing.T) {
@@ -130,10 +135,11 @@ func TestLoadRejectsInvalidColor(t *testing.T) {
 	theme["accent"] = "196"
 	writeJSON(t, filepath.Join(dir, "bad-color.json"), theme)
 
-	_, err := Load(dir)
+	catalog, err := Load(dir)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `field "accent" must be a #RRGGBB color`)
+	assert.NotNil(t, catalog)
 }
 
 func TestLoadRejectsUnknownField(t *testing.T) {
@@ -142,10 +148,11 @@ func TestLoadRejectsUnknownField(t *testing.T) {
 	theme["extra"] = "#ffffff"
 	writeJSON(t, filepath.Join(dir, "unknown.json"), theme)
 
-	_, err := Load(dir)
+	catalog, err := Load(dir)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `unknown field "extra"`)
+	assert.NotNil(t, catalog)
 }
 
 func TestLoadRejectsTrailingJSON(t *testing.T) {
@@ -154,10 +161,26 @@ func TestLoadRejectsTrailingJSON(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "trailing.json"), append(data, []byte(` {}`)...), 0o600))
 
-	_, err = Load(dir)
+	catalog, err := Load(dir)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unexpected trailing JSON")
+	assert.NotNil(t, catalog)
+}
+
+func TestLoadSkipsInvalidFilesAndKeepsValidThemes(t *testing.T) {
+	dir := t.TempDir()
+	writeThemeFile(t, dir, "valid", "#909090")
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "bad.json"), []byte(`{"accent":`), 0o600))
+
+	catalog, err := Load(dir)
+
+	require.Error(t, err)
+
+	entry, ok := catalog.Entry("valid")
+	require.True(t, ok)
+	assert.Equal(t, SourceUser, entry.Source)
+	assert.Equal(t, "#909090", entry.Theme.Accent)
 }
 
 func TestValidateName(t *testing.T) {

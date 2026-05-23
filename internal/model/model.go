@@ -347,7 +347,9 @@ func applyStartupTheme(ui *TUIImpl, configured string) (*palette.Theme, []themec
 	catalog, err := themecatalog.Load(defaultThemesDir())
 	if err != nil {
 		slog.Warn("failed to load theme catalog", "error", err)
+	}
 
+	if catalog == nil {
 		theme := palette.DefaultTheme()
 		_ = ui.SetTheme(defaultThemeName)
 

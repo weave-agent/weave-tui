@@ -40,6 +40,22 @@ func TestNewModelWithConfig_UnknownConfiguredThemeFallsBackToDefault(t *testing.
 	assert.Equal(t, defaultThemeName, ui.Theme().Name)
 }
 
+func TestNewModelWithConfig_InvalidThemeFileDoesNotDisableValidTheme(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	writeStartupTheme(t, home, "ocean", startupTestTheme("#112233"))
+	dir := filepath.Join(home, ".weave", "themes")
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "bad.json"), []byte(`{"accent":`), 0o644))
+
+	ui := NewTUIImpl(nil, nil)
+	m := NewModelWithConfig(nil, nil, nil, ui, TUIConfig{Theme: "ocean"})
+
+	assert.Equal(t, "#112233", m.theme.Accent)
+	assert.Equal(t, "ocean", ui.Theme().Name)
+	assert.Contains(t, ui.ListThemes(), "ocean")
+}
+
 func writeStartupTheme(t *testing.T, home, name string, theme map[string]string) {
 	t.Helper()
 
