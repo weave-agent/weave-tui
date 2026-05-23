@@ -119,14 +119,14 @@
 - [x] run palette/model state tests - must pass before task 7
 
 ### Task 7: Verify acceptance criteria
-- [ ] verify JSON themes under `~/.weave/themes/*.json` are loaded
-- [ ] verify `/theme` opens a selector and previews themes live
-- [ ] verify Esc cancels and restores the previous theme
-- [ ] verify Enter confirms and persists `ui.theme`
-- [ ] verify selected `ui.theme` applies on next startup
-- [ ] run `go test ./...` in the TUI extension
-- [ ] run `gofmt`/`goimports` or project formatting command for changed files
-- [ ] run linter if configured for the TUI extension
+- [x] verify JSON themes under `~/.weave/themes/*.json` are loaded
+- [x] verify `/theme` opens a selector and previews themes live
+- [x] verify Esc cancels and restores the previous theme
+- [x] verify Enter confirms and persists `ui.theme`
+- [x] verify selected `ui.theme` applies on next startup
+- [x] run `go test ./...` in the TUI extension
+- [x] run `gofmt`/`goimports` or project formatting command for changed files
+- [x] run linter if configured for the TUI extension
 
 ### Task 8: Update documentation
 - [ ] document the JSON theme file location and schema in existing TUI docs or README if present

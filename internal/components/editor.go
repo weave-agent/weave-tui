@@ -200,6 +200,7 @@ func (m EditorModel) SetMaxHeight(n int) EditorModel {
 // The blurred border always uses the theme's Border color for distinction.
 func (m EditorModel) SetBorderColor(color string) EditorModel {
 	m.BorderColor = color
+
 	theme := palette.DefaultTheme()
 	if m.styles != nil {
 		theme = m.styles.Theme()

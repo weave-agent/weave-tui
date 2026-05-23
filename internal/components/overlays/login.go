@@ -96,6 +96,7 @@ func (m LoginModel) View() string {
 	if theme == nil {
 		theme = palette.DefaultTheme()
 	}
+
 	boxWidth := min(60, m.width-4)
 
 	borderStyle := lipgloss.NewStyle().

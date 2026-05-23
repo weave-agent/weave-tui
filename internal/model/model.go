@@ -328,7 +328,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 	m.footer = m.footer.SetReasoning(tuiproviders.ModelReasoning(cur))
 	m.footer = m.footer.SetThinkingLevel(string(m.thinkingLevel))
 	m.editor = m.editor.SetBorderColor(palette.ThinkingBorderColor(m.thinkingLevel))
-	m = m.applyThemeToDependents(palette.ThinkingBorderColor(m.thinkingLevel), false)
+	m = m.applyThemeToDependents(palette.ThinkingBorderColor(m.thinkingLevel))
 
 	if m.noConfigured {
 		m.statusMsg = "No providers configured. Use /providers to set an API key."
@@ -1078,7 +1078,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			borderColor = palette.ThinkingBorderColor(m.thinkingLevel)
 		}
 
-		m = m.applyThemeToDependents(borderColor, false)
+		m = m.applyThemeToDependents(borderColor)
 
 		// Enable/disable pulse animation based on active state
 		active := msg.State == palette.StateStreaming || msg.State == palette.StateToolRunning
@@ -1126,7 +1126,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.styles = styles.New(m.theme)
-		m = m.applyThemeToDependents(m.theme.Accent, false)
+		m = m.applyThemeToDependents(m.theme.Accent)
 
 		return m, nil
 
@@ -2532,7 +2532,7 @@ func (m Model) applyThemeByName(name string) (Model, error) {
 	theme := *entry.Theme
 	m.theme = &theme
 	m.styles = styles.New(m.theme)
-	m = m.applyThemeToDependents(m.theme.Accent, false)
+	m = m.applyThemeToDependents(m.theme.Accent)
 
 	return m, nil
 }
@@ -2553,7 +2553,7 @@ func (m Model) activeBaseTheme() *palette.Theme {
 	return palette.DefaultTheme()
 }
 
-func (m Model) applyThemeToDependents(borderColor string, resetPulse bool) Model {
+func (m Model) applyThemeToDependents(borderColor string) Model {
 	if m.styles == nil {
 		m.styles = styles.New(m.theme)
 	}
@@ -2566,12 +2566,11 @@ func (m Model) applyThemeToDependents(borderColor string, resetPulse bool) Model
 	if borderColor != "" {
 		m.editor = m.editor.SetBorderColor(borderColor)
 	}
+
 	if m.theme != nil {
 		m.editor = m.editor.SetPulseColors(m.theme.Accent, m.theme.AccentBright)
 	}
-	if resetPulse {
-		m.editor = m.editor.SetPulseActive(false)
-	}
+
 	m.spinner = m.spinner.SetTheme(m.theme)
 	m.chat = m.chat.SetStyles(m.styles)
 	m.landing = m.landing.SetStyles(m.styles)

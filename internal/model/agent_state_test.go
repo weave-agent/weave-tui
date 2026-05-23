@@ -61,6 +61,7 @@ func TestModel_AgentStateChangeUsesCustomThemeAsBase(t *testing.T) {
 
 	m2, err := m.applyThemeByName("custom-state")
 	require.NoError(t, err)
+
 	m = m2
 
 	model, _ := m.Update(tuievents.AgentStateChangeMsg{State: palette.StateStreaming})
@@ -99,6 +100,7 @@ func TestModel_AgentStateChangeUnknownRestoresCustomThemeAccent(t *testing.T) {
 
 	m2, err := m.applyThemeByName("custom-fallback")
 	require.NoError(t, err)
+
 	m = m2
 
 	model, _ := m.Update(tuievents.AgentStateChangeMsg{State: palette.StateToolRunning})

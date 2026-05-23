@@ -200,6 +200,7 @@ func (m InputModel) View() string {
 	if theme == nil {
 		theme = palette.DefaultTheme()
 	}
+
 	boxWidth := min(50, m.width-4)
 
 	borderStyle := lipgloss.NewStyle().

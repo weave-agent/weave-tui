@@ -53,6 +53,7 @@ func (m *NotificationMessage) View(width int) string {
 	if m.styles != nil {
 		theme = m.styles.Theme()
 	}
+
 	borderColor, textColor := colorsForLevel(m.level, theme)
 
 	borderStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(borderColor))

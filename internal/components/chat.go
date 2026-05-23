@@ -266,6 +266,7 @@ func (m ChatModel) UpdateItem(item ChatItem) ChatModel {
 // Falls back to appending if not found.
 func (m ChatModel) UpdateItemByID(item ChatItem) ChatModel {
 	item = m.withActiveStyles(item)
+
 	id, ok := item.(ChatItemIdentity)
 	if !ok {
 		return m.AddItem(item)
