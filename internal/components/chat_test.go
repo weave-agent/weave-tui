@@ -33,6 +33,14 @@ func (s *styledStubItem) SetStyles(ss *styles.Styles) {
 	s.theme = ss.Theme()
 }
 
+type dynamicThemeStubItem struct {
+	color *string
+}
+
+func (s dynamicThemeStubItem) View(width int) string {
+	return lipgloss.NewStyle().Foreground(lipgloss.Color(*s.color)).Render("dynamic")
+}
+
 func TestChatModel_AddItem(t *testing.T) {
 	m := NewChatModel()
 	m = m.SetSize(80, 10)
@@ -101,6 +109,20 @@ func TestChatModel_SetStyles_RestylesItemsAndChrome(t *testing.T) {
 	rendered := buf.Render()
 	assert.Contains(t, rendered, "166", "scroll indicator should use the custom warning color")
 	assert.Contains(t, rendered, "235", "scroll indicator should use the custom tint background")
+}
+
+func TestChatModel_SetStyles_InvalidatesAllCachedItems(t *testing.T) {
+	color := "88"
+	m := NewChatModel().SetSize(80, 2)
+	m = m.AddItem(dynamicThemeStubItem{color: &color})
+
+	assert.Contains(t, m.View(), "88")
+
+	color = "99"
+	m = m.SetStyles(styles.New(&palette.Theme{Foreground: "99"}))
+
+	assert.Contains(t, m.View(), "99")
+	assert.NotContains(t, m.View(), "88")
 }
 
 func TestChatModel_View_ScrollsToBottom(t *testing.T) {

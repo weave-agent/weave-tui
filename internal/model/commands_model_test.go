@@ -308,6 +308,46 @@ func TestModel_ThemeSelectorIncludesExtensionRegisteredThemes(t *testing.T) {
 	assert.Equal(t, "#445566", m2.theme.Accent)
 }
 
+func TestModel_ApplyThemeUsesRegistryThemeWhenNameIsRegisteredTwice(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	theme := startupTestTheme("#111111")
+	theme["name"] = "duplicate"
+	writeStartupTheme(t, home, "duplicate", theme)
+
+	ui := NewTUIImpl(nil, nil)
+	m := NewModelWithConfig(nil, nil, nil, ui, TUIConfig{Theme: "duplicate"})
+
+	require.NoError(t, ui.RegisterTheme("duplicate", ThemeDef{
+		Accent:                "#abcdef",
+		AccentDim:             "#223344",
+		AccentBright:          "#fedcba",
+		Success:               "#00aa66",
+		Error:                 "#cc3333",
+		Warning:               "#cc9900",
+		Muted:                 "#909090",
+		MutedBright:           "#a0a0a0",
+		Border:                "#303030",
+		BorderFocused:         "#404040",
+		BackgroundTint:        "#101010",
+		BackgroundTintPending: "#111111",
+		BackgroundTintSuccess: "#112211",
+		BackgroundTintError:   "#221111",
+		Foreground:            "#f0f0f0",
+		ForegroundDim:         "#c0c0c0",
+		ForegroundBright:      "#ffffff",
+		Background:            "#000000",
+		BackgroundTint2:       "#202020",
+	}))
+
+	updated, err := m.applyThemeByName("duplicate")
+	require.NoError(t, err)
+
+	assert.Equal(t, "#abcdef", updated.theme.Accent)
+	assert.Equal(t, "#abcdef", ui.Theme().Accent)
+}
+
 func TestModel_ThemeSelectorPreviewsHighlightedTheme(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

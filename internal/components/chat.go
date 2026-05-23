@@ -87,8 +87,9 @@ func (m ChatModel) SetStyles(s *styles.Styles) ChatModel {
 	for i, item := range m.items {
 		if styled, ok := item.(StyleAwareChatItem); ok {
 			styled.SetStyles(s)
-			m.invalidate(i)
 		}
+
+		m.invalidate(i)
 	}
 
 	return m

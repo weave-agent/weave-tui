@@ -2460,7 +2460,7 @@ func (m Model) availableThemeEntries() []themecatalog.Entry {
 			continue
 		}
 
-		if entry.Theme == nil && m.ui != nil {
+		if m.ui != nil {
 			if theme, ok := m.ui.PaletteTheme(entry.Name); ok {
 				entry.Theme = theme
 			}
@@ -2627,15 +2627,15 @@ func (m Model) applyThemeToDependents(borderColor string) Model {
 }
 
 func (m Model) themeEntry(name string) (themecatalog.Entry, bool) {
-	for _, entry := range m.themeEntries {
-		if entry.Name == name && entry.Theme != nil {
-			return entry, true
-		}
-	}
-
 	if m.ui != nil {
 		if theme, ok := m.ui.PaletteTheme(name); ok {
 			return themecatalog.Entry{Name: name, Theme: theme, Source: themecatalog.SourceBuiltin}, true
+		}
+	}
+
+	for _, entry := range m.themeEntries {
+		if entry.Name == name && entry.Theme != nil {
+			return entry, true
 		}
 	}
 
