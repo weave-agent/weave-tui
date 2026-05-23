@@ -13,6 +13,7 @@ import (
 
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
+	"github.com/weave-agent/weave-tui/internal/palette"
 )
 
 func TestModel_SlashCommandQuit(t *testing.T) {
@@ -328,7 +329,7 @@ func TestModel_ThemeSelectorPreviewsHighlightedTheme(t *testing.T) {
 	assert.Equal(t, "#445566", m2.styles.Theme().Accent)
 	assert.Equal(t, "#445566", ui.Theme().Accent)
 	assert.Equal(t, "user-theme", ui.Theme().Name)
-	assert.Equal(t, "#445566", m2.editor.BorderColor)
+	assert.Equal(t, palette.ThinkingBorderColor(m2.thinkingLevel), m2.editor.BorderColor)
 }
 
 func TestModel_ThemeSelectorCancelRestoresOriginalTheme(t *testing.T) {
@@ -357,7 +358,7 @@ func TestModel_ThemeSelectorCancelRestoresOriginalTheme(t *testing.T) {
 	assert.Equal(t, defaultThemeName, ui.Theme().Name)
 	assert.Equal(t, "245", m3.theme.Accent)
 	assert.Equal(t, "245", m3.styles.Theme().Accent)
-	assert.Equal(t, "245", m3.editor.BorderColor)
+	assert.Equal(t, palette.ThinkingBorderColor(m3.thinkingLevel), m3.editor.BorderColor)
 	assert.True(t, m3.dialogStack.Empty())
 }
 

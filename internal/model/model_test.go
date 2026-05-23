@@ -31,6 +31,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/weave-agent/weave-tui/internal/palette"
+	"github.com/weave-agent/weave-tui/internal/styles"
 )
 
 // executeBatchCmd handles tea.Cmd results that may be tea.BatchMsg.
@@ -3413,7 +3414,7 @@ func TestModel_ThemeChangedMsg_RestylesEditorFooterAndChat(t *testing.T) {
 	updated, _ := m.Update(themeChangedMsg{Theme: customTheme})
 	m = updated.(Model)
 
-	assert.Equal(t, "123", m.editor.BorderColor)
+	assert.Equal(t, palette.ThinkingBorderColor(m.thinkingLevel), m.editor.BorderColor)
 	assert.Contains(t, m.chat.View(), "88", "existing chat messages should be restyled")
 
 	m.footer = m.footer.SetCWD("/tmp/weave")
@@ -3423,6 +3424,22 @@ func TestModel_ThemeChangedMsg_RestylesEditorFooterAndChat(t *testing.T) {
 	rendered := canvas.Render()
 	assert.Contains(t, rendered, "77", "footer metadata should use custom muted color")
 	assert.Contains(t, rendered, "123", "footer model name should use custom accent color")
+}
+
+func TestModel_RebuildChatFromMessagesKeepsActiveStyles(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+
+	customTheme := palette.DefaultTheme()
+	customTheme.Foreground = "88"
+	m.theme = customTheme
+	m.styles = styles.New(customTheme)
+	m = m.applyThemeToDependents("")
+
+	m.rebuildChatFromMessages([]sdk.Message{{Role: sdk.RoleUser, Content: "hello"}})
+
+	assert.Contains(t, m.chat.View(), "88", "rebuilt chat messages should use active styles")
 }
 
 func TestModel_ThemeChangedMsg_NilTheme(t *testing.T) {

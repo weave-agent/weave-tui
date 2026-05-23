@@ -115,6 +115,55 @@ func TestModel_AgentStateChangeUnknownRestoresCustomThemeAccent(t *testing.T) {
 	assert.Equal(t, "#304050", m.theme.AccentBright)
 }
 
+func TestModel_ApplyThemeByNamePreservesActiveStateAccent(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	custom := palette.DefaultTheme()
+	custom.Accent = "#112233"
+	custom.AccentDim = "#223344"
+	custom.AccentBright = "#334455"
+	custom.Foreground = "#ddeeff"
+	m.themeEntries = append(m.themeEntries, themecatalog.Entry{
+		Name:   "custom-active",
+		Theme:  custom,
+		Source: themecatalog.SourceUser,
+	})
+	require.NoError(t, m.ui.RegisterPaletteTheme("custom-active", custom))
+
+	model, _ := m.Update(tuievents.AgentStateChangeMsg{State: palette.StateStreaming})
+	m = model.(Model)
+
+	updated, err := m.applyThemeByName("custom-active")
+	require.NoError(t, err)
+
+	assert.Equal(t, palette.StateStreaming, updated.agentState)
+	assert.Equal(t, "45", updated.theme.Accent)
+	assert.Equal(t, "39", updated.theme.AccentDim)
+	assert.Equal(t, "51", updated.theme.AccentBright)
+	assert.Equal(t, "#ddeeff", updated.theme.Foreground)
+	assert.Equal(t, "custom-active", updated.ui.Theme().Name)
+}
+
+func TestModel_ApplyThemeByNameDoesNotSendThemeChangedMessage(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	sender := &mockSender{}
+	m.ui.SetProgram(sender)
+
+	custom := palette.DefaultTheme()
+	custom.Accent = "#112233"
+	m.themeEntries = append(m.themeEntries, themecatalog.Entry{
+		Name:   "custom-local",
+		Theme:  custom,
+		Source: themecatalog.SourceUser,
+	})
+	require.NoError(t, m.ui.RegisterPaletteTheme("custom-local", custom))
+
+	updated, err := m.applyThemeByName("custom-local")
+	require.NoError(t, err)
+
+	assert.Equal(t, "custom-local", updated.ui.Theme().Name)
+	assert.Empty(t, sender.msgs)
+}
+
 func TestModel_AgentStateChangeUpdatesEditorBorder(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 

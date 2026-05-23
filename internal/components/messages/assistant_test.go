@@ -150,6 +150,30 @@ func TestAssistantMessage_View_Finalized_CodeBlock(t *testing.T) {
 	assert.Contains(t, view, "fmt.Println")
 }
 
+func TestAssistantMessage_SetStyles_ThemesMarkdownBody(t *testing.T) {
+	m := NewAssistantMessage()
+	custom := palette.DefaultTheme()
+	custom.Foreground = "88"
+	custom.Accent = "123"
+	m.SetStyles(styles.New(custom))
+	m.Finalize("# Hello World\n\nSome text.")
+
+	view := m.View(80)
+
+	assert.Contains(t, view, "88", "markdown body should use custom foreground")
+	assert.Contains(t, view, "123", "markdown headings should use custom accent")
+}
+
+func TestAssistantMessage_SetStyles_AllowsPartialTheme(t *testing.T) {
+	m := NewAssistantMessage()
+	m.SetStyles(styles.New(&palette.Theme{Foreground: "88"}))
+	m.Finalize("# Hello World\n\nSome text.")
+
+	view := m.View(80)
+
+	assert.Contains(t, stripANSI(view), "Hello World")
+}
+
 func TestAssistantMessage_SetWidth(t *testing.T) {
 	m := NewAssistantMessage()
 	m.Finalize("# Title")

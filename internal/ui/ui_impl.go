@@ -416,6 +416,21 @@ func (u *TUIImpl) SetTheme(name string) error {
 	return nil
 }
 
+// SetActiveTheme sets the active UI theme without sending a model message.
+// Model-owned theme changes use this to avoid re-entering Bubble Tea Update.
+func (u *TUIImpl) SetActiveTheme(name string) error {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	if _, ok := u.themeRegistry[name]; !ok {
+		return fmt.Errorf("unknown theme: %s", name)
+	}
+
+	u.activeTheme = name
+
+	return nil
+}
+
 // ListThemes returns available theme names.
 func (u *TUIImpl) ListThemes() []string {
 	u.mu.Lock()

@@ -1065,22 +1065,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tuievents.AgentStateChangeMsg:
 		m.agentState = msg.State
-		baseTheme := m.activeBaseTheme()
-		accent, accentDim, accentBright := palette.AccentForStateInTheme(msg.State, baseTheme)
-		newTheme := *baseTheme
-		newTheme.Accent = accent
-		newTheme.AccentDim = accentDim
-		newTheme.AccentBright = accentBright
-		m.theme = &newTheme
-		m.styles = styles.New(m.theme)
-
-		// When idle, border uses thinking-level grayscale color.
-		borderColor := accent
-		if msg.State == palette.StateIdle {
-			borderColor = palette.ThinkingBorderColor(m.thinkingLevel)
-		}
-
-		m = m.applyThemeToDependents(borderColor)
+		m = m.applyBaseTheme(m.activeBaseTheme())
 
 		// Enable/disable pulse animation based on active state
 		active := msg.State == palette.StateStreaming || msg.State == palette.StateToolRunning
@@ -1124,11 +1109,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case themeChangedMsg:
 		if msg.Theme != nil {
-			m.theme = msg.Theme
+			m = m.applyBaseTheme(msg.Theme)
 		}
-
-		m.styles = styles.New(m.theme)
-		m = m.applyThemeToDependents(m.theme.Accent)
 
 		return m, nil
 
@@ -1586,7 +1568,7 @@ func (m Model) dispatchBinding(action tuikeybindings.BindingAction) (tea.Model, 
 
 	// Session
 	case tuikeybindings.ActionNewSession:
-		m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
+		m.chat = m.newChatModel()
 		m.toolPanels = make(map[string]*messages.ToolPanel)
 		m.pendingToolCalls = make(map[string]string)
 		m.pendingToolOrder = nil
@@ -2102,7 +2084,7 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 		}
 
 		if result.ClearChat {
-			m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
+			m.chat = m.newChatModel()
 			m.toolPanels = make(map[string]*messages.ToolPanel)
 			m.pendingToolCalls = make(map[string]string)
 			m.pendingToolOrder = nil
@@ -2565,15 +2547,12 @@ func (m Model) applyThemeByName(name string) (Model, error) {
 	}
 
 	if m.ui != nil {
-		if err := m.ui.SetTheme(name); err != nil {
+		if err := m.ui.SetActiveTheme(name); err != nil {
 			return m, fmt.Errorf("set theme: %w", err)
 		}
 	}
 
-	theme := *entry.Theme
-	m.theme = &theme
-	m.styles = styles.New(m.theme)
-	m = m.applyThemeToDependents(m.theme.Accent)
+	m = m.applyBaseTheme(entry.Theme)
 
 	return m, nil
 }
@@ -2592,6 +2571,33 @@ func (m Model) activeBaseTheme() *palette.Theme {
 	}
 
 	return palette.DefaultTheme()
+}
+
+func (m Model) newChatModel() components.ChatModel {
+	return components.NewChatModel().
+		SetStyles(m.styles).
+		SetSize(m.width, m.chatHeight(m.height))
+}
+
+func (m Model) applyBaseTheme(baseTheme *palette.Theme) Model {
+	if baseTheme == nil {
+		baseTheme = palette.DefaultTheme()
+	}
+
+	accent, accentDim, accentBright := palette.AccentForStateInTheme(m.agentState, baseTheme)
+	theme := *baseTheme
+	theme.Accent = accent
+	theme.AccentDim = accentDim
+	theme.AccentBright = accentBright
+	m.theme = &theme
+	m.styles = styles.New(m.theme)
+
+	borderColor := accent
+	if m.agentState == palette.StateIdle {
+		borderColor = palette.ThinkingBorderColor(m.thinkingLevel)
+	}
+
+	return m.applyThemeToDependents(borderColor)
 }
 
 func (m Model) applyThemeToDependents(borderColor string) Model {
@@ -3099,7 +3105,7 @@ func (m Model) onModelDialogDone(result overlays.DialogResult, pendingCmd tea.Cm
 func (m *Model) rebuildChatFromSession(sessionID string) {
 	entries, err := tuisessions.LoadEntries(m.sessionDir, sessionID)
 	if err != nil {
-		m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
+		m.chat = m.newChatModel()
 		am := messages.NewAssistantMessage()
 		am.SetStyles(m.styles)
 		am.Finalize(fmt.Sprintf("Error loading session: %v", err))
@@ -3108,7 +3114,7 @@ func (m *Model) rebuildChatFromSession(sessionID string) {
 		return
 	}
 
-	m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
+	m.chat = m.newChatModel()
 	m.toolPanels = make(map[string]*messages.ToolPanel)
 	ss := m.styles
 
@@ -3162,7 +3168,7 @@ func (m *Model) rebuildChatFromSession(sessionID string) {
 // rebuildChatFromMessages rebuilds the chat display from sdk.Message slices.
 // Used when Messages are available directly from the event payload.
 func (m *Model) rebuildChatFromMessages(msgs []sdk.Message) {
-	m.chat = components.NewChatModel().SetSize(m.width, m.chatHeight(m.height))
+	m.chat = m.newChatModel()
 	m.toolPanels = make(map[string]*messages.ToolPanel)
 	ss := m.styles
 

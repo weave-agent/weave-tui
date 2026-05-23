@@ -44,7 +44,14 @@ func NewAssistantMessage() *AssistantMessage {
 
 // SetStyles sets the style set used for rendering.
 func (m *AssistantMessage) SetStyles(s *styles.Styles) {
+	if s == nil {
+		s = styles.New(palette.DefaultTheme())
+	}
+
 	m.styles = s
+	m.renderer.SetTheme(s.Theme())
+	m.cachedRender = ""
+	m.dirty = true
 }
 
 // SetWidth updates the markdown renderer width.
