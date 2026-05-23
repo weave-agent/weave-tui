@@ -138,6 +138,7 @@ func TestPillStyles_UsesProvidedTheme(t *testing.T) {
 
 func TestBannerStyles_UsesProvidedTheme(t *testing.T) {
 	custom := &palette.Theme{
+		Foreground:     "76",
 		AccentBright:   "77",
 		Success:        "78",
 		Warning:        "79",
@@ -146,7 +147,8 @@ func TestBannerStyles_UsesProvidedTheme(t *testing.T) {
 	}
 	s := New(custom)
 
-	assertCustomColor(t, s.BannerInfo().Render("x"), custom.AccentBright)
+	assertCustomColor(t, s.BannerInfo().Render("x"), custom.Foreground)
+	assert.NotContains(t, s.BannerInfo().Render("x"), "38;5;"+custom.AccentBright)
 	assertCustomColor(t, s.BannerSuccess().Render("x"), custom.Success)
 	assertCustomColor(t, s.BannerWarning().Render("x"), custom.Warning)
 	assertCustomColor(t, s.BannerError().Render("x"), custom.Error)
