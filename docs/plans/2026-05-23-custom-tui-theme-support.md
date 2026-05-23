@@ -61,14 +61,14 @@
 ## Implementation Steps
 
 ### Task 1: Add JSON theme catalog
-- [ ] create an internal theme catalog package for loading built-in themes and `~/.weave/themes/*.json`
-- [ ] define a full JSON theme file schema matching `palette.Theme` semantic fields
-- [ ] validate theme names as plain filenames or safe identifiers and reject path traversal
-- [ ] validate color values accepted by Lipgloss, with `#RRGGBB` as the supported user-file format for v1
-- [ ] support user theme files overriding built-in themes with the same name
-- [ ] write tests for built-in loading, user loading, override ordering, and sorted listing
-- [ ] write tests for malformed JSON, missing required fields, invalid names, invalid colors, and unknown themes
-- [ ] run theme catalog tests - must pass before task 2
+- [x] create an internal theme catalog package for loading built-in themes and `~/.weave/themes/*.json`
+- [x] define a full JSON theme file schema matching `palette.Theme` semantic fields
+- [x] validate theme names as plain filenames or safe identifiers and reject path traversal
+- [x] validate color values accepted by Lipgloss, with `#RRGGBB` as the supported user-file format for v1
+- [x] support user theme files overriding built-in themes with the same name
+- [x] write tests for built-in loading, user loading, override ordering, and sorted listing
+- [x] write tests for malformed JSON, missing required fields, invalid names, invalid colors, and unknown themes
+- [x] run theme catalog tests - must pass before task 2
 
 ### Task 2: Wire catalog into TUI startup
 - [ ] load the theme catalog during TUI model construction in `internal/model/model.go`
