@@ -61,6 +61,7 @@ func Load(themesDir string) (*Catalog, error) {
 		if errors.Is(err, os.ErrNotExist) {
 			return c, nil
 		}
+
 		return nil, fmt.Errorf("read theme directory: %w", err)
 	}
 
@@ -73,15 +74,18 @@ func Load(themesDir string) (*Catalog, error) {
 		if err != nil {
 			return nil, fmt.Errorf("stat theme file %q: %w", info.Name(), err)
 		}
+
 		if !fileInfo.Mode().IsRegular() {
 			continue
 		}
 
 		path := filepath.Join(themesDir, info.Name())
+
 		entry, err := loadUserTheme(path)
 		if err != nil {
 			return nil, err
 		}
+
 		c.entries[entry.Name] = entry
 	}
 
@@ -119,7 +123,9 @@ func (c *Catalog) Entry(name string) (Entry, bool) {
 	if !ok {
 		return Entry{}, false
 	}
+
 	entry.Theme = cloneTheme(entry.Theme)
+
 	return entry, true
 }
 
@@ -133,6 +139,7 @@ func (c *Catalog) List() []Entry {
 	for name := range c.entries {
 		names = append(names, name)
 	}
+
 	sort.Strings(names)
 
 	entries := make([]Entry, 0, len(names))
@@ -147,6 +154,7 @@ func (c *Catalog) List() []Entry {
 
 func loadUserTheme(path string) (Entry, error) {
 	filename := filepath.Base(path)
+
 	name := strings.TrimSuffix(filename, filepath.Ext(filename))
 	if err := ValidateName(name); err != nil {
 		return Entry{}, fmt.Errorf("invalid theme filename %q: %w", filename, err)
@@ -158,20 +166,25 @@ func loadUserTheme(path string) (Entry, error) {
 	}
 
 	var file userThemeFile
+
 	dec := json.NewDecoder(strings.NewReader(string(data)))
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(&file); err != nil {
-		return Entry{}, fmt.Errorf("parse theme file %q: %w", path, err)
+
+	if decodeErr := dec.Decode(&file); decodeErr != nil {
+		return Entry{}, fmt.Errorf("parse theme file %q: %w", path, decodeErr)
 	}
+
 	var trailing any
-	if err := dec.Decode(&trailing); err != io.EOF {
+
+	if decodeErr := dec.Decode(&trailing); decodeErr != io.EOF {
 		return Entry{}, fmt.Errorf("parse theme file %q: unexpected trailing JSON", path)
 	}
 
 	if file.Name != "" {
-		if err := ValidateName(file.Name); err != nil {
-			return Entry{}, fmt.Errorf("invalid theme name %q: %w", file.Name, err)
+		if nameErr := ValidateName(file.Name); nameErr != nil {
+			return Entry{}, fmt.Errorf("invalid theme name %q: %w", file.Name, nameErr)
 		}
+
 		if file.Name != name {
 			return Entry{}, fmt.Errorf("theme name %q must match filename %q", file.Name, name)
 		}
@@ -191,22 +204,30 @@ func ValidateName(name string) error {
 	if name == "" {
 		return errors.New("theme name cannot be empty")
 	}
+
 	if name == "." || name == ".." {
-		return errors.New("theme name cannot be . or ..")
+		return errors.New("theme name cannot be dot or dot-dot")
 	}
+
 	if strings.ContainsAny(name, `/\`) {
 		return errors.New("theme name cannot contain path separators")
 	}
+
 	for _, r := range name {
 		if unicode.IsControl(r) {
 			return errors.New("theme name cannot contain control characters")
 		}
-		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == '.') {
+
+		if !isThemeNameRune(r) {
 			return fmt.Errorf("theme name contains unsupported character %q", r)
 		}
 	}
 
 	return nil
+}
+
+func isThemeNameRune(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == '.'
 }
 
 type userThemeFile struct {
@@ -262,6 +283,7 @@ func (f userThemeFile) theme() (*palette.Theme, error) {
 		if field.value == nil {
 			return nil, fmt.Errorf("missing required field %q", field.name)
 		}
+
 		if !hexColorPattern.MatchString(*field.value) {
 			return nil, fmt.Errorf("field %q must be a #RRGGBB color", field.name)
 		}
@@ -294,6 +316,8 @@ func cloneTheme(theme *palette.Theme) *palette.Theme {
 	if theme == nil {
 		return nil
 	}
+
 	t := *theme
+
 	return &t
 }

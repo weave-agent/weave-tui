@@ -106,6 +106,18 @@ func (m SelectorModel) Cursor() int { return m.cursor }
 // Filter returns the current filter text.
 func (m SelectorModel) Filter() string { return m.filter }
 
+// SetCursor moves the cursor to the provided item index, clamped to bounds.
+func (m SelectorModel) SetCursor(index int) SelectorModel {
+	if len(m.items) == 0 {
+		m.cursor = 0
+		return m
+	}
+
+	m.cursor = max(0, min(index, len(m.items)-1))
+
+	return m
+}
+
 // filteredItems returns items matching the current filter with original indices.
 func (m SelectorModel) filteredItems() []filteredEntry {
 	if m.filter == "" {

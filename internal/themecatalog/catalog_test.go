@@ -29,6 +29,7 @@ func TestLoadUserThemesAndSortedListing(t *testing.T) {
 	require.NoError(t, err)
 
 	entries := catalog.List()
+
 	names := make([]string, 0, len(entries))
 	for _, entry := range entries {
 		names = append(names, entry.Name)
@@ -159,6 +160,7 @@ func TestValidateName(t *testing.T) {
 				require.Error(t, err)
 				return
 			}
+
 			require.NoError(t, err)
 		})
 	}
@@ -171,8 +173,10 @@ func writeThemeFile(t *testing.T, dir, name, accent string) {
 
 func writeJSON(t *testing.T, path string, value map[string]string) {
 	t.Helper()
+
 	data, err := json.Marshal(value)
 	require.NoError(t, err)
+
 	require.NoError(t, os.WriteFile(path, data, 0o600))
 }
 

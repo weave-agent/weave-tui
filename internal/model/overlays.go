@@ -18,6 +18,7 @@ const (
 	dialogLoginSelect    = "login-select"
 	dialogLogoutSelect   = "logout-select"
 	dialogLoginOAuth     = "login-oauth"
+	dialogThemeSelect    = "theme-select"
 )
 
 // checkNextPopupCmd returns a tea.Cmd that sends popupPendingMsg

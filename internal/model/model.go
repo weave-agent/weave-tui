@@ -73,6 +73,8 @@ type pulseTickMsg struct {
 	gen int // generation counter to ignore stale timers
 }
 
+type themeSelectMsg struct{}
+
 const (
 	doublePressCtrlC  = 0
 	doublePressEscape = 1
@@ -172,6 +174,8 @@ type Model struct {
 	// styles is the cached style set for the active theme.
 	styles *styles.Styles
 
+	themeEntries []themecatalog.Entry
+
 	contextTokens int
 
 	// agentState tracks current agent activity for accent color and pulse.
@@ -247,6 +251,11 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 			return tuievents.ThinkingLevelSetMsg{Level: level}
 		}}
 	})
+	commands.Register("/theme", "Select TUI theme", false, func(_ string) tuicommands.CommandResult {
+		return tuicommands.CommandResult{Command: func() tea.Msg {
+			return themeSelectMsg{}
+		}}
+	})
 
 	editor := components.NewEditorModel()
 
@@ -272,7 +281,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 	}
 
 	messages.GetThemeInfo = ui.Theme
-	startupTheme := applyStartupTheme(ui, tuiCfg.Theme)
+	startupTheme, themeEntries := applyStartupTheme(ui, tuiCfg.Theme)
 	startupStyles := styles.New(startupTheme)
 
 	m := Model{
@@ -302,6 +311,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		popupChans:        make(map[string]chan overlayResponse),
 		theme:             startupTheme,
 		styles:            startupStyles,
+		themeEntries:      themeEntries,
 		panelManager:      ui.PanelManager(),
 		panelTray:         panels.NewPanelTray(),
 		focus:             FocusEditor,
@@ -327,18 +337,21 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 	return m
 }
 
-func applyStartupTheme(ui *TUIImpl, configured string) *palette.Theme {
+func applyStartupTheme(ui *TUIImpl, configured string) (*palette.Theme, []themecatalog.Entry) {
 	catalog, err := themecatalog.Load(defaultThemesDir())
 	if err != nil {
 		slog.Warn("failed to load theme catalog", "error", err)
+
 		theme := palette.DefaultTheme()
 		_ = ui.SetTheme("default")
-		return theme
+
+		return theme, []themecatalog.Entry{{Name: "default", Theme: theme, Source: themecatalog.SourceBuiltin}}
 	}
 
-	for _, entry := range catalog.List() {
-		if err := ui.RegisterPaletteTheme(entry.Name, entry.Theme); err != nil {
-			slog.Warn("failed to register theme", "theme", entry.Name, "error", err)
+	entries := catalog.List()
+	for _, entry := range entries {
+		if registerErr := ui.RegisterPaletteTheme(entry.Name, entry.Theme); registerErr != nil {
+			slog.Warn("failed to register theme", "theme", entry.Name, "error", registerErr)
 		}
 	}
 
@@ -351,18 +364,22 @@ func applyStartupTheme(ui *TUIImpl, configured string) *palette.Theme {
 	if err != nil {
 		slog.Warn("configured theme is unavailable; falling back to default", "theme", name, "error", err)
 		name = "default"
+
 		theme, err = catalog.Theme(name)
 		if err != nil {
 			slog.Warn("default theme is unavailable; using built-in fallback", "error", err)
+
 			theme = palette.DefaultTheme()
 		}
 	}
 
-	if err := ui.SetTheme(name); err != nil {
-		slog.Warn("failed to apply startup theme", "theme", name, "error", err)
+	if setErr := ui.SetTheme(name); setErr != nil {
+		slog.Warn("failed to apply startup theme", "theme", name, "error", setErr)
+
 		if name != "default" {
 			name = "default"
 			_ = ui.SetTheme(name)
+
 			if fallback, err := catalog.Theme(name); err == nil {
 				theme = fallback
 			} else {
@@ -371,7 +388,7 @@ func applyStartupTheme(ui *TUIImpl, configured string) *palette.Theme {
 		}
 	}
 
-	return theme
+	return theme, entries
 }
 
 func defaultThemesDir() string {
@@ -982,6 +999,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case popupPendingMsg:
 		return m.handlePopupPending()
+
+	case themeSelectMsg:
+		return m.openThemeSelector(), nil
 
 	case extStatusMsg:
 		m.footer = m.footer.SetExtStatus(msg.Key, msg.Text)
@@ -2395,6 +2415,55 @@ func (m Model) onLogoutListResult(msg tuievents.LogoutListResultMsg) (tea.Model,
 	return m, nil
 }
 
+func (m Model) openThemeSelector() Model {
+	entries := m.themeEntries
+	if len(entries) == 0 && m.ui != nil {
+		names := m.ui.ListThemes()
+
+		entries = make([]themecatalog.Entry, len(names))
+		for i, name := range names {
+			entries[i] = themecatalog.Entry{Name: name, Source: themecatalog.SourceBuiltin}
+		}
+	}
+
+	if len(entries) == 0 {
+		return m
+	}
+
+	items := make([]overlays.SelectorItem, len(entries))
+
+	activeName := ""
+	if m.ui != nil {
+		activeName = m.ui.Theme().Name
+	}
+
+	cursor := 0
+
+	for i, entry := range entries {
+		title := entry.Name
+		if entry.Name == activeName {
+			title += " ✓"
+			cursor = i
+		}
+
+		source := "built-in"
+		if entry.Source == themecatalog.SourceUser {
+			source = "user"
+		}
+
+		items[i] = overlays.SelectorItem{
+			Title:    title,
+			Subtitle: source,
+		}
+	}
+
+	sel := overlays.NewSelectorModel("Select Theme", items).SetStyles(m.styles)
+	sel = sel.SetSize(m.width, m.height).Show().SetCursor(cursor)
+	m.dialogStack = m.dialogStack.Push(overlays.NewSelectorDialog(dialogThemeSelect, sel))
+
+	return m
+}
+
 func (m Model) onProviderDialogDone(result overlays.DialogResult, pendingCmd tea.Cmd) (tea.Model, tea.Cmd) {
 	if result.Err != nil || result.Index < 0 || result.Index >= len(m.pendingProviders) {
 		m.pendingProviders = nil
@@ -2653,6 +2722,8 @@ func (m Model) handleDialogDone(d overlays.Dialog, pendingCmd tea.Cmd) (tea.Mode
 		return m.onLogoutDialogDone(result, pendingCmd)
 	case dialogAttachmentEditor:
 		return m.onAttachmentEditorDone(result, pendingCmd)
+	case dialogThemeSelect:
+		return m, pendingCmd
 	case dialogLoginOAuth:
 		// Login OAuth dialog was dismissed (user canceled or flow completed).
 		// The actual flow result is handled by tuievents.LoginFlowResultMsg.
@@ -2703,6 +2774,9 @@ func (m Model) handleDialogForceCancel(d overlays.Dialog) (tea.Model, tea.Cmd) {
 		m.pendingLoginProviders = nil
 	case dialogLogoutSelect:
 		m.pendingLogoutProviders = nil
+	case dialogThemeSelect:
+		// Theme selection side effects are implemented by the selector
+		// workflow; force-cancel only dismisses the dialog for now.
 	case dialogLoginOAuth:
 		if m.oauthCancel != nil {
 			m.oauthCancel()

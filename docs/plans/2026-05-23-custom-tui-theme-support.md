@@ -81,14 +81,14 @@
 - [x] run startup/model tests - must pass before task 3
 
 ### Task 3: Add `/theme` selector command
-- [ ] register `/theme` in `newModelWithConfig` with description `Select TUI theme`
-- [ ] add a theme selector dialog or reuse the existing selector dialog with a distinct dialog ID
-- [ ] populate selector items from the theme catalog or UI theme registry in sorted order
-- [ ] initialize selector cursor to the currently active theme
-- [ ] show enough item metadata to distinguish built-in and user themes if the existing selector supports subtitles
-- [ ] write tests that `/theme` is registered and opens a selector command
-- [ ] write tests that selector items include built-in and user themes
-- [ ] run command/dialog tests - must pass before task 4
+- [x] register `/theme` in `newModelWithConfig` with description `Select TUI theme`
+- [x] add a theme selector dialog or reuse the existing selector dialog with a distinct dialog ID
+- [x] populate selector items from the theme catalog or UI theme registry in sorted order
+- [x] initialize selector cursor to the currently active theme
+- [x] show enough item metadata to distinguish built-in and user themes if the existing selector supports subtitles
+- [x] write tests that `/theme` is registered and opens a selector command
+- [x] write tests that selector items include built-in and user themes
+- [x] run command/dialog tests - must pass before task 4
 
 ### Task 4: Implement live preview, cancel restore, and confirm persistence
 - [ ] preview the highlighted theme immediately as the selector cursor changes

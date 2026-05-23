@@ -114,6 +114,19 @@ func TestSelectorNavigation(t *testing.T) {
 	assert.Equal(t, 0, m.Cursor())
 }
 
+func TestSelectorSetCursorClampsToItems(t *testing.T) {
+	items := []SelectorItem{
+		{Title: "A"},
+		{Title: "B"},
+		{Title: "C"},
+	}
+	m := NewSelectorModel("Test", items).Show()
+
+	assert.Equal(t, 2, m.SetCursor(9).Cursor())
+	assert.Equal(t, 0, m.SetCursor(-2).Cursor())
+	assert.Equal(t, 1, m.SetCursor(1).Cursor())
+}
+
 func TestSelectorEnterSelects(t *testing.T) {
 	items := []SelectorItem{
 		{Title: "First", Subtitle: "desc1"},

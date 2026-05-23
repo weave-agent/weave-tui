@@ -454,6 +454,7 @@ func (u *TUIImpl) RegisterPaletteTheme(name string, theme *palette.Theme) error 
 	if name == "" {
 		return errors.New("theme name cannot be empty")
 	}
+
 	if theme == nil {
 		return errors.New("theme cannot be nil")
 	}

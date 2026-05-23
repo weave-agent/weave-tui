@@ -9,6 +9,7 @@ import (
 	"github.com/weave-agent/weave/bus"
 
 	"github.com/weave-agent/weave-tui/internal/components/messages"
+	"github.com/weave-agent/weave-tui/internal/components/overlays"
 )
 
 func TestModel_SlashCommandQuit(t *testing.T) {
@@ -188,4 +189,72 @@ func TestModel_ThinkingCommandInHelp(t *testing.T) {
 	am, ok := items[0].(*messages.AssistantMessage)
 	require.True(t, ok)
 	assert.Contains(t, am.Content(), "/thinking")
+}
+
+func TestModel_ThemeCommandRegistered(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	m := newModel(nil, nil, nil, nil)
+	info, ok := m.commands.Lookup("/theme")
+	require.True(t, ok, "/theme command should be registered")
+	assert.Equal(t, "Select TUI theme", info.Description)
+	assert.False(t, info.AcceptsFiles)
+}
+
+func TestModel_ThemeCommandOpensSelector(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+
+	info, ok := m.commands.Lookup("/theme")
+	require.True(t, ok)
+
+	cmd := info.Handler("").Command
+	require.NotNil(t, cmd)
+
+	model, _ := m.Update(cmd())
+	m2 := model.(Model)
+	require.False(t, m2.dialogStack.Empty())
+	assert.Equal(t, dialogThemeSelect, m2.dialogStack.Peek().ID())
+
+	dlg, ok := m2.dialogStack.Peek().(*overlays.SelectorDialog)
+	require.True(t, ok)
+	assert.Equal(t, 0, dlg.Model().Cursor())
+	assert.Contains(t, dlg.Model().View(), "default")
+	assert.Contains(t, dlg.Model().View(), "built-in")
+}
+
+func TestModel_ThemeSelectorIncludesBuiltInAndUserThemes(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	theme := startupTestTheme("#445566")
+	theme["name"] = "user-theme"
+	writeStartupTheme(t, home, "user-theme", theme)
+
+	m := NewModelWithConfig(nil, nil, nil, nil, TUIConfig{Theme: "user-theme"})
+	m.width = 80
+	m.height = 24
+
+	info, ok := m.commands.Lookup("/theme")
+	require.True(t, ok)
+
+	cmd := info.Handler("").Command
+	require.NotNil(t, cmd)
+
+	model, _ := m.Update(cmd())
+	m2 := model.(Model)
+	require.False(t, m2.dialogStack.Empty())
+
+	dlg, ok := m2.dialogStack.Peek().(*overlays.SelectorDialog)
+	require.True(t, ok)
+
+	view := dlg.Model().View()
+	assert.Contains(t, view, "default")
+	assert.Contains(t, view, "built-in")
+	assert.Contains(t, view, "user-theme")
+	assert.Contains(t, view, "user")
+	assert.Equal(t, 1, dlg.Model().Cursor())
 }
