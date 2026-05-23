@@ -195,7 +195,7 @@ func (m FooterModel) View() string {
 		return ""
 	}
 
-	line1 := m.renderLine1()
+	line1 := m.renderLine1(nil)
 	line2 := m.renderLine2(nil)
 
 	return line1 + "\n" + line2
@@ -210,7 +210,7 @@ func (m FooterModel) Draw(scr uv.Screen, area uv.Rectangle, theme *palette.Theme
 
 	if area.Dy() >= 1 {
 		line1Rect := uv.Rect(area.Min.X, area.Min.Y, area.Dx(), 1)
-		uv.NewStyledString(m.renderLine1()).Draw(scr, line1Rect)
+		uv.NewStyledString(m.renderLine1(theme)).Draw(scr, line1Rect)
 	}
 
 	if area.Dy() >= 2 {
@@ -219,7 +219,11 @@ func (m FooterModel) Draw(scr uv.Screen, area uv.Rectangle, theme *palette.Theme
 	}
 }
 
-func (m FooterModel) renderLine1() string {
+func (m FooterModel) renderLine1(theme *palette.Theme) string {
+	if theme == nil {
+		theme = palette.DefaultTheme()
+	}
+
 	cwd := shortenPath(m.cwd, m.width/2)
 
 	parts := []string{cwd}
@@ -246,7 +250,7 @@ func (m FooterModel) renderLine1() string {
 		parts = append(parts, m.extStatus[k])
 	}
 
-	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(palette.DefaultTheme().Muted))
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Muted))
 
 	return dimStyle.Render(strings.Join(parts, " · "))
 }

@@ -26,6 +26,7 @@ type MultiSelectModel struct {
 	width    int
 	height   int
 	visible  bool
+	theme    *palette.Theme
 }
 
 // NewMultiSelectModel creates a new multi-select model.
@@ -66,6 +67,12 @@ func (m MultiSelectModel) SetSize(width, height int) MultiSelectModel {
 	m.width = width
 	m.height = height
 
+	return m
+}
+
+// SetTheme updates the theme used to render the multi-select overlay.
+func (m MultiSelectModel) SetTheme(theme *palette.Theme) MultiSelectModel {
+	m.theme = theme
 	return m
 }
 
@@ -159,7 +166,10 @@ func (m MultiSelectModel) View() string {
 		return ""
 	}
 
-	theme := palette.DefaultTheme()
+	theme := m.theme
+	if theme == nil {
+		theme = palette.DefaultTheme()
+	}
 
 	boxWidth := min(60, m.width-4)
 	boxHeight := min(15, m.height-2)

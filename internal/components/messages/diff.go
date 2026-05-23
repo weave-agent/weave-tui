@@ -109,7 +109,14 @@ type DiffRenderer struct {
 
 // NewDiffRenderer creates a new diff renderer with theme colors.
 func NewDiffRenderer() *DiffRenderer {
-	theme := palette.DefaultTheme()
+	return NewDiffRendererWithTheme(palette.DefaultTheme())
+}
+
+// NewDiffRendererWithTheme creates a new diff renderer with the provided theme.
+func NewDiffRendererWithTheme(theme *palette.Theme) *DiffRenderer {
+	if theme == nil {
+		theme = palette.DefaultTheme()
+	}
 
 	return &DiffRenderer{
 		addedStyle:   lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Success)),

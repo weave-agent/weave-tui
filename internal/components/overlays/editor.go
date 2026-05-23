@@ -22,6 +22,7 @@ type EditorModel struct {
 	width   int
 	height  int
 	visible bool
+	theme   *palette.Theme
 }
 
 // NewEditorModel creates a new editor overlay model.
@@ -89,6 +90,12 @@ func (m EditorModel) SetSize(width, height int) EditorModel {
 	m.ta.SetWidth(max(10, boxWidth-6))
 	m.ta.SetHeight(max(3, boxHeight-4))
 
+	return m
+}
+
+// SetTheme updates the theme used to render the editor overlay.
+func (m EditorModel) SetTheme(theme *palette.Theme) EditorModel {
+	m.theme = theme
 	return m
 }
 
@@ -173,7 +180,10 @@ func (m EditorModel) View() string {
 		return ""
 	}
 
-	theme := palette.DefaultTheme()
+	theme := m.theme
+	if theme == nil {
+		theme = palette.DefaultTheme()
+	}
 
 	boxWidth := editorBoxWidth(m.width)
 	if boxWidth == 0 {

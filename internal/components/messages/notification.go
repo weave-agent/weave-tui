@@ -6,6 +6,7 @@ import (
 	"github.com/weave-agent/weave/sdk"
 
 	"github.com/weave-agent/weave-tui/internal/palette"
+	"github.com/weave-agent/weave-tui/internal/styles"
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
@@ -15,11 +16,21 @@ import (
 type NotificationMessage struct {
 	content string
 	level   sdk.NotifyLevel
+	styles  *styles.Styles
 }
 
 // NewNotificationMessage creates a new notification message with the given level.
 func NewNotificationMessage(content string, level sdk.NotifyLevel) *NotificationMessage {
-	return &NotificationMessage{content: content, level: level}
+	return &NotificationMessage{content: content, level: level, styles: styles.New(palette.DefaultTheme())}
+}
+
+// SetStyles sets the style set used for rendering.
+func (m *NotificationMessage) SetStyles(s *styles.Styles) {
+	if s == nil {
+		s = styles.New(palette.DefaultTheme())
+	}
+
+	m.styles = s
 }
 
 // Content returns the notification text.
@@ -39,6 +50,9 @@ func (m *NotificationMessage) View(width int) string {
 	}
 
 	theme := palette.DefaultTheme()
+	if m.styles != nil {
+		theme = m.styles.Theme()
+	}
 	borderColor, textColor := colorsForLevel(m.level, theme)
 
 	borderStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(borderColor))

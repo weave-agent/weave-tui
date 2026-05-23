@@ -23,6 +23,7 @@ type ConfirmModel struct {
 	width   int
 	height  int
 	visible bool
+	theme   *palette.Theme
 }
 
 // NewConfirmModel creates a new confirm model.
@@ -55,6 +56,12 @@ func (m ConfirmModel) SetSize(width, height int) ConfirmModel {
 	m.width = width
 	m.height = height
 
+	return m
+}
+
+// SetTheme updates the theme used to render the confirm dialog.
+func (m ConfirmModel) SetTheme(theme *palette.Theme) ConfirmModel {
+	m.theme = theme
 	return m
 }
 
@@ -116,7 +123,10 @@ func (m ConfirmModel) View() string {
 		return ""
 	}
 
-	theme := palette.DefaultTheme()
+	theme := m.theme
+	if theme == nil {
+		theme = palette.DefaultTheme()
+	}
 	boxWidth := min(50, m.width-4)
 
 	borderStyle := lipgloss.NewStyle().

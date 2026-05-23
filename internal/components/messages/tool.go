@@ -61,7 +61,14 @@ func NewToolPanel(toolID, toolName, args string) *ToolPanel {
 
 // SetStyles sets the style set used for rendering.
 func (p *ToolPanel) SetStyles(s *styles.Styles) {
+	if s == nil {
+		s = styles.New(palette.DefaultTheme())
+	}
+
 	p.styles = s
+	if p.diffRenderer != nil {
+		p.diffRenderer = NewDiffRendererWithTheme(p.styles.Theme())
+	}
 }
 
 // ToolID returns the tool call ID.

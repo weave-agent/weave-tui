@@ -297,7 +297,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 		bus:               bus,
 		cfg:               cfg,
 		ps:                ps,
-		chat:              components.NewChatModel(),
+		chat:              components.NewChatModel().SetStyles(startupStyles),
 		editor:            editor,
 		footer:            components.NewFooterModel(),
 		spinner:           components.NewSpinnerModel(startupTheme),
@@ -328,8 +328,7 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 	m.footer = m.footer.SetReasoning(tuiproviders.ModelReasoning(cur))
 	m.footer = m.footer.SetThinkingLevel(string(m.thinkingLevel))
 	m.editor = m.editor.SetBorderColor(palette.ThinkingBorderColor(m.thinkingLevel))
-	m.editor = m.editor.SetStyles(m.styles)
-	m.editor = m.editor.SetPulseColors(m.theme.Accent, m.theme.AccentBright)
+	m = m.applyThemeToDependents(palette.ThinkingBorderColor(m.thinkingLevel), false)
 
 	if m.noConfigured {
 		m.statusMsg = "No providers configured. Use /providers to set an API key."
@@ -1078,10 +1077,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			borderColor = palette.ThinkingBorderColor(m.thinkingLevel)
 		}
 
-		m.editor = m.editor.SetStyles(m.styles)
-		m.editor = m.editor.SetBorderColor(borderColor)
-		m.editor = m.editor.SetPulseColors(accent, accentBright)
-		m.spinner = m.spinner.SetTheme(m.theme)
+		m = m.applyThemeToDependents(borderColor, false)
 
 		// Enable/disable pulse animation based on active state
 		active := msg.State == palette.StateStreaming || msg.State == palette.StateToolRunning
@@ -1129,7 +1125,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.styles = styles.New(m.theme)
-		m.editor = m.editor.SetStyles(m.styles)
+		m = m.applyThemeToDependents(m.theme.Accent, false)
 
 		return m, nil
 
@@ -1832,10 +1828,10 @@ func (m *Model) onMessageEnd(msg tuievents.MessageEndMsg) {
 			} else if r, ok := m.ui.GetRenderer(tc.Name); ok {
 				panel.SetRenderer(r)
 			} else {
-				panel.SetDiffRenderer(messages.NewDiffRenderer())
+				panel.SetDiffRenderer(messages.NewDiffRendererWithTheme(m.theme))
 			}
 		} else {
-			panel.SetDiffRenderer(messages.NewDiffRenderer())
+			panel.SetDiffRenderer(messages.NewDiffRendererWithTheme(m.theme))
 		}
 
 		m.toolPanels[tc.ID] = panel
@@ -2535,12 +2531,36 @@ func (m Model) applyThemeByName(name string) (Model, error) {
 	theme := *entry.Theme
 	m.theme = &theme
 	m.styles = styles.New(m.theme)
-	m.editor = m.editor.SetStyles(m.styles)
-	m.editor = m.editor.SetBorderColor(m.theme.Accent)
-	m.editor = m.editor.SetPulseColors(m.theme.Accent, m.theme.AccentBright)
-	m.spinner = m.spinner.SetTheme(m.theme)
+	m = m.applyThemeToDependents(m.theme.Accent, false)
 
 	return m, nil
+}
+
+func (m Model) applyThemeToDependents(borderColor string, resetPulse bool) Model {
+	if m.styles == nil {
+		m.styles = styles.New(m.theme)
+	}
+
+	if borderColor == "" && m.theme != nil {
+		borderColor = m.theme.Accent
+	}
+
+	m.editor = m.editor.SetStyles(m.styles)
+	if borderColor != "" {
+		m.editor = m.editor.SetBorderColor(borderColor)
+	}
+	if m.theme != nil {
+		m.editor = m.editor.SetPulseColors(m.theme.Accent, m.theme.AccentBright)
+	}
+	if resetPulse {
+		m.editor = m.editor.SetPulseActive(false)
+	}
+	m.spinner = m.spinner.SetTheme(m.theme)
+	m.chat = m.chat.SetStyles(m.styles)
+	m.landing = m.landing.SetStyles(m.styles)
+	m.dialogStack = m.dialogStack.SetTheme(m.theme)
+
+	return m
 }
 
 func (m Model) themeEntry(name string) (themecatalog.Entry, bool) {
@@ -2633,7 +2653,7 @@ func (m Model) onProviderDialogDone(result overlays.DialogResult, pendingCmd tea
 
 	// Push key input dialog for entering the API key.
 	input := overlays.NewInputModel("Enter API key for " + selected.Name)
-	input = input.SetMask('*').SetSize(m.width, m.height).Show()
+	input = input.SetMask('*').SetSize(m.width, m.height).SetTheme(m.theme).Show()
 	m.dialogStack = m.dialogStack.Push(overlays.NewInputDialog(dialogKeyInput, input))
 
 	return m, pendingCmd
@@ -2743,7 +2763,7 @@ func (m Model) onLoginDialogDone(result overlays.DialogResult, pendingCmd tea.Cm
 	// API key flow: reuse the existing key input dialog.
 	m.providerTarget = selected.ID
 	input := overlays.NewInputModel("Enter API key for " + selected.Name)
-	input = input.SetMask('*').SetSize(m.width, m.height).Show()
+	input = input.SetMask('*').SetSize(m.width, m.height).SetTheme(m.theme).Show()
 	m.dialogStack = m.dialogStack.Push(overlays.NewInputDialog(dialogKeyInput, input))
 
 	return m, pendingCmd
@@ -2788,7 +2808,7 @@ func (m Model) startOAuthLogin(selected tuievents.LoginProviderEntry, pendingCmd
 
 		// Show login dialog with user code and verification URL.
 		loginDlg := overlays.NewLoginModel(selected.Name, resp.VerificationURLOrURI())
-		loginDlg = loginDlg.SetStatus("Enter code: "+resp.UserCode).SetSize(m.width, m.height).Show()
+		loginDlg = loginDlg.SetStatus("Enter code: "+resp.UserCode).SetSize(m.width, m.height).SetTheme(m.theme).Show()
 		m.dialogStack = m.dialogStack.Push(overlays.NewLoginDialog(dialogLoginOAuth, loginDlg))
 
 		interval := resp.Interval
@@ -2801,7 +2821,7 @@ func (m Model) startOAuthLogin(selected tuievents.LoginProviderEntry, pendingCmd
 
 	// Authorization code flow: show dialog and run callback + browser flow.
 	loginDlg := overlays.NewLoginModel(selected.Name, oauthProvider.AuthURL)
-	loginDlg = loginDlg.SetSize(m.width, m.height).Show()
+	loginDlg = loginDlg.SetSize(m.width, m.height).SetTheme(m.theme).Show()
 	m.dialogStack = m.dialogStack.Push(overlays.NewLoginDialog(dialogLoginOAuth, loginDlg))
 
 	return m, tea.Batch(pendingCmd, tuiauth.RunOAuthFlowCmd(ctx, oauthProvider, m.oauthGen))
@@ -3954,6 +3974,7 @@ func (m Model) openAttachmentEditor(index int) (tea.Model, tea.Cmd) {
 	m.editingAttachment = index
 	editor := overlays.NewEditorModel("Edit "+items[index].Path, items[index].Content)
 	editor = editor.SetSize(m.width, m.height)
+	editor = editor.SetTheme(m.theme)
 	editor = editor.Show()
 	m.dialogStack = m.dialogStack.Push(overlays.NewEditorDialog(dialogAttachmentEditor, editor))
 

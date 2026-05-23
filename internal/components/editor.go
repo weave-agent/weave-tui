@@ -22,6 +22,7 @@ type SubmitMsg struct {
 type EditorModel struct {
 	ta      textarea.Model
 	focused bool
+	styles  *styles.Styles
 
 	// BorderColor is the current border color (ANSI color code or name).
 	BorderColor string
@@ -67,6 +68,8 @@ func borderStyle(fg string) lipgloss.Style {
 
 // NewEditorModel creates a new editor model backed by bubbles/v2 textarea.
 func NewEditorModel() EditorModel {
+	ss := styles.New(palette.DefaultTheme())
+	theme := ss.Theme()
 	ta := textarea.New()
 	ta.DynamicHeight = true
 	ta.MinHeight = 3
@@ -80,11 +83,11 @@ func NewEditorModel() EditorModel {
 	ta.Focus()
 
 	taStyles := textarea.DefaultStyles(false)
-	taStyles.Focused.Base = borderStyle(palette.DefaultTheme().Accent)
-	taStyles.Blurred.Base = borderStyle(palette.DefaultTheme().Border)
+	taStyles.Focused.Base = borderStyle(theme.Accent)
+	taStyles.Blurred.Base = borderStyle(theme.Border)
 	taStyles.Focused.Text = lipgloss.NewStyle()
 	taStyles.Blurred.Text = lipgloss.NewStyle()
-	taStyles.Focused.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color(palette.DefaultTheme().Muted))
+	taStyles.Focused.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Muted))
 
 	// Override light-mode defaults that cause white background on cursor line
 	// and visible end-of-buffer characters.
@@ -103,7 +106,8 @@ func NewEditorModel() EditorModel {
 	return EditorModel{
 		ta:          ta,
 		focused:     true,
-		BorderColor: palette.DefaultTheme().Accent,
+		styles:      ss,
+		BorderColor: theme.Accent,
 		completion:  NewCompletionModel(),
 	}
 }
@@ -167,7 +171,18 @@ func (m EditorModel) Blur() EditorModel {
 
 // SetStyles sets the style set for the editor and its completion model.
 func (m EditorModel) SetStyles(s *styles.Styles) EditorModel {
+	if s == nil {
+		s = styles.New(palette.DefaultTheme())
+	}
+
+	m.styles = s
 	m.completion = m.completion.SetStyles(s)
+
+	theme := s.Theme()
+	taStyles := m.ta.Styles()
+	taStyles.Blurred.Base = borderStyle(theme.Border)
+	taStyles.Focused.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Muted))
+	m.ta.SetStyles(taStyles)
 
 	return m
 }
@@ -185,10 +200,14 @@ func (m EditorModel) SetMaxHeight(n int) EditorModel {
 // The blurred border always uses the theme's Border color for distinction.
 func (m EditorModel) SetBorderColor(color string) EditorModel {
 	m.BorderColor = color
+	theme := palette.DefaultTheme()
+	if m.styles != nil {
+		theme = m.styles.Theme()
+	}
 
 	taStyles := m.ta.Styles()
 	taStyles.Focused.Base = borderStyle(color)
-	taStyles.Blurred.Base = borderStyle(palette.DefaultTheme().Border)
+	taStyles.Blurred.Base = borderStyle(theme.Border)
 	m.ta.SetStyles(taStyles)
 
 	return m

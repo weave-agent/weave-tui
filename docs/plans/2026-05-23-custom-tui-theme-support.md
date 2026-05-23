@@ -102,13 +102,13 @@
 - [x] run selector persistence tests - must pass before task 5
 
 ### Task 5: Make active theme usage consistent
-- [ ] audit runtime `palette.DefaultTheme()` calls in components that should respect the active theme
-- [ ] update editor, footer, chat/message rendering, selector/dialog overlays, and attachment rendering to use `m.theme`/`m.styles` where appropriate
-- [ ] keep `palette.DefaultTheme()` only for fallback construction, tests, and code paths without model-provided styles
-- [ ] ensure `ThemeChangedMsg` and direct theme application update all dependent components consistently
-- [ ] write tests for at least one representative overlay using custom theme styles
-- [ ] write tests for editor/footer/message components retaining custom theme after theme changes
-- [ ] run component/model tests - must pass before task 6
+- [x] audit runtime `palette.DefaultTheme()` calls in components that should respect the active theme
+- [x] update editor, footer, chat/message rendering, selector/dialog overlays, and attachment rendering to use `m.theme`/`m.styles` where appropriate
+- [x] keep `palette.DefaultTheme()` only for fallback construction, tests, and code paths without model-provided styles
+- [x] ensure `ThemeChangedMsg` and direct theme application update all dependent components consistently
+- [x] write tests for at least one representative overlay using custom theme styles
+- [x] write tests for editor/footer/message components retaining custom theme after theme changes
+- [x] run component/model tests - must pass before task 6
 
 ### Task 6: Preserve custom theme semantics during dynamic state changes
 - [ ] review `palette.AccentForState` and agent state handling that overwrites accent colors

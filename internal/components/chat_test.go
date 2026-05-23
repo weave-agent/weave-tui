@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/weave-agent/weave-tui/internal/components/messages"
+	"github.com/weave-agent/weave-tui/internal/palette"
+	"github.com/weave-agent/weave-tui/internal/styles"
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
@@ -18,6 +20,18 @@ type stubItem struct {
 }
 
 func (s stubItem) View(width int) string { return s.text }
+
+type styledStubItem struct {
+	theme *palette.Theme
+}
+
+func (s *styledStubItem) View(width int) string {
+	return lipgloss.NewStyle().Foreground(lipgloss.Color(s.theme.Foreground)).Render("styled")
+}
+
+func (s *styledStubItem) SetStyles(ss *styles.Styles) {
+	s.theme = ss.Theme()
+}
 
 func TestChatModel_AddItem(t *testing.T) {
 	m := NewChatModel()
@@ -59,6 +73,34 @@ func TestChatModel_View_SingleItem(t *testing.T) {
 
 	view := m.View()
 	assert.Contains(t, view, "hello")
+}
+
+func TestChatModel_SetStyles_RestylesItemsAndChrome(t *testing.T) {
+	item := &styledStubItem{theme: palette.DefaultTheme()}
+	m := NewChatModel().SetSize(80, 2)
+	m = m.AddItem(stubItem{text: "one"})
+	m = m.AddItem(item)
+	m = m.ScrollUp(1)
+	m = m.SetTurnEndPending(true)
+
+	custom := &palette.Theme{
+		Foreground:     "88",
+		Muted:          "77",
+		Warning:        "166",
+		BackgroundTint: "235",
+	}
+	m = m.SetStyles(styles.New(custom))
+
+	view := m.JumpToBottom().View()
+	assert.Contains(t, view, "88", "style-aware item should use the custom foreground")
+	assert.Contains(t, view, "77", "separator should use the custom muted color")
+
+	m = m.ScrollUp(1).SetTurnEndPending(true)
+	buf := uv.NewScreenBuffer(80, 2)
+	m.Draw(buf, buf.Bounds())
+	rendered := buf.Render()
+	assert.Contains(t, rendered, "166", "scroll indicator should use the custom warning color")
+	assert.Contains(t, rendered, "235", "scroll indicator should use the custom tint background")
 }
 
 func TestChatModel_View_ScrollsToBottom(t *testing.T) {

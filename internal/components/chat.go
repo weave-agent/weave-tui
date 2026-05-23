@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/weave-agent/weave-tui/internal/palette"
+	"github.com/weave-agent/weave-tui/internal/styles"
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
@@ -18,6 +19,12 @@ type ChatItem interface {
 // from rendering while they have no visible content.
 type ChatItemVisibility interface {
 	VisibleInChat() bool
+}
+
+// StyleAwareChatItem is implemented by chat items that can be restyled when
+// the active theme changes.
+type StyleAwareChatItem interface {
+	SetStyles(*styles.Styles)
 }
 
 // NeedsRenderer is an optional interface for items that may need re-rendering
@@ -46,6 +53,7 @@ type ChatModel struct {
 	height int
 	scroll int
 	cache  *[]cacheEntry // pointer so value copies share state
+	styles *styles.Styles
 
 	// autoScroll follows the stream when the user is near the bottom.
 	autoScroll bool
@@ -65,7 +73,41 @@ type ChatModel struct {
 
 // NewChatModel creates a new chat model.
 func NewChatModel() ChatModel {
-	return ChatModel{autoScroll: true}
+	return ChatModel{autoScroll: true, styles: styles.New(palette.DefaultTheme())}
+}
+
+// SetStyles updates the active styles used by chat chrome and style-aware
+// items already in the chat.
+func (m ChatModel) SetStyles(s *styles.Styles) ChatModel {
+	if s == nil {
+		s = styles.New(palette.DefaultTheme())
+	}
+
+	m.styles = s
+	for i, item := range m.items {
+		if styled, ok := item.(StyleAwareChatItem); ok {
+			styled.SetStyles(s)
+			m.invalidate(i)
+		}
+	}
+
+	return m
+}
+
+func (m ChatModel) theme() *palette.Theme {
+	if m.styles == nil {
+		return palette.DefaultTheme()
+	}
+
+	return m.styles.Theme()
+}
+
+func (m ChatModel) withActiveStyles(item ChatItem) ChatItem {
+	if styled, ok := item.(StyleAwareChatItem); ok {
+		styled.SetStyles(m.styles)
+	}
+
+	return item
 }
 
 // SetSize updates the chat dimensions and invalidates the entire cache.
@@ -181,6 +223,7 @@ func (m ChatModel) JumpToBottom() ChatModel {
 
 // AddItem appends a chat item and auto-scrolls if near the bottom.
 func (m ChatModel) AddItem(item ChatItem) ChatModel {
+	item = m.withActiveStyles(item)
 	m.items = append(m.items, item)
 
 	if m.cache != nil {
@@ -199,6 +242,7 @@ func (m ChatModel) AddItem(item ChatItem) ChatModel {
 // UpdateItem replaces the last item if it matches the given type, otherwise appends.
 // This is used for updating the current assistant message in-place.
 func (m ChatModel) UpdateItem(item ChatItem) ChatModel {
+	item = m.withActiveStyles(item)
 	if len(m.items) > 0 {
 		m.items[len(m.items)-1] = item
 		m.invalidate(len(m.items) - 1)
@@ -221,6 +265,7 @@ func (m ChatModel) UpdateItem(item ChatItem) ChatModel {
 // UpdateItemByID finds an item by ChatItemIdentity interface and replaces it.
 // Falls back to appending if not found.
 func (m ChatModel) UpdateItemByID(item ChatItem) ChatModel {
+	item = m.withActiveStyles(item)
 	id, ok := item.(ChatItemIdentity)
 	if !ok {
 		return m.AddItem(item)
@@ -241,6 +286,7 @@ func (m ChatModel) UpdateItemByID(item ChatItem) ChatModel {
 
 // UpdateItemAt replaces the item at the given index.
 func (m ChatModel) UpdateItemAt(index int, item ChatItem) ChatModel {
+	item = m.withActiveStyles(item)
 	if index >= 0 && index < len(m.items) {
 		m.items[index] = item
 		m.invalidate(index)
@@ -259,6 +305,7 @@ func (m ChatModel) InsertItemAt(index int, item ChatItem) ChatModel {
 		return m
 	}
 
+	item = m.withActiveStyles(item)
 	m.items = append(m.items[:index], append([]ChatItem{item}, m.items[index:]...)...)
 
 	if m.cache != nil {
@@ -574,7 +621,7 @@ func (m *ChatModel) allContentLines() []string {
 		}
 
 		if visibleCount > 0 {
-			dotStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(palette.DefaultTheme().Muted))
+			dotStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.theme().Muted))
 			lines = append(lines, dotStyle.Render("·"))
 		}
 
@@ -669,8 +716,8 @@ func (m ChatModel) Draw(scr uv.Screen, area uv.Rectangle) {
 		}
 
 		indStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color(palette.DefaultTheme().Warning)).
-			Background(lipgloss.Color(palette.DefaultTheme().BackgroundTint)).
+			Foreground(lipgloss.Color(m.theme().Warning)).
+			Background(lipgloss.Color(m.theme().BackgroundTint)).
 			Padding(0, 1)
 		lastRow := area.Min.Y + viewportHeight - 1
 		indRect := uv.Rect(area.Min.X, lastRow, area.Dx(), 1)

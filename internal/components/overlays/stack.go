@@ -3,6 +3,9 @@ package overlays
 import (
 	"errors"
 
+	"github.com/weave-agent/weave-tui/internal/palette"
+	"github.com/weave-agent/weave-tui/internal/styles"
+
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 )
@@ -32,6 +35,12 @@ type Dialog interface {
 	Result() DialogResult
 	// SetSize updates the dialog's dimensions for centering calculations.
 	SetSize(width, height int) Dialog
+}
+
+// ThemedDialog is implemented by dialogs that render with the active model
+// theme.
+type ThemedDialog interface {
+	SetTheme(theme *palette.Theme) Dialog
 }
 
 // DialogStack manages a stack of dialog overlays.
@@ -142,6 +151,17 @@ func (s DialogStack) Resize(width, height int) DialogStack {
 	return s
 }
 
+// SetTheme updates all themed dialogs currently on the stack.
+func (s DialogStack) SetTheme(theme *palette.Theme) DialogStack {
+	for i, d := range s.dialogs {
+		if themed, ok := d.(ThemedDialog); ok {
+			s.dialogs[i] = themed.SetTheme(theme)
+		}
+	}
+
+	return s
+}
+
 // --- Selector Dialog Adapter ---
 
 // SelectorDialog wraps a SelectorModel as a Dialog.
@@ -164,6 +184,11 @@ func (d *SelectorDialog) Model() SelectorModel { return d.model }
 
 func (d *SelectorDialog) SetSize(width, height int) Dialog {
 	d.model = d.model.SetSize(width, height)
+	return d
+}
+
+func (d *SelectorDialog) SetTheme(theme *palette.Theme) Dialog {
+	d.model = d.model.SetStyles(styles.New(theme))
 	return d
 }
 
@@ -230,6 +255,11 @@ func (d *ConfirmDialog) SetSize(width, height int) Dialog {
 	return d
 }
 
+func (d *ConfirmDialog) SetTheme(theme *palette.Theme) Dialog {
+	d.model = d.model.SetTheme(theme)
+	return d
+}
+
 func (d *ConfirmDialog) Update(msg tea.Msg) (Dialog, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ConfirmResultMsg:
@@ -284,6 +314,11 @@ func (d *InputDialog) Model() InputModel    { return d.model }
 
 func (d *InputDialog) SetSize(width, height int) Dialog {
 	d.model = d.model.SetSize(width, height)
+	return d
+}
+
+func (d *InputDialog) SetTheme(theme *palette.Theme) Dialog {
+	d.model = d.model.SetTheme(theme)
 	return d
 }
 
@@ -349,6 +384,11 @@ func (d *EditorDialog) SetSize(width, height int) Dialog {
 	return d
 }
 
+func (d *EditorDialog) SetTheme(theme *palette.Theme) Dialog {
+	d.model = d.model.SetTheme(theme)
+	return d
+}
+
 func (d *EditorDialog) Update(msg tea.Msg) (Dialog, tea.Cmd) {
 	switch msg := msg.(type) {
 	case EditorResultMsg:
@@ -408,6 +448,11 @@ func (d *MultiSelectDialog) Model() MultiSelectModel { return d.model }
 
 func (d *MultiSelectDialog) SetSize(width, height int) Dialog {
 	d.model = d.model.SetSize(width, height)
+	return d
+}
+
+func (d *MultiSelectDialog) SetTheme(theme *palette.Theme) Dialog {
+	d.model = d.model.SetTheme(theme)
 	return d
 }
 

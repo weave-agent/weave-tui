@@ -23,6 +23,7 @@ type LoginModel struct {
 	width    int
 	height   int
 	visible  bool
+	theme    *palette.Theme
 }
 
 // NewLoginModel creates a new login dialog model.
@@ -57,6 +58,12 @@ func (m LoginModel) SetSize(width, height int) LoginModel {
 	return m
 }
 
+// SetTheme updates the theme used to render the login dialog.
+func (m LoginModel) SetTheme(theme *palette.Theme) LoginModel {
+	m.theme = theme
+	return m
+}
+
 // SetStatus updates the status message displayed in the dialog.
 func (m LoginModel) SetStatus(status string) LoginModel {
 	m.status = status
@@ -85,7 +92,10 @@ func (m LoginModel) View() string {
 		return ""
 	}
 
-	theme := palette.DefaultTheme()
+	theme := m.theme
+	if theme == nil {
+		theme = palette.DefaultTheme()
+	}
 	boxWidth := min(60, m.width-4)
 
 	borderStyle := lipgloss.NewStyle().
@@ -164,6 +174,11 @@ func (d *LoginDialog) SetAuthURL(url string) {
 
 func (d *LoginDialog) SetSize(width, height int) Dialog {
 	d.model = d.model.SetSize(width, height)
+	return d
+}
+
+func (d *LoginDialog) SetTheme(theme *palette.Theme) Dialog {
+	d.model = d.model.SetTheme(theme)
 	return d
 }
 

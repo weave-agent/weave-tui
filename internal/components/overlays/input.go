@@ -26,6 +26,7 @@ type InputModel struct {
 	width   int
 	height  int
 	visible bool
+	theme   *palette.Theme
 }
 
 // NewInputModel creates a new input model.
@@ -58,6 +59,12 @@ func (m InputModel) SetSize(width, height int) InputModel {
 	m.width = width
 	m.height = height
 
+	return m
+}
+
+// SetTheme updates the theme used to render the input modal.
+func (m InputModel) SetTheme(theme *palette.Theme) InputModel {
+	m.theme = theme
 	return m
 }
 
@@ -189,7 +196,10 @@ func (m InputModel) View() string {
 		return ""
 	}
 
-	theme := palette.DefaultTheme()
+	theme := m.theme
+	if theme == nil {
+		theme = palette.DefaultTheme()
+	}
 	boxWidth := min(50, m.width-4)
 
 	borderStyle := lipgloss.NewStyle().

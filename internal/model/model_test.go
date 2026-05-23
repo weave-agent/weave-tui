@@ -3395,6 +3395,36 @@ func TestModel_ThemeChangedMsg(t *testing.T) {
 	assert.Equal(t, "255", m.theme.Foreground)
 }
 
+func TestModel_ThemeChangedMsg_RestylesEditorFooterAndChat(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+	m.chat = m.chat.SetSize(80, m.chatHeight(24))
+	m.AddUserMessage("hello")
+
+	customTheme := &palette.Theme{
+		Accent:         "123",
+		AccentBright:   "124",
+		Foreground:     "88",
+		Muted:          "77",
+		Border:         "66",
+		BackgroundTint: "235",
+	}
+	updated, _ := m.Update(themeChangedMsg{Theme: customTheme})
+	m = updated.(Model)
+
+	assert.Equal(t, "123", m.editor.BorderColor)
+	assert.Contains(t, m.chat.View(), "88", "existing chat messages should be restyled")
+
+	m.footer = m.footer.SetCWD("/tmp/weave")
+	m.footer = m.footer.SetModel("glm-5.1", "openai")
+	canvas := uv.NewScreenBuffer(80, 2)
+	m.footer.Draw(canvas, canvas.Bounds(), m.theme)
+	rendered := canvas.Render()
+	assert.Contains(t, rendered, "77", "footer metadata should use custom muted color")
+	assert.Contains(t, rendered, "123", "footer model name should use custom accent color")
+}
+
 func TestModel_ThemeChangedMsg_NilTheme(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 

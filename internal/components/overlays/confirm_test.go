@@ -3,6 +3,8 @@ package overlays
 import (
 	"testing"
 
+	"github.com/weave-agent/weave-tui/internal/palette"
+
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/stretchr/testify/assert"
@@ -168,4 +170,18 @@ func TestConfirmView_StylingUsesWarningAccent(t *testing.T) {
 	assert.Contains(t, view, "No")
 	// Rounded border should be present
 	assert.Contains(t, view, "╭")
+}
+
+func TestConfirmView_UsesCustomTheme(t *testing.T) {
+	custom := &palette.Theme{
+		Warning:    "166",
+		Foreground: "88",
+		Muted:      "77",
+	}
+	m := NewConfirmModel("Apply?").Show().SetSize(60, 20).SetTheme(custom)
+
+	view := m.View()
+	assert.Contains(t, view, "166")
+	assert.Contains(t, view, "88")
+	assert.Contains(t, view, "77")
 }

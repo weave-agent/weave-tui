@@ -90,6 +90,7 @@ func pushPopupDialog(m Model, req *overlayRequest) (Model, tea.Cmd) {
 	case requestConfirm:
 		conf := overlays.NewConfirmModel(req.Message)
 		conf = conf.SetSize(dialogWidth, dialogHeight)
+		conf = conf.SetTheme(m.theme)
 		conf = conf.Show()
 
 		m.dialogStack = m.dialogStack.Push(overlays.NewConfirmDialog(id, conf))
@@ -98,6 +99,7 @@ func pushPopupDialog(m Model, req *overlayRequest) (Model, tea.Cmd) {
 		input := overlays.NewInputModel(req.Message)
 		input = input.SetSize(dialogWidth, dialogHeight)
 		input = input.SetMask(req.Mask)
+		input = input.SetTheme(m.theme)
 		input = input.Show()
 
 		m.dialogStack = m.dialogStack.Push(overlays.NewInputDialog(id, input))
@@ -105,6 +107,7 @@ func pushPopupDialog(m Model, req *overlayRequest) (Model, tea.Cmd) {
 	case requestEditor:
 		editor := overlays.NewEditorModel(req.Title, req.Initial)
 		editor = editor.SetSize(dialogWidth, dialogHeight)
+		editor = editor.SetTheme(m.theme)
 		editor = editor.Show()
 
 		m.dialogStack = m.dialogStack.Push(overlays.NewEditorDialog(id, editor))
@@ -112,6 +115,7 @@ func pushPopupDialog(m Model, req *overlayRequest) (Model, tea.Cmd) {
 	case requestMultiSelect:
 		ms := overlays.NewMultiSelectModel(req.Title, req.Items, req.Defaults)
 		ms = ms.SetSize(dialogWidth, dialogHeight)
+		ms = ms.SetTheme(m.theme)
 		ms = ms.Show()
 
 		m.dialogStack = m.dialogStack.Push(overlays.NewMultiSelectDialog(id, ms))
