@@ -43,6 +43,35 @@ func TestAccentForState_IdleMatchesDefaultTheme(t *testing.T) {
 	assert.Equal(t, theme.Accent, a)
 }
 
+func TestAccentForStateInTheme_IdleAndFallbackUseThemeAccent(t *testing.T) {
+	theme := DefaultTheme()
+	theme.Accent = "#112233"
+	theme.AccentDim = "#223344"
+	theme.AccentBright = "#334455"
+
+	a, ad, ab := AccentForStateInTheme(StateIdle, theme)
+	assert.Equal(t, "#112233", a)
+	assert.Equal(t, "#223344", ad)
+	assert.Equal(t, "#334455", ab)
+
+	a, ad, ab = AccentForStateInTheme(State(-1), theme)
+	assert.Equal(t, "#112233", a)
+	assert.Equal(t, "#223344", ad)
+	assert.Equal(t, "#334455", ab)
+}
+
+func TestAccentForStateInTheme_ActiveStatesKeepStateAccents(t *testing.T) {
+	theme := DefaultTheme()
+	theme.Accent = "#112233"
+	theme.AccentDim = "#223344"
+	theme.AccentBright = "#334455"
+
+	a, ad, ab := AccentForStateInTheme(StateStreaming, theme)
+	assert.Equal(t, "45", a)
+	assert.Equal(t, "39", ad)
+	assert.Equal(t, "51", ab)
+}
+
 func stateName(s State) string {
 	switch s {
 	case StateIdle:

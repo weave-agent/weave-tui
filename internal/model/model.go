@@ -1063,8 +1063,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tuievents.AgentStateChangeMsg:
 		m.agentState = msg.State
-		accent, accentDim, accentBright := palette.AccentForState(msg.State)
-		newTheme := *m.theme
+		baseTheme := m.activeBaseTheme()
+		accent, accentDim, accentBright := palette.AccentForStateInTheme(msg.State, baseTheme)
+		newTheme := *baseTheme
 		newTheme.Accent = accent
 		newTheme.AccentDim = accentDim
 		newTheme.AccentBright = accentBright
@@ -2534,6 +2535,22 @@ func (m Model) applyThemeByName(name string) (Model, error) {
 	m = m.applyThemeToDependents(m.theme.Accent, false)
 
 	return m, nil
+}
+
+func (m Model) activeBaseTheme() *palette.Theme {
+	if m.ui != nil {
+		if entry, ok := m.themeEntry(m.ui.Theme().Name); ok {
+			theme := *entry.Theme
+			return &theme
+		}
+	}
+
+	if m.theme != nil {
+		theme := *m.theme
+		return &theme
+	}
+
+	return palette.DefaultTheme()
 }
 
 func (m Model) applyThemeToDependents(borderColor string, resetPulse bool) Model {

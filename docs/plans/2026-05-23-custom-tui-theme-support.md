@@ -111,12 +111,12 @@
 - [x] run component/model tests - must pass before task 6
 
 ### Task 6: Preserve custom theme semantics during dynamic state changes
-- [ ] review `palette.AccentForState` and agent state handling that overwrites accent colors
-- [ ] decide whether state changes should tint from the active theme or use existing hardcoded state accents
-- [ ] implement the minimal behavior that avoids permanently erasing the selected theme after returning to idle
-- [ ] write tests for agent state changes with a custom theme
-- [ ] write tests that returning to idle restores the active theme accent values
-- [ ] run palette/model state tests - must pass before task 7
+- [x] review `palette.AccentForState` and agent state handling that overwrites accent colors
+- [x] decide whether state changes should tint from the active theme or use existing hardcoded state accents
+- [x] implement the minimal behavior that avoids permanently erasing the selected theme after returning to idle
+- [x] write tests for agent state changes with a custom theme
+- [x] write tests that returning to idle restores the active theme accent values
+- [x] run palette/model state tests - must pass before task 7
 
 ### Task 7: Verify acceptance criteria
 - [ ] verify JSON themes under `~/.weave/themes/*.json` are loaded
