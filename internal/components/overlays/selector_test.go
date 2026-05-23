@@ -127,6 +127,21 @@ func TestSelectorSetCursorClampsToItems(t *testing.T) {
 	assert.Equal(t, 1, m.SetCursor(1).Cursor())
 }
 
+func TestSelectorSelectedIndexUsesFilteredOriginalIndex(t *testing.T) {
+	items := []SelectorItem{
+		{Title: "Alpha"},
+		{Title: "Beta"},
+		{Title: "Gamma"},
+	}
+	m := NewSelectorModel("Test", items).Show()
+
+	m, _ = m.Update(tea.KeyPressMsg{Text: "g", Code: 'g'})
+
+	index, ok := m.SelectedIndex()
+	require.True(t, ok)
+	assert.Equal(t, 2, index)
+}
+
 func TestSelectorEnterSelects(t *testing.T) {
 	items := []SelectorItem{
 		{Title: "First", Subtitle: "desc1"},

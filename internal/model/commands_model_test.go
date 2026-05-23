@@ -1,12 +1,15 @@
 package model
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/weave-agent/weave/bus"
+	"github.com/weave-agent/weave/sdk"
 
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
@@ -222,7 +225,7 @@ func TestModel_ThemeCommandOpensSelector(t *testing.T) {
 	dlg, ok := m2.dialogStack.Peek().(*overlays.SelectorDialog)
 	require.True(t, ok)
 	assert.Equal(t, 0, dlg.Model().Cursor())
-	assert.Contains(t, dlg.Model().View(), "default")
+	assert.Contains(t, dlg.Model().View(), defaultThemeName)
 	assert.Contains(t, dlg.Model().View(), "built-in")
 }
 
@@ -252,9 +255,150 @@ func TestModel_ThemeSelectorIncludesBuiltInAndUserThemes(t *testing.T) {
 	require.True(t, ok)
 
 	view := dlg.Model().View()
-	assert.Contains(t, view, "default")
+	assert.Contains(t, view, defaultThemeName)
 	assert.Contains(t, view, "built-in")
 	assert.Contains(t, view, "user-theme")
 	assert.Contains(t, view, "user")
 	assert.Equal(t, 1, dlg.Model().Cursor())
+}
+
+func TestModel_ThemeSelectorPreviewsHighlightedTheme(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	theme := startupTestTheme("#445566")
+	theme["name"] = "user-theme"
+	writeStartupTheme(t, home, "user-theme", theme)
+
+	ui := NewTUIImpl(nil, nil)
+	m := NewModelWithConfig(nil, nil, nil, ui, TUIConfig{})
+	m.width = 80
+	m.height = 24
+	m = m.openThemeSelector()
+
+	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	m2 := model.(Model)
+
+	assert.Equal(t, "#445566", m2.theme.Accent)
+	assert.Equal(t, "#445566", m2.styles.Theme().Accent)
+	assert.Equal(t, "#445566", ui.Theme().Accent)
+	assert.Equal(t, "user-theme", ui.Theme().Name)
+	assert.Equal(t, "#445566", m2.editor.BorderColor)
+}
+
+func TestModel_ThemeSelectorCancelRestoresOriginalTheme(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	theme := startupTestTheme("#445566")
+	theme["name"] = "user-theme"
+	writeStartupTheme(t, home, "user-theme", theme)
+
+	ui := NewTUIImpl(nil, nil)
+	m := NewModelWithConfig(nil, nil, nil, ui, TUIConfig{})
+	m.width = 80
+	m.height = 24
+	m = m.openThemeSelector()
+
+	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	m2 := model.(Model)
+	require.Equal(t, "#445566", m2.theme.Accent)
+
+	model, cmd := m2.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	require.NotNil(t, cmd)
+	model, _ = model.(Model).Update(cmd())
+	m3 := model.(Model)
+
+	assert.Equal(t, defaultThemeName, ui.Theme().Name)
+	assert.Equal(t, "245", m3.theme.Accent)
+	assert.Equal(t, "245", m3.styles.Theme().Accent)
+	assert.Equal(t, "245", m3.editor.BorderColor)
+	assert.True(t, m3.dialogStack.Empty())
+}
+
+func TestModel_ThemeSelectorConfirmPersistsThemeAndPreservesUISettings(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	theme := startupTestTheme("#445566")
+	theme["name"] = "user-theme"
+	writeStartupTheme(t, home, "user-theme", theme)
+
+	stored := map[string]any{
+		"provider": "openai",
+		"ui": map[string]any{
+			"theme":            defaultThemeName,
+			"editor_max_lines": float64(30),
+		},
+	}
+
+	ps := &mockConfig{
+		preferences: stored,
+		savePreferences: func(target any) error {
+			data, err := json.Marshal(target)
+			if err != nil {
+				return fmt.Errorf("marshal: %w", err)
+			}
+
+			var targetMap map[string]any
+			if err := json.Unmarshal(data, &targetMap); err != nil {
+				return fmt.Errorf("unmarshal: %w", err)
+			}
+
+			stored["ui"] = targetMap["ui"]
+
+			return nil
+		},
+	}
+
+	ui := NewTUIImpl(nil, nil)
+	m := NewModelWithConfig(nil, nil, ps, ui, TUIConfig{})
+	m.width = 80
+	m.height = 24
+	m = m.openThemeSelector()
+
+	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, cmd := model.(Model).Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	require.NotNil(t, cmd)
+	model, _ = model.(Model).Update(cmd())
+	m2 := model.(Model)
+
+	uiPrefs, ok := stored["ui"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "user-theme", uiPrefs["theme"])
+	assert.InDelta(t, 30, uiPrefs["editor_max_lines"], 0)
+	assert.Equal(t, "user-theme", ui.Theme().Name)
+	assert.Equal(t, "Theme applied: user-theme", m2.bannerMsg)
+	assert.Equal(t, sdk.NotifySuccess, m2.bannerLevel)
+}
+
+func TestModel_ThemeSelectorConfirmNotifiesPersistenceFailure(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	theme := startupTestTheme("#445566")
+	theme["name"] = "user-theme"
+	writeStartupTheme(t, home, "user-theme", theme)
+
+	ps := &mockConfig{
+		savePreferences: func(any) error {
+			return assert.AnError
+		},
+	}
+
+	ui := NewTUIImpl(nil, nil)
+	m := NewModelWithConfig(nil, nil, ps, ui, TUIConfig{})
+	m.width = 80
+	m.height = 24
+	m = m.openThemeSelector()
+
+	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, cmd := model.(Model).Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	require.NotNil(t, cmd)
+	model, _ = model.(Model).Update(cmd())
+	m2 := model.(Model)
+
+	assert.Equal(t, "user-theme", ui.Theme().Name)
+	assert.Contains(t, m2.bannerMsg, "Theme applied, but preferences were not saved")
+	assert.Equal(t, sdk.NotifyError, m2.bannerLevel)
 }

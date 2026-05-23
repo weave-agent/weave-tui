@@ -37,7 +37,7 @@ func TestNewModelWithConfig_UnknownConfiguredThemeFallsBackToDefault(t *testing.
 
 	assert.Equal(t, palette.DefaultTheme().Accent, m.theme.Accent)
 	assert.Equal(t, palette.DefaultTheme().Accent, m.styles.Theme().Accent)
-	assert.Equal(t, "default", ui.Theme().Name)
+	assert.Equal(t, defaultThemeName, ui.Theme().Name)
 }
 
 func writeStartupTheme(t *testing.T, home, name string, theme map[string]string) {

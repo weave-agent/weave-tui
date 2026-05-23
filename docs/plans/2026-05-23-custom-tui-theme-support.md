@@ -91,15 +91,15 @@
 - [x] run command/dialog tests - must pass before task 4
 
 ### Task 4: Implement live preview, cancel restore, and confirm persistence
-- [ ] preview the highlighted theme immediately as the selector cursor changes
-- [ ] store the previously active theme when `/theme` opens
-- [ ] restore the previous theme when the selector is canceled with Esc
-- [ ] persist confirmed selection to `ui.theme` through `sdk.PreferenceStore` without overwriting other `ui` settings
-- [ ] notify the user when a theme is applied or when persistence fails
-- [ ] write tests for live preview changing the active theme
-- [ ] write tests for cancel restoring the original theme
-- [ ] write tests for confirm persisting `ui.theme` and preserving sibling UI settings
-- [ ] run selector persistence tests - must pass before task 5
+- [x] preview the highlighted theme immediately as the selector cursor changes
+- [x] store the previously active theme when `/theme` opens
+- [x] restore the previous theme when the selector is canceled with Esc
+- [x] persist confirmed selection to `ui.theme` through `sdk.PreferenceStore` without overwriting other `ui` settings
+- [x] notify the user when a theme is applied or when persistence fails
+- [x] write tests for live preview changing the active theme
+- [x] write tests for cancel restoring the original theme
+- [x] write tests for confirm persisting `ui.theme` and preserving sibling UI settings
+- [x] run selector persistence tests - must pass before task 5
 
 ### Task 5: Make active theme usage consistent
 - [ ] audit runtime `palette.DefaultTheme()` calls in components that should respect the active theme

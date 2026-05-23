@@ -103,6 +103,18 @@ func (m SelectorModel) Height() int { return m.height }
 // Cursor returns the current cursor position among filtered items.
 func (m SelectorModel) Cursor() int { return m.cursor }
 
+// SelectedIndex returns the original item index under the current cursor.
+func (m SelectorModel) SelectedIndex() (int, bool) {
+	filtered := m.filteredItems()
+	if len(filtered) == 0 {
+		return 0, false
+	}
+
+	cursor := max(0, min(m.cursor, len(filtered)-1))
+
+	return filtered[cursor].Index, true
+}
+
 // Filter returns the current filter text.
 func (m SelectorModel) Filter() string { return m.filter }
 

@@ -75,6 +75,12 @@ type pulseTickMsg struct {
 
 type themeSelectMsg struct{}
 
+const defaultThemeName = "default"
+
+type themePreferences struct {
+	UI map[string]any `json:"ui,omitempty"`
+}
+
 const (
 	doublePressCtrlC  = 0
 	doublePressEscape = 1
@@ -174,7 +180,8 @@ type Model struct {
 	// styles is the cached style set for the active theme.
 	styles *styles.Styles
 
-	themeEntries []themecatalog.Entry
+	themeEntries      []themecatalog.Entry
+	themeBeforeSelect string
 
 	contextTokens int
 
@@ -343,9 +350,9 @@ func applyStartupTheme(ui *TUIImpl, configured string) (*palette.Theme, []themec
 		slog.Warn("failed to load theme catalog", "error", err)
 
 		theme := palette.DefaultTheme()
-		_ = ui.SetTheme("default")
+		_ = ui.SetTheme(defaultThemeName)
 
-		return theme, []themecatalog.Entry{{Name: "default", Theme: theme, Source: themecatalog.SourceBuiltin}}
+		return theme, []themecatalog.Entry{{Name: defaultThemeName, Theme: theme, Source: themecatalog.SourceBuiltin}}
 	}
 
 	entries := catalog.List()
@@ -357,13 +364,13 @@ func applyStartupTheme(ui *TUIImpl, configured string) (*palette.Theme, []themec
 
 	name := strings.TrimSpace(configured)
 	if name == "" {
-		name = "default"
+		name = defaultThemeName
 	}
 
 	theme, err := catalog.Theme(name)
 	if err != nil {
 		slog.Warn("configured theme is unavailable; falling back to default", "theme", name, "error", err)
-		name = "default"
+		name = defaultThemeName
 
 		theme, err = catalog.Theme(name)
 		if err != nil {
@@ -376,8 +383,8 @@ func applyStartupTheme(ui *TUIImpl, configured string) (*palette.Theme, []themec
 	if setErr := ui.SetTheme(name); setErr != nil {
 		slog.Warn("failed to apply startup theme", "theme", name, "error", setErr)
 
-		if name != "default" {
-			name = "default"
+		if name != defaultThemeName {
+			name = defaultThemeName
 			_ = ui.SetTheme(name)
 
 			if fallback, err := catalog.Theme(name); err == nil {
@@ -531,6 +538,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.dialogStack, d = m.dialogStack.Pop()
 
 			return m.handleDialogDone(d, cmd)
+		}
+
+		if m.shouldPreviewThemeSelection(msg) {
+			m = m.previewThemeSelection()
 		}
 
 		return m, cmd
@@ -2437,6 +2448,8 @@ func (m Model) openThemeSelector() Model {
 		activeName = m.ui.Theme().Name
 	}
 
+	m.themeBeforeSelect = activeName
+
 	cursor := 0
 
 	for i, entry := range entries {
@@ -2462,6 +2475,151 @@ func (m Model) openThemeSelector() Model {
 	m.dialogStack = m.dialogStack.Push(overlays.NewSelectorDialog(dialogThemeSelect, sel))
 
 	return m
+}
+
+func (m Model) shouldPreviewThemeSelection(msg tea.Msg) bool {
+	top := m.dialogStack.Peek()
+	if top == nil || top.ID() != dialogThemeSelect {
+		return false
+	}
+
+	key, ok := msg.(tea.KeyPressMsg)
+	if !ok {
+		return false
+	}
+
+	return key.Code != tea.KeyEsc && !isEnterKey(key.Code)
+}
+
+func (m Model) previewThemeSelection() Model {
+	dlg, ok := m.dialogStack.Peek().(*overlays.SelectorDialog)
+	if !ok {
+		return m
+	}
+
+	name, ok := m.themeNameAtSelectorCursor(dlg)
+	if !ok {
+		return m
+	}
+
+	updated, err := m.applyThemeByName(name)
+	if err != nil {
+		slog.Warn("failed to preview theme", "theme", name, "error", err)
+		return m
+	}
+
+	return updated
+}
+
+func (m Model) themeNameAtSelectorCursor(dlg *overlays.SelectorDialog) (string, bool) {
+	index, ok := dlg.Model().SelectedIndex()
+	if !ok || index < 0 || index >= len(m.themeEntries) {
+		return "", false
+	}
+
+	return m.themeEntries[index].Name, true
+}
+
+func (m Model) applyThemeByName(name string) (Model, error) {
+	entry, ok := m.themeEntry(name)
+	if !ok {
+		return m, fmt.Errorf("unknown theme: %s", name)
+	}
+
+	if m.ui != nil {
+		if err := m.ui.SetTheme(name); err != nil {
+			return m, fmt.Errorf("set theme: %w", err)
+		}
+	}
+
+	theme := *entry.Theme
+	m.theme = &theme
+	m.styles = styles.New(m.theme)
+	m.editor = m.editor.SetStyles(m.styles)
+	m.editor = m.editor.SetBorderColor(m.theme.Accent)
+	m.editor = m.editor.SetPulseColors(m.theme.Accent, m.theme.AccentBright)
+	m.spinner = m.spinner.SetTheme(m.theme)
+
+	return m, nil
+}
+
+func (m Model) themeEntry(name string) (themecatalog.Entry, bool) {
+	for _, entry := range m.themeEntries {
+		if entry.Name == name && entry.Theme != nil {
+			return entry, true
+		}
+	}
+
+	return themecatalog.Entry{}, false
+}
+
+func (m Model) onThemeDialogDone(result overlays.DialogResult, pendingCmd tea.Cmd) (tea.Model, tea.Cmd) {
+	if result.Err != nil {
+		if m.themeBeforeSelect != "" {
+			var err error
+
+			m, err = m.applyThemeByName(m.themeBeforeSelect)
+			if err != nil {
+				slog.Warn("failed to restore theme after cancel", "theme", m.themeBeforeSelect, "error", err)
+			}
+		}
+
+		m.themeBeforeSelect = ""
+
+		return m, pendingCmd
+	}
+
+	if result.Index < 0 || result.Index >= len(m.themeEntries) {
+		m.themeBeforeSelect = ""
+		return m, pendingCmd
+	}
+
+	name := m.themeEntries[result.Index].Name
+
+	var err error
+
+	m, err = m.applyThemeByName(name)
+	if err != nil {
+		m.showBanner("Failed to apply theme: "+err.Error(), sdk.NotifyError)
+		m.themeBeforeSelect = ""
+
+		return m, tea.Batch(pendingCmd, m.bannerTimer)
+	}
+
+	if err := saveThemePreference(m.ps, name); err != nil {
+		m.showBanner("Theme applied, but preferences were not saved: "+err.Error(), sdk.NotifyError)
+		m.themeBeforeSelect = ""
+
+		return m, tea.Batch(pendingCmd, m.bannerTimer)
+	}
+
+	m.showBanner("Theme applied: "+name, sdk.NotifySuccess)
+	m.themeBeforeSelect = ""
+
+	return m, tea.Batch(pendingCmd, m.bannerTimer)
+}
+
+func saveThemePreference(ps sdk.PreferenceStore, name string) error {
+	if ps == nil {
+		return errors.New("preference store is unavailable")
+	}
+
+	var prefs themePreferences
+	if err := ps.Preferences(&prefs); err != nil {
+		return fmt.Errorf("load preferences: %w", err)
+	}
+
+	if prefs.UI == nil {
+		prefs.UI = map[string]any{}
+	}
+
+	prefs.UI["theme"] = name
+
+	if err := ps.SavePreferences(&prefs); err != nil {
+		return fmt.Errorf("save preferences: %w", err)
+	}
+
+	return nil
 }
 
 func (m Model) onProviderDialogDone(result overlays.DialogResult, pendingCmd tea.Cmd) (tea.Model, tea.Cmd) {
@@ -2723,7 +2881,7 @@ func (m Model) handleDialogDone(d overlays.Dialog, pendingCmd tea.Cmd) (tea.Mode
 	case dialogAttachmentEditor:
 		return m.onAttachmentEditorDone(result, pendingCmd)
 	case dialogThemeSelect:
-		return m, pendingCmd
+		return m.onThemeDialogDone(result, pendingCmd)
 	case dialogLoginOAuth:
 		// Login OAuth dialog was dismissed (user canceled or flow completed).
 		// The actual flow result is handled by tuievents.LoginFlowResultMsg.
@@ -2775,8 +2933,16 @@ func (m Model) handleDialogForceCancel(d overlays.Dialog) (tea.Model, tea.Cmd) {
 	case dialogLogoutSelect:
 		m.pendingLogoutProviders = nil
 	case dialogThemeSelect:
-		// Theme selection side effects are implemented by the selector
-		// workflow; force-cancel only dismisses the dialog for now.
+		if m.themeBeforeSelect != "" {
+			var err error
+
+			m, err = m.applyThemeByName(m.themeBeforeSelect)
+			if err != nil {
+				slog.Warn("failed to restore theme after force cancel", "theme", m.themeBeforeSelect, "error", err)
+			}
+		}
+
+		m.themeBeforeSelect = ""
 	case dialogLoginOAuth:
 		if m.oauthCancel != nil {
 			m.oauthCancel()
