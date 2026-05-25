@@ -18,7 +18,7 @@ func TestBindingRegistry_Defaults(t *testing.T) {
 		"esc":         ActionInterrupt,
 		"ctrl+l":      ActionModelSelect,
 		"ctrl+p":      ActionModelCycle,
-		"shift+tab":   ActionThinkingCycle,
+		"ctrl+t":      ActionThinkingCycle,
 		"shift+enter": ActionEditorNewline,
 		"ctrl+j":      ActionEditorNewline,
 	}

@@ -2321,16 +2321,22 @@ func TestModel_ThinkingCommandNoArgs(t *testing.T) {
 	m.height = 24
 	m.chat = m.chat.SetSize(80, 10)
 
-	model, _ := m.onSubmit("/thinking")
+	model, cmd := m.onSubmit("/thinking")
 	m = model.(Model)
 
-	items := m.chat.Items()
-	require.Len(t, items, 1)
-	am, ok := items[0].(*messages.AssistantMessage)
+	require.NotNil(t, cmd)
+	msg := cmd()
+	_, ok := msg.(thinkingSelectMsg)
 	require.True(t, ok)
-	assert.Contains(t, am.Content(), "Usage:")
-	assert.Contains(t, am.Content(), "off")
-	assert.Contains(t, am.Content(), "xhigh")
+
+	// Process the message to open the selector dialog
+	model, _ = m.Update(msg)
+	m = model.(Model)
+
+	// Dialog should be on the stack
+	top := m.dialogStack.Peek()
+	require.NotNil(t, top)
+	assert.Equal(t, dialogThinkingSelect, top.ID())
 }
 
 func TestModel_ThinkingCommandInvalid(t *testing.T) {
@@ -2407,6 +2413,46 @@ func TestModel_ThinkingCommandAllLevels(t *testing.T) {
 
 		assert.Equal(t, level, m.thinkingLevel)
 	}
+}
+
+func TestModel_ThinkingSelectorDialogDone(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+	m.chat = m.chat.SetSize(80, 10)
+	m.thinkingLevel = sdkmodel.ThinkingMedium
+
+	// Open the thinking selector
+	m = m.openThinkingSelector()
+
+	// Dialog should be on the stack
+	top := m.dialogStack.Peek()
+	require.NotNil(t, top)
+	assert.Equal(t, dialogThinkingSelect, top.ID())
+
+	// Simulate selecting the third item (ThinkingLow)
+	result := overlays.DialogResult{Index: 2}
+	model, cmd := m.onThinkingDialogDone(result, nil)
+	m = model.(Model)
+
+	assert.Equal(t, sdkmodel.ThinkingLow, m.thinkingLevel)
+	assert.Equal(t, "low", m.footer.ThinkingLevel())
+	require.NotNil(t, cmd)
+}
+
+func TestModel_ThinkingSelectorDialogCancel(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+	m.chat = m.chat.SetSize(80, 10)
+	m.thinkingLevel = sdkmodel.ThinkingMedium
+
+	result := overlays.DialogResult{Err: assert.AnError}
+	model, _ := m.onThinkingDialogDone(result, nil)
+	m = model.(Model)
+
+	// Level should be unchanged
+	assert.Equal(t, sdkmodel.ThinkingMedium, m.thinkingLevel)
 }
 
 func TestModel_StartupHintsShownInitially(t *testing.T) {
