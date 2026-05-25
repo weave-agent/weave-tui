@@ -29,7 +29,6 @@ const (
 	ActionEditorNewline      BindingAction = "tui.editor.newline"
 	ActionScrollUp           BindingAction = "tui.editor.scrollUp"
 	ActionScrollDown         BindingAction = "tui.editor.scrollDown"
-	ActionScrollToBottom     BindingAction = "tui.editor.scrollToBottom"
 	ActionDeleteWordBackward BindingAction = "tui.editor.deleteWordBackward"
 	ActionDeleteWordForward  BindingAction = "tui.editor.deleteWordForward"
 	ActionDeleteToLineStart  BindingAction = "tui.editor.deleteToLineStart"
@@ -66,7 +65,6 @@ var defaultBindings = []Binding{
 	{Action: ActionEditorNewline, Keys: []string{"shift+enter", "ctrl+j"}, Description: "Insert newline"},
 	{Action: ActionScrollUp, Keys: []string{"pgup"}, Description: "Scroll chat up"},
 	{Action: ActionScrollDown, Keys: []string{"pgdown"}, Description: "Scroll chat down"},
-	{Action: ActionScrollToBottom, Keys: []string{"shift+g"}, Description: "Scroll chat to bottom"},
 
 	// Editor deletion
 	{Action: ActionDeleteWordBackward, Keys: []string{"ctrl+w"}, Description: "Delete word backward"},

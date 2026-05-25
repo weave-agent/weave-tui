@@ -85,11 +85,10 @@ func TestChatModel_View_SingleItem(t *testing.T) {
 
 func TestChatModel_SetStyles_RestylesItemsAndChrome(t *testing.T) {
 	item := &styledStubItem{theme: palette.DefaultTheme()}
-	m := NewChatModel().SetSize(80, 2)
+	m := NewChatModel().SetSize(80, 5)
 	m = m.AddItem(stubItem{text: "one"})
 	m = m.AddItem(item)
-	m = m.ScrollUp(1)
-	m = m.SetTurnEndPending(true)
+	m = m.AddItem(stubItem{text: "a\nb\nc"})
 
 	custom := &palette.Theme{
 		Foreground:     "88",
@@ -99,12 +98,16 @@ func TestChatModel_SetStyles_RestylesItemsAndChrome(t *testing.T) {
 	}
 	m = m.SetStyles(styles.New(custom))
 
-	view := m.JumpToBottom().View()
+	view := m.View()
 	assert.Contains(t, view, "88", "style-aware item should use the custom foreground")
 	assert.Contains(t, view, "77", "separator should use the custom muted color")
 
-	m = m.ScrollUp(1).SetTurnEndPending(true)
-	buf := uv.NewScreenBuffer(80, 2)
+	// Scroll up from auto-scrolled position to disable auto-scroll
+	m = m.ScrollUp(1)
+	m = m.AddItem(stubItem{text: "more"})
+	require.True(t, m.NewContent())
+
+	buf := uv.NewScreenBuffer(80, 5)
 	m.Draw(buf, buf.Bounds())
 	rendered := buf.Render()
 	assert.Contains(t, rendered, "166", "scroll indicator should use the custom warning color")
@@ -773,25 +776,6 @@ func TestChatModel_ScrollDownToBottomReEnablesAutoScroll(t *testing.T) {
 	assert.False(t, m.NewContent())
 }
 
-func TestChatModel_JumpToBottom(t *testing.T) {
-	m := NewChatModel().SetSize(80, 3)
-	m = m.AddItem(stubItem{text: "line1\nline2\nline3\nline4\nline5\nline6\nline7"})
-	m = m.ScrollUp(4)
-	m = m.SetTurnEndPending(true)
-	m = m.AddItem(stubItem{text: "line8"}) // triggers newContent
-
-	require.True(t, m.NewContent())
-	require.True(t, m.TurnEndPending())
-	require.False(t, m.AtBottom())
-
-	m = m.JumpToBottom()
-
-	assert.True(t, m.AtBottom())
-	assert.True(t, m.AutoScroll())
-	assert.False(t, m.NewContent())
-	assert.False(t, m.TurnEndPending())
-}
-
 func TestChatModel_NearBottom(t *testing.T) {
 	m := NewChatModel().SetSize(80, 3)
 	m = m.AddItem(stubItem{text: "line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10"})
@@ -838,51 +822,17 @@ func TestChatModel_NewContentIndicator(t *testing.T) {
 	assert.Contains(t, rendered, "new content")
 }
 
-func TestChatModel_TurnEndIndicator(t *testing.T) {
-	m := NewChatModel().SetSize(80, 3)
-	m = m.AddItem(stubItem{text: "line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8"})
-	m = m.ScrollUp(5)
-	m = m.SetTurnEndPending(true)
-
-	require.True(t, m.TurnEndPending())
-
-	scr := uv.NewScreenBuffer(80, 3)
-	m.Draw(scr, uv.Rect(0, 0, 80, 3))
-	rendered := scr.Render()
-
-	assert.Contains(t, rendered, "scroll to bottom")
-}
-
 func TestChatModel_NoIndicatorWhenAtBottom(t *testing.T) {
 	m := NewChatModel().SetSize(80, 5)
 	m = m.AddItem(stubItem{text: "line1\nline2"})
 
 	require.True(t, m.AtBottom())
 	assert.False(t, m.NewContent())
-	assert.False(t, m.TurnEndPending())
 
 	// When at bottom, adding new content should not trigger indicator
 	m = m.AddItem(stubItem{text: "line3"})
 	assert.True(t, m.AtBottom())
 	assert.False(t, m.NewContent())
-}
-
-func TestChatModel_NoIndicatorWhenContentFits(t *testing.T) {
-	m := NewChatModel().SetSize(80, 10)
-	m = m.AddItem(stubItem{text: "short"})
-
-	// Force indicator flags even though content fits
-	m = m.SetTurnEndPending(true)
-	require.True(t, m.TurnEndPending())
-	require.True(t, m.AtBottom())
-
-	// Indicator should NOT render since everything fits in viewport
-	scr := uv.NewScreenBuffer(80, 10)
-	m.Draw(scr, uv.Rect(0, 0, 80, 10))
-	rendered := scr.Render()
-
-	assert.NotContains(t, rendered, "scroll to bottom")
-	assert.NotContains(t, rendered, "new content")
 }
 
 func TestChatModel_NoAutoScrollWhenNearBottomButDisabled(t *testing.T) {
@@ -995,22 +945,6 @@ func TestChatModel_ScrollIndicator_IsStyledPill(t *testing.T) {
 	assert.Contains(t, rendered, "234")
 }
 
-func TestChatModel_TurnEndIndicator_IsStyledPill(t *testing.T) {
-	m := NewChatModel().SetSize(80, 3)
-	m = m.AddItem(stubItem{text: "line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8"})
-	m = m.ScrollUp(5)
-	m = m.SetTurnEndPending(true)
-
-	require.True(t, m.TurnEndPending())
-
-	scr := uv.NewScreenBuffer(80, 3)
-	m.Draw(scr, uv.Rect(0, 0, 80, 3))
-	rendered := scr.Render()
-
-	assert.Contains(t, rendered, "scroll to bottom")
-	// The indicator should have background styling
-	assert.Contains(t, rendered, "234")
-}
 
 // --- Selection highlight rendering tests ---
 

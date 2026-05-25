@@ -224,16 +224,10 @@ func TestIntegration_TokenRateDisplayAndAutoScroll(t *testing.T) {
 	m = model.(Model)
 	assert.InDelta(t, 0.0, m.footer.TokenRate(), 0.001)
 
-	// Turn end while scrolled up — should set indicator
+	// Turn end while scrolled up — no special indicator, just normal behavior
 	model, _ = m.Update(tuievents.TurnEndMsg{})
 	m = model.(Model)
-	assert.True(t, m.chat.TurnEndPending(), "turn end indicator should be set when scrolled up")
-
-	// Scroll to bottom should clear indicator
-	model, _ = m.dispatchBinding(ActionScrollToBottom)
-	m = model.(Model)
-	assert.False(t, m.chat.TurnEndPending())
-	assert.True(t, m.chat.AtBottom())
+	assert.False(t, m.chat.AtBottom())
 }
 
 // TestIntegration_SDKUIThroughOverlayStack verifies all sdk.UI methods

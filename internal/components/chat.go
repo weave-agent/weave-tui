@@ -59,8 +59,6 @@ type ChatModel struct {
 	autoScroll bool
 	// newContent is set when content arrives while the user is scrolled up.
 	newContent bool
-	// turnEndPending is set externally when a turn ends while not at the bottom.
-	turnEndPending bool
 
 	// text selection state (mouse click-and-drag)
 	selActive    bool
@@ -168,17 +166,6 @@ func (m ChatModel) NewContent() bool {
 	return m.newContent
 }
 
-// TurnEndPending returns whether the turn-end scroll indicator is active.
-func (m ChatModel) TurnEndPending() bool {
-	return m.turnEndPending
-}
-
-// SetTurnEndPending sets the turn-end scroll indicator.
-func (m ChatModel) SetTurnEndPending(pending bool) ChatModel {
-	m.turnEndPending = pending
-	return m
-}
-
 // AutoScroll returns whether auto-scroll is active.
 func (m ChatModel) AutoScroll() bool {
 	return m.autoScroll
@@ -217,7 +204,6 @@ func (m ChatModel) JumpToBottom() ChatModel {
 	m.scrollToBottom()
 	m.autoScroll = true
 	m.newContent = false
-	m.turnEndPending = false
 
 	return m
 }
@@ -711,11 +697,8 @@ func (m ChatModel) Draw(scr uv.Screen, area uv.Rectangle) {
 	}
 
 	// Render scroll indicators on the last visible line as a styled pill
-	if (m.newContent || m.turnEndPending) && total > viewportHeight {
+	if m.newContent && total > viewportHeight {
 		indicator := "↓ new content"
-		if m.turnEndPending && !m.newContent {
-			indicator = "↓ scroll to bottom"
-		}
 
 		indStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(m.theme().Warning)).

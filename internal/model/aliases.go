@@ -50,7 +50,6 @@ const (
 	ActionEditorNewline      = tuikeybindings.ActionEditorNewline
 	ActionScrollUp           = tuikeybindings.ActionScrollUp
 	ActionScrollDown         = tuikeybindings.ActionScrollDown
-	ActionScrollToBottom     = tuikeybindings.ActionScrollToBottom
 	ActionDeleteWordBackward = tuikeybindings.ActionDeleteWordBackward
 	ActionDeleteWordForward  = tuikeybindings.ActionDeleteWordForward
 	ActionDeleteToLineStart  = tuikeybindings.ActionDeleteToLineStart

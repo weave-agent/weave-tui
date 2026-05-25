@@ -929,10 +929,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spinner = m.spinner.Hide()
 		m.syncChatViewport()
 
-		if !m.chat.AtBottom() {
-			m.chat = m.chat.SetTurnEndPending(true)
-		}
-
 		return m, nil
 
 	case tuievents.AgentEndMsg:
@@ -1580,9 +1576,6 @@ func (m Model) dispatchBinding(action tuikeybindings.BindingAction) (tea.Model, 
 		return m, nil
 	case tuikeybindings.ActionScrollDown:
 		m.chat = m.chat.ScrollDown(m.chatHeight(m.height))
-		return m, nil
-	case tuikeybindings.ActionScrollToBottom:
-		m.chat = m.chat.JumpToBottom()
 		return m, nil
 
 	// Editor deletion
