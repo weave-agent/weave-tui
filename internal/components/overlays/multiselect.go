@@ -180,6 +180,7 @@ func (m MultiSelectModel) View() string {
 
 	boxWidth := min(60, m.width-4)
 	boxHeight := min(15, m.height-2)
+
 	if m.docked {
 		boxWidth = m.width
 		boxHeight = m.height

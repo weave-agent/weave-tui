@@ -3883,6 +3883,27 @@ func TestModel_PanelFocusChain_NoPanels_TabIgnored(t *testing.T) {
 	assert.Equal(t, FocusEditor, m.focus)
 }
 
+func TestModel_PanelChanged_FocusesBlockingPanel(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+
+	m.panelManager.Register(PanelConfig{
+		ID:        "guardian",
+		Title:     "Guardian",
+		Placement: AsOverlay,
+		Blocking:  true,
+	}, &mockPanelDrawer{})
+	m.panelManager.Show("guardian")
+
+	model, _ := m.Update(panelChangedMsg{})
+	m = model.(Model)
+
+	assert.Equal(t, FocusPanel, m.focus)
+	assert.False(t, m.panelTray.IsFocused())
+	assert.Empty(t, m.expandedPanelID)
+}
+
 func TestModel_PanelChanged_LastPanelRemovedClearsTrayFocus(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)
 	m.width = 80

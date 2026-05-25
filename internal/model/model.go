@@ -1161,6 +1161,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.clearInvalidExpandedPanel()
 		m.syncChatViewport()
 
+		if m.focusActiveBlockingPanel() {
+			return m, nil
+		}
+
 		if m.panelTray.Len() == 0 && (m.focus == FocusTray || m.focus == FocusPanel) {
 			m.focus = FocusEditor
 			m.panelTray = m.panelTray.SetFocused(false)
@@ -2454,12 +2458,14 @@ func (m Model) openThinkingSelector() Model {
 	items := make([]overlays.SelectorItem, len(levels))
 
 	cursor := 0
+
 	for i, lvl := range levels {
 		title := string(lvl)
 		if lvl == m.thinkingLevel {
 			title += " ✓"
 			cursor = i
 		}
+
 		items[i] = overlays.SelectorItem{Title: title}
 	}
 
@@ -2762,6 +2768,7 @@ func (m Model) onThinkingDialogDone(result overlays.DialogResult, pendingCmd tea
 
 	updated, cmd := m.applyThinkingLevel(sdkmodel.AllThinkingLevels[result.Index])
 	m = updated.(Model)
+
 	return m, tea.Batch(cmd, pendingCmd)
 }
 
@@ -3457,6 +3464,24 @@ func (m *Model) activateSelectedPanel(panelID string, expandTrayOnly bool) {
 
 	m.focus = FocusPanel
 	m.panelTray = m.panelTray.SetFocused(false)
+}
+
+func (m *Model) focusActiveBlockingPanel() bool {
+	activeID := m.panelManager.Active()
+	if activeID == "" {
+		return false
+	}
+
+	entry, ok := m.panelManager.Get(activeID)
+	if !ok || !entry.Visible || !entry.Config.Blocking {
+		return false
+	}
+
+	m.expandedPanelID = ""
+	m.focus = FocusPanel
+	m.panelTray = m.panelTray.SetFocused(false)
+
+	return true
 }
 
 func (m *Model) focusSelectedPanel(panelID string, reverse bool) {

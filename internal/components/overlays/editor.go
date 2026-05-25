@@ -87,6 +87,7 @@ func (m EditorModel) SetSize(width, height int) EditorModel {
 
 	boxWidth := editorBoxWidth(width)
 	boxHeight := editorBoxHeight(height)
+
 	if m.docked {
 		boxWidth = width
 		boxHeight = height
@@ -200,6 +201,7 @@ func (m EditorModel) View() string {
 	if m.docked {
 		boxWidth = m.width
 	}
+
 	if boxWidth == 0 {
 		return ""
 	}

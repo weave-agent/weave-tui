@@ -1591,6 +1591,7 @@ func TestModel_DockedOverlay_SandboxPromptFitsAboveEditor(t *testing.T) {
 
 	left := canvas.CellAt(dialogArea.Min.X, dialogArea.Min.Y)
 	right := canvas.CellAt(dialogArea.Max.X-1, dialogArea.Min.Y)
+
 	require.NotNil(t, left)
 	require.NotNil(t, right)
 	assert.False(t, left.IsZero())
