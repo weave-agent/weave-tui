@@ -80,7 +80,7 @@ var defaultBindings = []Binding{
 
 	// Display
 	{Action: ActionToggleToolOutput, Keys: []string{"ctrl+o"}, Description: "Expand/collapse tool output"},
-	{Action: ActionThinkingCycle, Keys: []string{"shift+tab"}, Description: "Cycle thinking level"},
+	{Action: ActionThinkingCycle, Keys: []string{"ctrl+t"}, Description: "Cycle thinking level"},
 
 	// Session
 	{Action: ActionNewSession, Keys: []string{"ctrl+n"}, Description: "New session"},

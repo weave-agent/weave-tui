@@ -75,6 +75,8 @@ type pulseTickMsg struct {
 
 type themeSelectMsg struct{}
 
+type thinkingSelectMsg struct{}
+
 type startupThemeReadyMsg struct {
 	Name string
 }
@@ -251,7 +253,9 @@ func newModelWithConfig(bus sdk.Bus, cfg sdk.Config, ps sdk.PreferenceStore, ui 
 
 	commands.Register("/thinking", "Set thinking level (off/minimal/low/medium/high/xhigh)", false, func(args string) tuicommands.CommandResult {
 		if args == "" {
-			return tuicommands.CommandResult{Notify: "Usage: /thinking <off|minimal|low|medium|high|xhigh>"}
+			return tuicommands.CommandResult{Command: func() tea.Msg {
+				return thinkingSelectMsg{}
+			}}
 		}
 
 		level, err := sdkmodel.ParseThinkingLevel(args)
@@ -1029,6 +1033,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case themeSelectMsg:
 		return m.openThemeSelector(), nil
+
+	case thinkingSelectMsg:
+		return m.openThinkingSelector(), nil
 
 	case extStatusMsg:
 		m.footer = m.footer.SetExtStatus(msg.Key, msg.Text)
@@ -2440,6 +2447,27 @@ func (m Model) onLogoutListResult(msg tuievents.LogoutListResultMsg) (tea.Model,
 	return m, nil
 }
 
+func (m Model) openThinkingSelector() Model {
+	levels := sdkmodel.AllThinkingLevels
+	items := make([]overlays.SelectorItem, len(levels))
+
+	cursor := 0
+	for i, lvl := range levels {
+		title := string(lvl)
+		if lvl == m.thinkingLevel {
+			title += " ✓"
+			cursor = i
+		}
+		items[i] = overlays.SelectorItem{Title: title}
+	}
+
+	sel := overlays.NewSelectorModel("Select Thinking Level", items).SetStyles(m.styles)
+	sel = sel.SetSize(m.width, m.height).Show().SetCursor(cursor)
+	m.dialogStack = m.dialogStack.Push(overlays.NewSelectorDialog(dialogThinkingSelect, sel))
+
+	return m
+}
+
 func (m Model) openThemeSelector() Model {
 	entries := m.availableThemeEntries()
 
@@ -2719,6 +2747,20 @@ func (m Model) onThemeDialogDone(result overlays.DialogResult, pendingCmd tea.Cm
 	m.themeBeforeSelect = ""
 
 	return m, tea.Batch(pendingCmd, m.bannerTimer)
+}
+
+func (m Model) onThinkingDialogDone(result overlays.DialogResult, pendingCmd tea.Cmd) (tea.Model, tea.Cmd) {
+	if result.Err != nil {
+		return m, pendingCmd
+	}
+
+	if result.Index < 0 || result.Index >= len(sdkmodel.AllThinkingLevels) {
+		return m, pendingCmd
+	}
+
+	updated, cmd := m.applyThinkingLevel(sdkmodel.AllThinkingLevels[result.Index])
+	m = updated.(Model)
+	return m, tea.Batch(cmd, pendingCmd)
 }
 
 func saveThemePreference(ps sdk.PreferenceStore, name string) error {
@@ -3004,6 +3046,8 @@ func (m Model) handleDialogDone(d overlays.Dialog, pendingCmd tea.Cmd) (tea.Mode
 		return m.onAttachmentEditorDone(result, pendingCmd)
 	case dialogThemeSelect:
 		return m.onThemeDialogDone(result, pendingCmd)
+	case dialogThinkingSelect:
+		return m.onThinkingDialogDone(result, pendingCmd)
 	case dialogLoginOAuth:
 		// Login OAuth dialog was dismissed (user canceled or flow completed).
 		// The actual flow result is handled by tuievents.LoginFlowResultMsg.
@@ -3054,6 +3098,8 @@ func (m Model) handleDialogForceCancel(d overlays.Dialog) (tea.Model, tea.Cmd) {
 		m.pendingLoginProviders = nil
 	case dialogLogoutSelect:
 		m.pendingLogoutProviders = nil
+	case dialogThinkingSelect:
+		// no cleanup needed
 	case dialogThemeSelect:
 		if m.themeBeforeSelect != "" {
 			var err error
