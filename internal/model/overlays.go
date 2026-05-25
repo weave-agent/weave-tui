@@ -84,6 +84,7 @@ func pushPopupDialog(m Model, req *overlayRequest) (Model, tea.Cmd) {
 
 		sel := overlays.NewSelectorModel(req.Title, items).SetStyles(m.styles)
 		sel = sel.SetSize(dialogWidth, dialogHeight)
+		sel = sel.SetDocked(req.KeepContent)
 		sel = sel.Show()
 
 		m.dialogStack = m.dialogStack.Push(overlays.NewSelectorDialog(id, sel))
@@ -91,6 +92,7 @@ func pushPopupDialog(m Model, req *overlayRequest) (Model, tea.Cmd) {
 	case requestConfirm:
 		conf := overlays.NewConfirmModel(req.Message)
 		conf = conf.SetSize(dialogWidth, dialogHeight)
+		conf = conf.SetDocked(req.KeepContent)
 		conf = conf.SetTheme(m.theme)
 		conf = conf.Show()
 
@@ -99,6 +101,7 @@ func pushPopupDialog(m Model, req *overlayRequest) (Model, tea.Cmd) {
 	case requestInput:
 		input := overlays.NewInputModel(req.Message)
 		input = input.SetSize(dialogWidth, dialogHeight)
+		input = input.SetDocked(req.KeepContent)
 		input = input.SetMask(req.Mask)
 		input = input.SetTheme(m.theme)
 		input = input.Show()
@@ -108,6 +111,7 @@ func pushPopupDialog(m Model, req *overlayRequest) (Model, tea.Cmd) {
 	case requestEditor:
 		editor := overlays.NewEditorModel(req.Title, req.Initial)
 		editor = editor.SetSize(dialogWidth, dialogHeight)
+		editor = editor.SetDocked(req.KeepContent)
 		editor = editor.SetTheme(m.theme)
 		editor = editor.Show()
 
@@ -116,6 +120,7 @@ func pushPopupDialog(m Model, req *overlayRequest) (Model, tea.Cmd) {
 	case requestMultiSelect:
 		ms := overlays.NewMultiSelectModel(req.Title, req.Items, req.Defaults)
 		ms = ms.SetSize(dialogWidth, dialogHeight)
+		ms = ms.SetDocked(req.KeepContent)
 		ms = ms.SetTheme(m.theme)
 		ms = ms.Show()
 

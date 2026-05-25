@@ -23,6 +23,7 @@ type EditorModel struct {
 	height  int
 	visible bool
 	theme   *palette.Theme
+	docked  bool
 }
 
 // NewEditorModel creates a new editor overlay model.
@@ -86,11 +87,21 @@ func (m EditorModel) SetSize(width, height int) EditorModel {
 
 	boxWidth := editorBoxWidth(width)
 	boxHeight := editorBoxHeight(height)
+	if m.docked {
+		boxWidth = width
+		boxHeight = height
+	}
 
 	m.ta.SetWidth(max(10, boxWidth-6))
 	m.ta.SetHeight(max(3, boxHeight-4))
 
 	return m
+}
+
+// SetDocked updates whether the editor overlay renders as a docked prompt.
+func (m EditorModel) SetDocked(docked bool) EditorModel {
+	m.docked = docked
+	return m.SetSize(m.width, m.height)
 }
 
 // SetTheme updates the theme used to render the editor overlay.
@@ -186,6 +197,9 @@ func (m EditorModel) View() string {
 	}
 
 	boxWidth := editorBoxWidth(m.width)
+	if m.docked {
+		boxWidth = m.width
+	}
 	if boxWidth == 0 {
 		return ""
 	}
@@ -207,9 +221,25 @@ func (m EditorModel) View() string {
 	box := borderStyle.Render(content)
 
 	return lipgloss.NewStyle().
-		MarginTop(max(0, (m.height-lipgloss.Height(box))/2)).
-		MarginLeft(max(0, (m.width-boxWidth)/2)).
+		MarginTop(editorMarginTop(m.docked, m.height, lipgloss.Height(box))).
+		MarginLeft(editorMarginLeft(m.docked, m.width, boxWidth)).
 		Render(box)
+}
+
+func editorMarginTop(docked bool, height, boxHeight int) int {
+	if docked {
+		return 0
+	}
+
+	return max(0, (height-boxHeight)/2)
+}
+
+func editorMarginLeft(docked bool, width, boxWidth int) int {
+	if docked {
+		return 0
+	}
+
+	return max(0, (width-boxWidth)/2)
 }
 
 // Draw renders the editor modal overlay into a screen buffer region.

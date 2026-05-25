@@ -43,6 +43,7 @@ type SelectorModel struct {
 	height  int
 	visible bool
 	styles  *styles.Styles
+	docked  bool
 }
 
 // NewSelectorModel creates a new selector model.
@@ -91,6 +92,12 @@ func (m SelectorModel) SetSize(width, height int) SelectorModel {
 	m.width = width
 	m.height = height
 
+	return m
+}
+
+// SetDocked updates whether the selector renders as a docked prompt.
+func (m SelectorModel) SetDocked(docked bool) SelectorModel {
+	m.docked = docked
 	return m
 }
 
@@ -257,6 +264,10 @@ func (m SelectorModel) View() string {
 
 	boxWidth := min(60, m.width-4)
 	boxHeight := min(15, m.height-2)
+	if m.docked {
+		boxWidth = m.width
+		boxHeight = m.height
+	}
 
 	borderStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -333,9 +344,25 @@ func (m SelectorModel) View() string {
 	lines := strings.Split(box, "\n")
 
 	return lipgloss.NewStyle().
-		MarginTop(max(0, (m.height-len(lines))/2)).
-		MarginLeft(max(0, (m.width-boxWidth)/2)).
+		MarginTop(selectorMarginTop(m.docked, m.height, len(lines))).
+		MarginLeft(selectorMarginLeft(m.docked, m.width, boxWidth)).
 		Render(strings.Join(lines, "\n"))
+}
+
+func selectorMarginTop(docked bool, height, lines int) int {
+	if docked {
+		return 0
+	}
+
+	return max(0, (height-lines)/2)
+}
+
+func selectorMarginLeft(docked bool, width, boxWidth int) int {
+	if docked {
+		return 0
+	}
+
+	return max(0, (width-boxWidth)/2)
 }
 
 // Draw renders the selector overlay into a screen buffer region.

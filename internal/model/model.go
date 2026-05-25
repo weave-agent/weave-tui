@@ -49,6 +49,8 @@ const bannerMessageTimeout = 3 * time.Second
 
 const dockedOverlayHeight = 12
 
+const dockedFooterRows = 2
+
 // statusTimeoutMsg is sent when the transient status message should be cleared.
 type statusTimeoutMsg struct {
 	gen int
@@ -3882,11 +3884,53 @@ func (m *Model) syncPanelTray() {
 
 // dockedRows returns the number of rows to allocate for a docked overlay.
 func (m Model) dockedRows() int {
-	if m.dockedOverlay {
-		return dockedOverlayHeight
+	if !m.dockedOverlay {
+		return 0
 	}
 
-	return 0
+	rows := m.preferredDockedRows()
+	if rows <= 0 {
+		rows = dockedOverlayHeight
+	}
+
+	return min(rows, m.maxDockedRows())
+}
+
+func (m Model) preferredDockedRows() int {
+	top := m.dialogStack.Peek()
+	if top == nil || m.width <= 0 || m.height <= 0 {
+		return 0
+	}
+
+	width := m.width
+	height := max(m.maxDockedRows(), dockedOverlayHeight)
+
+	switch d := top.(type) {
+	case *overlays.SelectorDialog:
+		model := d.Model().SetDocked(true).SetSize(width, height)
+		return lipgloss.Height(model.View())
+	case *overlays.ConfirmDialog:
+		model := d.Model().SetDocked(true).SetSize(width, height)
+		return lipgloss.Height(model.View())
+	case *overlays.InputDialog:
+		model := d.Model().SetDocked(true).SetSize(width, height)
+		return lipgloss.Height(model.View())
+	case *overlays.EditorDialog:
+		model := d.Model().SetDocked(true).SetSize(width, height)
+		return lipgloss.Height(model.View())
+	case *overlays.MultiSelectDialog:
+		model := d.Model().SetDocked(true).SetSize(width, height)
+		return lipgloss.Height(model.View())
+	default:
+		return dockedOverlayHeight
+	}
+}
+
+func (m Model) maxDockedRows() int {
+	editorRows := m.editor.Height() + m.attach.Height()
+	available := m.height - editorRows - dockedFooterRows - 1 - 1
+
+	return max(1, available)
 }
 
 // Draw renders the TUI into an ultraviolet screen buffer.
@@ -3896,8 +3940,11 @@ func (m Model) Draw(scr uv.Screen, area uv.Rectangle) {
 	// then overlay the dialog stack on top.
 	if !m.dialogStack.Empty() {
 		if m.dockedOverlay {
-			lt := m.drawNormalUI(scr, area, dockedOverlayHeight)
-			m.dialogStack.Draw(scr, lt.Docked)
+			rows := m.dockedRows()
+			lt := m.drawNormalUI(scr, area, rows)
+			dialogArea := m.dockedDialogArea(lt.Docked, lt.Editor)
+			dialogs := m.dialogStack.Resize(dialogArea.Dx(), dialogArea.Dy())
+			dialogs.Draw(scr, dialogArea)
 
 			return
 		}
@@ -3910,6 +3957,18 @@ func (m Model) Draw(scr uv.Screen, area uv.Rectangle) {
 	}
 
 	m.drawNormalUI(scr, area, 0)
+}
+
+func (m Model) dockedDialogArea(dockedArea, editorArea uv.Rectangle) uv.Rectangle {
+	if dockedArea.Dy() == 0 {
+		return dockedArea
+	}
+
+	if editorArea.Dx() <= 0 {
+		return dockedArea
+	}
+
+	return uv.Rect(editorArea.Min.X, dockedArea.Min.Y, editorArea.Dx(), dockedArea.Dy())
 }
 
 // drawNormalUI renders the standard TUI layout without dialogs.

@@ -1549,6 +1549,54 @@ func TestModel_DockedOverlay_DialogSizedForDockedArea(t *testing.T) {
 	assert.Equal(t, dockedOverlayHeight, sd.Model().Height())
 }
 
+func TestModel_DockedOverlay_SandboxPromptFitsAboveEditor(t *testing.T) {
+	ui := NewTUIImpl(nil, nil)
+	m := newModelNoLanding()
+	m.width = 120
+	m.height = 34
+	m.ui = ui
+
+	req := &overlayRequest{
+		Kind: requestSelect,
+		Title: "Sandbox: expand containment?\n\nCommand: read\nExpansion kind: filesystem\n" +
+			"Target: read:/Users/andrey/.weave/skills/clean-code/SKILL.md\n" +
+			"Reason: Read file content\nAvailable scopes: once, session, profile, unsandboxed",
+		Items:       []string{"Allow once", "Allow for session"},
+		KeepContent: true,
+		Result:      make(chan overlayResponse, 1),
+	}
+
+	m = activatePopup(m, ui, req)
+
+	canvas := uv.NewScreenBuffer(m.width, m.height)
+	m.Draw(canvas, canvas.Bounds())
+	rendered := canvas.Render()
+
+	assert.Contains(t, rendered, "Sandbox: expand containment?")
+	assert.Contains(t, rendered, "Available scopes")
+	assert.Contains(t, rendered, "Allow once")
+	assert.Contains(t, rendered, "Allow for session")
+
+	headerRows, pillRows, trayRows, abovePanelRows, belowPanelRows := m.layoutRows()
+	lt := m.layout.ComputeWithPanels(
+		m.width, m.height,
+		m.editor.Height(), headerRows, pillRows, m.dockedRows(),
+		trayRows, abovePanelRows, belowPanelRows,
+	)
+	dialogArea := m.dockedDialogArea(lt.Docked, lt.Editor)
+
+	assert.Equal(t, lt.Editor.Dx(), dialogArea.Dx())
+	assert.Equal(t, lt.Editor.Min.X, dialogArea.Min.X)
+	assert.Equal(t, lt.Editor.Min.Y, dialogArea.Max.Y)
+
+	left := canvas.CellAt(dialogArea.Min.X, dialogArea.Min.Y)
+	right := canvas.CellAt(dialogArea.Max.X-1, dialogArea.Min.Y)
+	require.NotNil(t, left)
+	require.NotNil(t, right)
+	assert.False(t, left.IsZero())
+	assert.False(t, right.IsZero())
+}
+
 // --- Task 9: TUIExtAPI method tests ---
 
 func TestTUIImpl_EditorText(t *testing.T) {

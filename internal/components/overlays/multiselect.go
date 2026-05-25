@@ -27,6 +27,7 @@ type MultiSelectModel struct {
 	height   int
 	visible  bool
 	theme    *palette.Theme
+	docked   bool
 }
 
 // NewMultiSelectModel creates a new multi-select model.
@@ -67,6 +68,12 @@ func (m MultiSelectModel) SetSize(width, height int) MultiSelectModel {
 	m.width = width
 	m.height = height
 
+	return m
+}
+
+// SetDocked updates whether the multi-select renders as a docked prompt.
+func (m MultiSelectModel) SetDocked(docked bool) MultiSelectModel {
+	m.docked = docked
 	return m
 }
 
@@ -173,6 +180,10 @@ func (m MultiSelectModel) View() string {
 
 	boxWidth := min(60, m.width-4)
 	boxHeight := min(15, m.height-2)
+	if m.docked {
+		boxWidth = m.width
+		boxHeight = m.height
+	}
 
 	borderStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -236,9 +247,25 @@ func (m MultiSelectModel) View() string {
 	lines := strings.Split(box, "\n")
 
 	return lipgloss.NewStyle().
-		MarginTop(max(0, (m.height-len(lines))/2)).
-		MarginLeft(max(0, (m.width-boxWidth)/2)).
+		MarginTop(multiSelectMarginTop(m.docked, m.height, len(lines))).
+		MarginLeft(multiSelectMarginLeft(m.docked, m.width, boxWidth)).
 		Render(strings.Join(lines, "\n"))
+}
+
+func multiSelectMarginTop(docked bool, height, lines int) int {
+	if docked {
+		return 0
+	}
+
+	return max(0, (height-lines)/2)
+}
+
+func multiSelectMarginLeft(docked bool, width, boxWidth int) int {
+	if docked {
+		return 0
+	}
+
+	return max(0, (width-boxWidth)/2)
 }
 
 // Draw renders the multi-select overlay into a screen buffer region.

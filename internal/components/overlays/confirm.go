@@ -24,6 +24,7 @@ type ConfirmModel struct {
 	height  int
 	visible bool
 	theme   *palette.Theme
+	docked  bool
 }
 
 // NewConfirmModel creates a new confirm model.
@@ -56,6 +57,12 @@ func (m ConfirmModel) SetSize(width, height int) ConfirmModel {
 	m.width = width
 	m.height = height
 
+	return m
+}
+
+// SetDocked updates whether the confirm dialog renders as a docked prompt.
+func (m ConfirmModel) SetDocked(docked bool) ConfirmModel {
+	m.docked = docked
 	return m
 }
 
@@ -129,6 +136,9 @@ func (m ConfirmModel) View() string {
 	}
 
 	boxWidth := min(50, m.width-4)
+	if m.docked {
+		boxWidth = m.width
+	}
 
 	borderStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -164,9 +174,25 @@ func (m ConfirmModel) View() string {
 	lines := strings.Split(box, "\n")
 
 	return lipgloss.NewStyle().
-		MarginTop(max(0, (m.height-len(lines))/2)).
-		MarginLeft(max(0, (m.width-boxWidth)/2)).
+		MarginTop(confirmMarginTop(m.docked, m.height, len(lines))).
+		MarginLeft(confirmMarginLeft(m.docked, m.width, boxWidth)).
 		Render(strings.Join(lines, "\n"))
+}
+
+func confirmMarginTop(docked bool, height, lines int) int {
+	if docked {
+		return 0
+	}
+
+	return max(0, (height-lines)/2)
+}
+
+func confirmMarginLeft(docked bool, width, boxWidth int) int {
+	if docked {
+		return 0
+	}
+
+	return max(0, (width-boxWidth)/2)
 }
 
 // Draw renders the confirm dialog overlay into a screen buffer region.
