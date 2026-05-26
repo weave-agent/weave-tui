@@ -16,7 +16,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require github.com/weave-agent/weave v0.0.6
+require github.com/weave-agent/weave v0.0.11
 
 require (
 	github.com/atotto/clipboard v0.1.4
