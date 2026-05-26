@@ -1619,7 +1619,7 @@ func (m Model) dispatchBinding(action tuikeybindings.BindingAction) (tea.Model, 
 		m.pendingToolOrder = nil
 		m.prompted = false
 		m.showLanding = true
-		m.attach = m.attach.Clear()
+		m = m.clearAttachments()
 		m.dockedOverlay = false
 		m.dialogStack = overlays.NewDialogStack()
 
@@ -2133,7 +2133,7 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 			m.toolPanels = make(map[string]*messages.ToolPanel)
 			m.pendingToolCalls = make(map[string]string)
 			m.pendingToolOrder = nil
-			m.attach = m.attach.Clear()
+			m = m.clearAttachments()
 			m.showLanding = true
 		}
 
@@ -2166,7 +2166,7 @@ func (m Model) onSubmit(text string) (tea.Model, tea.Cmd) {
 
 	// Merge attachments into prompt text and clear them
 	promptText := m.attach.RenderPrompt(text)
-	m.attach = m.attach.Clear()
+	m = m.clearAttachments()
 
 	m.AddUserMessage(promptText)
 	m.contextTokens += estimateContextTokens(promptText)
@@ -3848,6 +3848,15 @@ func (m Model) panelRows() (trayRows, abovePanelRows, belowPanelRows int) {
 	}
 
 	return trayRows, abovePanelRows, belowPanelRows
+}
+
+func (m Model) clearAttachments() Model {
+	m.attach = m.attach.Clear()
+	m = m.syncAttachmentPanel()
+	m.syncPanelTray()
+	m.syncChatViewport()
+
+	return m
 }
 
 func (m Model) syncAttachmentPanel() Model {

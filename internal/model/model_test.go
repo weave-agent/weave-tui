@@ -2943,16 +2943,18 @@ func TestModel_SubmitWithAttachments(t *testing.T) {
 	m.width = 80
 	m.height = 24
 	m = addTestAttachment(m, "test.go", "package main")
+	m = m.syncAttachmentPanel()
+	m.syncPanelTray()
 	m.prompted = true // followup mode
 
 	text := "review this"
 	model, cmd := m.onSubmit(text)
 	m = model.(Model)
 
-	// Attachments should be cleared after submit
 	assert.Empty(t, m.attach.Items())
+	assert.False(t, m.panelManager.IsRegistered(attachmentsPanelID))
+	assert.Zero(t, m.panelTray.Len())
 
-	// Chat should have the combined text
 	items := m.chat.Items()
 	require.Len(t, items, 1)
 	um, ok := items[0].(*messages.UserMessage)
@@ -2965,6 +2967,25 @@ func TestModel_SubmitWithAttachments(t *testing.T) {
 
 	// Followup should be published
 	require.NotNil(t, cmd)
+}
+
+func TestModel_SubmitLongPasteAttachmentRemovesPanel(t *testing.T) {
+	m := newModel(nil, nil, nil, nil)
+	m.width = 80
+	m.height = 24
+
+	model, _ := m.Update(tea.PasteMsg{Content: strings.Repeat("line\n", 12)})
+	m = model.(Model)
+	require.NotEmpty(t, m.attach.Items())
+	require.True(t, m.panelManager.IsRegistered(attachmentsPanelID))
+
+	model, _ = m.onSubmit("review this")
+	m = model.(Model)
+
+	assert.Empty(t, m.attach.Items())
+	assert.False(t, m.panelManager.IsRegistered(attachmentsPanelID))
+	assert.Zero(t, m.panelTray.Len())
+	assert.Equal(t, FocusEditor, m.focus)
 }
 
 func TestModel_SubmitNoAttachments(t *testing.T) {
