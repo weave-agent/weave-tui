@@ -36,7 +36,8 @@ const (
 	TopicModelChangeFailed = "model.change_failed"
 	TopicThinkingChange    = "thinking.change"
 
-	TopicCompacted = "agent.compacted"
+	TopicCompacting = "agent.compacting"
+	TopicCompacted  = "agent.compacted"
 
 	TopicExtOutdated = "extension.outdated"
 
@@ -69,7 +70,8 @@ const (
 	topicModelChangeFailed = TopicModelChangeFailed
 	topicThinkingChange    = TopicThinkingChange
 
-	topicCompacted = TopicCompacted
+	topicCompacting = TopicCompacting
+	topicCompacted  = TopicCompacted
 
 	topicExtOutdated = TopicExtOutdated
 
@@ -153,6 +155,8 @@ func (t *agentStateTracker) update(msg tea.Msg) (palette.State, bool) {
 	prev := t.state
 
 	switch msg := msg.(type) {
+	case tuievents.CompactingMsg:
+		t.state = palette.StateStreaming
 	case tuievents.TurnStartMsg:
 		t.state = palette.StateStreaming
 		t.clearTools()
@@ -195,6 +199,9 @@ func (t *agentStateTracker) update(msg tea.Msg) (palette.State, bool) {
 
 		t.removeTool(id)
 		t.maybeReturnToStreaming()
+	case tuievents.CompactedMsg:
+		t.state = palette.StateIdle
+		t.clearTools()
 	case tuievents.TurnEndMsg:
 		t.state = palette.StateIdle
 		t.clearTools()
@@ -251,6 +258,8 @@ func translateEvent(evt sdk.Event) tea.Msg {
 		return translateModelChangeFailed(evt.Payload)
 	case topicExtOutdated:
 		return translateExtOutdated(evt.Payload)
+	case topicCompacting:
+		return tuievents.CompactingMsg{}
 	case topicCompacted:
 		return translateCompacted(evt.Payload)
 	case topicUsage:

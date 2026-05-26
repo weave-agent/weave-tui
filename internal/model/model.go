@@ -970,8 +970,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
+	case tuievents.CompactingMsg:
+		m.showLanding = false
+		m.chat = m.chat.AddItem(messages.NewNotificationMessage("Compacting context…", sdk.NotifyInfo))
+		if !m.spinner.Visible() {
+			var cmd tea.Cmd
+
+			m.spinner, cmd = m.spinner.SpinnerUpdate(components.SpinnerShowMsg{})
+			m.syncChatViewport()
+
+			return m, cmd
+		}
+
+		return m, nil
+
 	case tuievents.CompactedMsg:
 		m.showLanding = false
+		m.spinner = m.spinner.Hide()
+		m.syncChatViewport()
 		if msg.Error != "" {
 			m.chat = m.chat.AddItem(messages.NewNotificationMessage(
 				"Compaction failed: "+msg.Error, sdk.NotifyError,
@@ -984,6 +1000,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.chat = m.chat.AddItem(messages.NewCompactionEntry(
 				msg.Summarized, msg.TokensBefore, msg.TokensAfter,
 			))
+		} else {
+			m.chat = m.chat.AddItem(messages.NewNotificationMessage("Nothing to compact yet", sdk.NotifyInfo))
 		}
 
 		return m, nil

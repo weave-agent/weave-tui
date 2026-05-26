@@ -13,8 +13,50 @@ import (
 
 	"github.com/weave-agent/weave-tui/internal/components/messages"
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
+	tuievents "github.com/weave-agent/weave-tui/internal/events"
 	"github.com/weave-agent/weave-tui/internal/palette"
 )
+
+func TestModel_CompactingMsgShowsProgress(t *testing.T) {
+	m := newModelNoLanding()
+	m.width = 80
+	m.height = 10
+	m.chat = m.chat.SetSize(80, 10)
+
+	model, cmd := m.Update(tuievents.CompactingMsg{})
+	m = model.(Model)
+
+	require.NotNil(t, cmd)
+	assert.True(t, m.spinner.Visible())
+
+	items := m.chat.Items()
+	require.Len(t, items, 1)
+
+	n, ok := items[0].(*messages.NotificationMessage)
+	require.True(t, ok)
+	assert.Contains(t, n.Content(), "Compacting context")
+}
+
+func TestModel_CompactedMsgNoopShowsMessageAndHidesSpinner(t *testing.T) {
+	m := newModelNoLanding()
+	m.width = 80
+	m.height = 10
+	m.chat = m.chat.SetSize(80, 10)
+	m.spinner = m.spinner.Show()
+
+	model, cmd := m.Update(tuievents.CompactedMsg{})
+	m = model.(Model)
+
+	assert.Nil(t, cmd)
+	assert.False(t, m.spinner.Visible())
+
+	items := m.chat.Items()
+	require.Len(t, items, 1)
+
+	n, ok := items[0].(*messages.NotificationMessage)
+	require.True(t, ok)
+	assert.Contains(t, n.Content(), "Nothing to compact yet")
+}
 
 func TestModel_SlashCommandQuit(t *testing.T) {
 	m := newModel(nil, nil, nil, nil)

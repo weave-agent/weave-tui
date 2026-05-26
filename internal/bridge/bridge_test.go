@@ -974,6 +974,12 @@ func TestBridge_TokenRateResetsOnMessageEnd(t *testing.T) {
 	assert.Greater(t, rates[1], float64(0), "second message rate should be > 0 (independent)")
 }
 
+func TestTranslateEvent_Compacting(t *testing.T) {
+	msg := translateEvent(sdk.NewEvent(topicCompacting, nil))
+	_, ok := msg.(tuievents.CompactingMsg)
+	require.True(t, ok)
+}
+
 func TestTranslateEvent_Compacted(t *testing.T) {
 	payload := map[string]any{
 		"summarized":    5,

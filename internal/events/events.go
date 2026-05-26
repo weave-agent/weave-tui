@@ -184,6 +184,8 @@ type NotifyTypedMsg struct {
 	Level   sdk.NotifyLevel
 }
 
+type CompactingMsg struct{}
+
 // CompactedMsg is sent when the agent compacts the conversation context.
 type CompactedMsg struct {
 	Summarized   int
