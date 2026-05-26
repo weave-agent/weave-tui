@@ -24,6 +24,7 @@ import (
 	"github.com/weave-agent/weave-tui/internal/components/overlays"
 	tuievents "github.com/weave-agent/weave-tui/internal/events"
 
+	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
@@ -5985,6 +5986,45 @@ func TestModel_OnLoginFlowResult_SaveCredentialError(t *testing.T) {
 	am, ok := items[0].(*messages.AssistantMessage)
 	require.True(t, ok)
 	assert.Contains(t, am.Content(), "Failed to save OAuth credentials")
+}
+
+func TestModel_DialogOpenDoesNotBlockToolComplete(t *testing.T) {
+	m := newModelNoLanding()
+	m.width = 80
+	m.height = 24
+	m.chat = m.chat.SetSize(80, 20)
+
+	selector := overlays.NewSelectorModel("Approve", []overlays.SelectorItem{{Title: "yes"}}).Show()
+	m.dialogStack = m.dialogStack.Push(overlays.NewSelectorDialog("approval", selector))
+
+	model, _ := m.Update(tuievents.ToolCompleteMsg{ToolID: "tc1", Tool: "bash", Content: "done"})
+	m = model.(Model)
+
+	require.False(t, m.dialogStack.Empty())
+	items := m.chat.Items()
+	require.Len(t, items, 1)
+
+	tp, ok := items[0].(*messages.ToolPanel)
+	require.True(t, ok)
+	assert.Equal(t, messages.ToolSuccess, tp.State())
+}
+
+func TestModel_DialogOpenDoesNotBlockSpinnerTick(t *testing.T) {
+	m := newModelNoLanding()
+	m.width = 80
+	m.height = 24
+	m.spinner = m.spinner.Show()
+
+	selector := overlays.NewSelectorModel("Approve", []overlays.SelectorItem{{Title: "yes"}}).Show()
+	m.dialogStack = m.dialogStack.Push(overlays.NewSelectorDialog("approval", selector))
+
+	before := m.spinner.View()
+
+	model, _ := m.Update(spinner.TickMsg{})
+	m = model.(Model)
+
+	require.False(t, m.dialogStack.Empty())
+	assert.NotEqual(t, before, m.spinner.View())
 }
 
 func TestModel_HandleDialogForceCancel_OAuthLogin(t *testing.T) {

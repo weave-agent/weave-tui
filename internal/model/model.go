@@ -534,9 +534,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.onLoginFlowResult(loginResult)
 	}
 
-	// Dialog stack gets priority when non-empty.
 	if !m.dialogStack.Empty() {
-		// Ctrl+C force-dismisses the top dialog.
 		if km, ok := msg.(tea.KeyPressMsg); ok && km.String() == "ctrl+c" {
 			var d overlays.Dialog
 
@@ -545,28 +543,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleDialogForceCancel(d)
 		}
 
-		newStack, cmd, completed := m.dialogStack.Update(msg)
-		m.dialogStack = newStack
+		top := m.dialogStack.Peek()
+		handledByDialog := top != nil && top.Handles(msg)
+		_, isKey := msg.(tea.KeyPressMsg)
 
-		// Handle dialogs that completed during fall-through (at most one).
-		if len(completed) > 0 {
-			return m.handleDialogDone(completed[0], cmd)
+		if handledByDialog || isKey {
+			newStack, cmd, completed := m.dialogStack.Update(msg)
+			m.dialogStack = newStack
+
+			if len(completed) > 0 {
+				return m.handleDialogDone(completed[0], cmd)
+			}
+
+			if top := m.dialogStack.Peek(); top != nil && top.Done() {
+				var d overlays.Dialog
+
+				m.dialogStack, d = m.dialogStack.Pop()
+
+				return m.handleDialogDone(d, cmd)
+			}
+
+			if m.shouldPreviewThemeSelection(msg) {
+				m = m.previewThemeSelection()
+			}
+
+			return m, cmd
 		}
-
-		// Check if the top dialog completed.
-		if top := m.dialogStack.Peek(); top != nil && top.Done() {
-			var d overlays.Dialog
-
-			m.dialogStack, d = m.dialogStack.Pop()
-
-			return m.handleDialogDone(d, cmd)
-		}
-
-		if m.shouldPreviewThemeSelection(msg) {
-			m = m.previewThemeSelection()
-		}
-
-		return m, cmd
 	}
 
 	switch msg := msg.(type) {
@@ -1027,6 +1029,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case popupPendingMsg:
+		if !m.dialogStack.Empty() {
+			return m, nil
+		}
+
 		return m.handlePopupPending()
 
 	case themeSelectMsg:
@@ -3076,7 +3082,12 @@ func (m Model) handleDialogDone(d overlays.Dialog, pendingCmd tea.Cmd) (tea.Mode
 			delete(m.popupChans, id)
 		}
 
-		return m, tea.Batch(pendingCmd, checkNextPopupCmd(m.ui))
+		cmd := pendingCmd
+		if m.dialogStack.Empty() {
+			cmd = tea.Batch(pendingCmd, checkNextPopupCmd(m.ui))
+		}
+
+		return m, cmd
 	}
 }
 
@@ -3127,6 +3138,10 @@ func (m Model) handleDialogForceCancel(d overlays.Dialog) (tea.Model, tea.Cmd) {
 			m.dockedOverlay = false
 			delete(m.popupChans, id)
 		}
+	}
+
+	if !m.dialogStack.Empty() {
+		return m, nil
 	}
 
 	return m, checkNextPopupCmd(m.ui)
