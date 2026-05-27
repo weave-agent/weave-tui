@@ -15,6 +15,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // FooterModel renders a two-line status bar with context information.
@@ -261,36 +262,30 @@ func (m FooterModel) renderLine2(theme *palette.Theme) string {
 	}
 
 	mutedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Muted))
-
-	// Left side: stats (tokens, cost, context)
-	leftParts := []string{}
-
-	if m.inputTokens > 0 || m.outputTokens > 0 {
-		leftParts = append(leftParts, mutedStyle.Render(fmt.Sprintf("in:%d out:%d", m.inputTokens, m.outputTokens)))
+	parts := m.line2Parts(theme, mutedStyle)
+	if len(parts) == 0 {
+		return mutedStyle.Render("weave")
 	}
 
-	if m.cacheCreationTokens > 0 || m.cacheReadTokens > 0 {
-		leftParts = append(leftParts, mutedStyle.Render(fmt.Sprintf("cache:+%d ~%d", m.cacheCreationTokens, m.cacheReadTokens)))
+	line := strings.Join(parts, " ")
+	if lipgloss.Width(line) <= m.width {
+		return line
 	}
 
-	if m.cost > 0 {
-		leftParts = append(leftParts, mutedStyle.Render(fmt.Sprintf("$%.4f", m.cost)))
-	}
+	return ansi.Truncate(line, m.width, "…")
+}
 
-	left := strings.Join(leftParts, " ")
-
-	// Right side: model info (model name, context, thinking level, token rate)
-	rightParts := []string{}
+func (m FooterModel) line2Parts(theme *palette.Theme, mutedStyle lipgloss.Style) []string {
+	parts := make([]string, 0, 6)
 
 	if m.modelName != "" {
 		modelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(theme.Accent)).Bold(true)
 		modelDisplay := m.modelName
-
 		if m.providerName != "" {
 			modelDisplay = m.providerName + "/" + m.modelName
 		}
 
-		rightParts = append(rightParts, modelStyle.Render(modelDisplay))
+		parts = append(parts, modelStyle.Render(modelDisplay))
 	}
 
 	if m.thinkingLevel != "" && m.reasoning {
@@ -298,44 +293,43 @@ func (m FooterModel) renderLine2(theme *palette.Theme) string {
 			Foreground(lipgloss.Color(theme.Muted)).
 			Background(lipgloss.Color(theme.BackgroundTint)).
 			Padding(0, 1)
-		rightParts = append(rightParts, pillStyle.Render(m.thinkingLevel))
+		parts = append(parts, pillStyle.Render(m.thinkingLevel))
 	}
 
 	if m.contextTokens > 0 {
 		contextStyle := contextStyleForPct(m.contextPct, theme)
 		if m.contextLimit > 0 {
-			rightParts = append(rightParts, contextStyle.Render(fmt.Sprintf("Context: %s/%s", formatTokenCount(m.contextTokens), formatTokenCount(m.contextLimit))))
+			parts = append(parts, contextStyle.Render(fmt.Sprintf("Context: %s/%s", formatTokenCount(m.contextTokens), formatTokenCount(m.contextLimit))))
 		} else {
-			rightParts = append(rightParts, contextStyle.Render("Context: "+formatTokenCount(m.contextTokens)))
+			parts = append(parts, contextStyle.Render("Context: "+formatTokenCount(m.contextTokens)))
 		}
 	} else if m.contextPct > 0 {
-		rightParts = append(rightParts, contextStyleForPct(m.contextPct, theme).Render(fmt.Sprintf("ctx:%.0f%%", m.contextPct)))
+		parts = append(parts, contextStyleForPct(m.contextPct, theme).Render(fmt.Sprintf("ctx:%.0f%%", m.contextPct)))
+	}
+
+	return append(parts, m.usageParts(mutedStyle)...)
+}
+
+func (m FooterModel) usageParts(mutedStyle lipgloss.Style) []string {
+	parts := make([]string, 0, 4)
+
+	if m.inputTokens > 0 || m.outputTokens > 0 {
+		parts = append(parts, mutedStyle.Render(fmt.Sprintf("in:%d out:%d", m.inputTokens, m.outputTokens)))
+	}
+
+	if m.cacheCreationTokens > 0 || m.cacheReadTokens > 0 {
+		parts = append(parts, mutedStyle.Render(fmt.Sprintf("cache:+%d ~%d", m.cacheCreationTokens, m.cacheReadTokens)))
+	}
+
+	if m.cost > 0 {
+		parts = append(parts, mutedStyle.Render(fmt.Sprintf("$%.4f", m.cost)))
 	}
 
 	if m.tokenRate > 0 {
-		rightParts = append(rightParts, mutedStyle.Render(fmt.Sprintf("%.1f tok/s", m.tokenRate)))
+		parts = append(parts, mutedStyle.Render(fmt.Sprintf("%.1f tok/s", m.tokenRate)))
 	}
 
-	right := strings.Join(rightParts, " ")
-	rightWidth := lipgloss.Width(right)
-
-	if left == "" && right == "" {
-		return mutedStyle.Render("weave")
-	}
-
-	if left == "" {
-		return right
-	}
-
-	if right == "" {
-		return left
-	}
-
-	// Pad with spaces to push right group to the right edge
-	leftWidth := lipgloss.Width(left)
-	padding := max(m.width-leftWidth-rightWidth, 1)
-
-	return left + strings.Repeat(" ", padding) + right
+	return parts
 }
 
 func contextStyleForPct(pct float64, theme *palette.Theme) lipgloss.Style {

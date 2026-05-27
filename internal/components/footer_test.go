@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
@@ -46,8 +47,60 @@ func TestFooterModel_RenderLine2_WithCacheTokens(t *testing.T) {
 		SetTokenUsage(1000, 500, 0).
 		SetCacheTokens(200, 800)
 	line2 := f.renderLine2(nil)
+	contextIdx := strings.Index(line2, "in:1000 out:500")
+	cacheIdx := strings.Index(line2, "cache:+200 ~800")
+
 	assert.Contains(t, line2, "in:1000 out:500")
 	assert.Contains(t, line2, "cache:+200 ~800")
+	assert.Greater(t, cacheIdx, contextIdx)
+}
+
+func TestFooterModel_RenderLine2_UsageAfterContext(t *testing.T) {
+	f := NewFooterModel().
+		SetSize(120).
+		SetModel("claude-sonnet-4-6", "anthropic").
+		SetReasoning(true).
+		SetThinkingLevel("high").
+		SetContextUsage(93800, 1000000).
+		SetTokenUsage(1000, 500, 0).
+		SetCacheTokens(200, 800).
+		SetTokenRate(42.5)
+
+	line := ansi.Strip(strings.Split(f.View(), "\n")[1])
+	modelIdx := strings.Index(line, "anthropic/claude-sonnet-4-6")
+	thinkingIdx := strings.Index(line, "high")
+	contextIdx := strings.Index(line, "Context: 93.8k/1M")
+	usageIdx := strings.Index(line, "in:1000 out:500")
+	cacheIdx := strings.Index(line, "cache:+200 ~800")
+	rateIdx := strings.Index(line, "42.5 tok/s")
+
+	require.NotEqual(t, -1, modelIdx)
+	require.NotEqual(t, -1, thinkingIdx)
+	require.NotEqual(t, -1, contextIdx)
+	require.NotEqual(t, -1, usageIdx)
+	require.NotEqual(t, -1, cacheIdx)
+	require.NotEqual(t, -1, rateIdx)
+	assert.Greater(t, thinkingIdx, modelIdx)
+	assert.Greater(t, contextIdx, thinkingIdx)
+	assert.Greater(t, usageIdx, contextIdx)
+	assert.Greater(t, cacheIdx, usageIdx)
+	assert.Greater(t, rateIdx, cacheIdx)
+}
+
+func TestFooterModel_RenderLine2_TruncatesToWidth(t *testing.T) {
+	f := NewFooterModel().
+		SetSize(48).
+		SetModel("claude-sonnet-4-6", "anthropic").
+		SetContextUsage(93800, 1000000).
+		SetTokenUsage(123456, 78910, 0).
+		SetCacheTokens(22222, 33333)
+
+	line := strings.Split(f.View(), "\n")[1]
+	plain := ansi.Strip(line)
+
+	assert.LessOrEqual(t, lipgloss.Width(line), f.Width())
+	assert.Contains(t, plain, "anthropic/claude-sonnet-4-6")
+	assert.Contains(t, plain, "Context")
 }
 
 func TestFooterModel_SetContextUsage(t *testing.T) {
@@ -118,7 +171,7 @@ func TestFooterView_ContextUsageAfterModel(t *testing.T) {
 	assert.Greater(t, contextIdx, modelIdx)
 }
 
-func TestFooterView_PreservesRightSideWhenContextWouldOverflow(t *testing.T) {
+func TestFooterView_PreservesModelAndContextWhenUsageWouldOverflow(t *testing.T) {
 	f := NewFooterModel().
 		SetSize(56).
 		SetModel("claude-sonnet-4-6", "anthropic").
@@ -130,8 +183,7 @@ func TestFooterView_PreservesRightSideWhenContextWouldOverflow(t *testing.T) {
 
 	assert.Contains(t, plain, "anthropic/claude-sonnet-4-6")
 	assert.Contains(t, plain, "Context: 93.8k/1M")
-	assert.Contains(t, plain, "42.5 tok/s")
-	assert.LessOrEqual(t, len([]rune(plain)), f.Width())
+	assert.LessOrEqual(t, lipgloss.Width(line), f.Width())
 }
 
 func TestFooterModel_SetContextPct(t *testing.T) {
@@ -423,7 +475,7 @@ func TestFooterView_ModelNameBoldAndPrimary(t *testing.T) {
 	assert.Contains(t, lines[1], "\x1b[1;")
 }
 
-func TestFooterView_LeftRightGrouping(t *testing.T) {
+func TestFooterView_UsageAfterModelAndContext(t *testing.T) {
 	f := NewFooterModel().SetSize(80).
 		SetTokenUsage(100, 50, 0.01).
 		SetContextPct(50).
@@ -431,14 +483,12 @@ func TestFooterView_LeftRightGrouping(t *testing.T) {
 	view := f.View()
 	lines := strings.Split(view, "\n")
 	require.Len(t, lines, 2)
-	line2 := lines[1]
-	// Both stats and model should be present
+	line2 := ansi.Strip(lines[1])
 	assert.Contains(t, line2, "in:100")
 	assert.Contains(t, line2, "anthropic/claude-sonnet-4")
-	// Model name should appear after stats with padding between
 	idxIn := strings.Index(line2, "in:100")
 	idxModel := strings.Index(line2, "anthropic/claude-sonnet-4")
-	require.Greater(t, idxModel, idxIn, "model should appear after stats (right-aligned)")
+	require.Greater(t, idxIn, idxModel)
 }
 
 func TestFooterView_ThinkingLevelAsPill(t *testing.T) {
@@ -470,12 +520,10 @@ func TestFooterView_ModelAndStatsBothPresent(t *testing.T) {
 	lines := strings.Split(view, "\n")
 	require.Len(t, lines, 2)
 	line2 := lines[1]
-	// All left-side stats
 	assert.Contains(t, line2, "in:1000")
 	assert.Contains(t, line2, "out:200")
 	assert.Contains(t, line2, "$0.0050")
 	assert.Contains(t, line2, "ctx:30%")
-	// All right-side model info
 	assert.Contains(t, line2, "openai/gpt-5.5")
 	assert.Contains(t, line2, "25.5 tok/s")
 }
